@@ -68,6 +68,41 @@ class TestPantryManager(unittest.TestCase):
         success = self.pantry.remove_item("rice", 800, "g")
         self.assertFalse(success)
 
+    def test_get_item_quantity(self):
+        """Test getting item quantities with various scenarios"""
+        # Test non-existent item
+        quantity = self.pantry.get_item_quantity("nonexistent", "g")
+        self.assertEqual(quantity, 0.0, "Non-existent item should return 0")
+
+        # Test existing item with no transactions
+        self.pantry.add_ingredient("salt", "g")  # Add ingredient without any quantity
+        quantity = self.pantry.get_item_quantity("salt", "g")
+        self.assertEqual(quantity, 0.0, "Item with no transactions should return 0")
+
+        # Test item with multiple additions
+        self.pantry.add_item("flour", 500, "g")
+        self.pantry.add_item("flour", 300, "g")
+        quantity = self.pantry.get_item_quantity("flour", "g")
+        self.assertEqual(quantity, 800, "Multiple additions should sum correctly")
+
+        # Test item with additions and removals
+        self.pantry.remove_item("flour", 200, "g")
+        quantity = self.pantry.get_item_quantity("flour", "g")
+        self.assertEqual(quantity, 600, "Additions and removals should calculate correctly")
+
+        # Test item with different units
+        self.pantry.add_item("flour", 2, "kg")
+        quantity_g = self.pantry.get_item_quantity("flour", "g")
+        quantity_kg = self.pantry.get_item_quantity("flour", "kg")
+        self.assertEqual(quantity_g, 600, "Different units should be tracked separately")
+        self.assertEqual(quantity_kg, 2, "Different units should be tracked separately")
+
+        # Test rounding/floating point precision
+        self.pantry.add_item("sugar", 1.5, "kg")
+        self.pantry.remove_item("sugar", 0.75, "kg")
+        quantity = self.pantry.get_item_quantity("sugar", "kg")
+        self.assertEqual(quantity, 0.75, "Floating point calculations should be precise")
+
     def test_pantry_contents(self):
         """Test getting pantry contents"""
         # Add multiple items
