@@ -2,6 +2,7 @@ from mcp.server.fastmcp import FastMCP
 from typing import Any, Dict, List
 from constants import UNITS
 from pantry_manager import PantryManager
+from i18n import t
 
 # Create an MCP server
 mcp = FastMCP("RecipeManager")
@@ -69,11 +70,11 @@ def add_preference(
             notes=notes,
         )
         if success:
-            return {"status": "success", "message": "Preference added successfully"}
+            return {"status": "success", "message": t("Preference added successfully")}
         else:
             return {
                 "status": "error",
-                "message": "Failed to add preference. Item may already exist with this category.",
+                "message": t("Failed to add preference. Item may already exist with this category."),
             }
     except ValueError as e:
         return {"status": "error", "message": str(e)}
@@ -112,9 +113,9 @@ def add_recipe(
     )
 
     if success:
-        return {"status": "success", "message": "Recipe added successfully"}
+        return {"status": "success", "message": t("Recipe added successfully")}
     else:
-        return {"status": "error", "message": "Failed to add recipe"}
+        return {"status": "error", "message": t("Failed to add recipe")}
 
 
 @mcp.tool()
@@ -136,7 +137,7 @@ def get_recipe(recipe_name: str) -> Dict[str, Any]:
     if recipe:
         return {"status": "success", "recipe": recipe}
     else:
-        return {"status": "error", "message": f"Recipe '{recipe_name}' not found"}
+        return {"status": "error", "message": t("Recipe '{name}' not found").format(name=recipe_name)}
 
 
 @mcp.tool()
@@ -185,9 +186,9 @@ def edit_recipe(
     )
 
     if success:
-        return {"status": "success", "message": "Recipe updated successfully"}
+        return {"status": "success", "message": t("Recipe updated successfully")}
     else:
-        return {"status": "error", "message": f"Failed to update recipe '{name}'"}
+        return {"status": "error", "message": t("Failed to update recipe '{name}'").format(name=name)}
 
 
 @mcp.tool()
