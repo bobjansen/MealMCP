@@ -191,22 +191,20 @@ def edit_recipe(
 
 
 @mcp.tool()
-def execute_recipe(recipe_name: str, scale_factor: float = 1.0) -> Dict[str, Any]:
+def execute_recipe(recipe_name: str) -> Dict[str, Any]:
     """Execute a recipe by removing its ingredients from the pantry.
 
     Parameters
     ----------
     recipe_name : str
         Name of the recipe to execute
-    scale_factor : float, optional
-        Factor to scale recipe quantities, by default 1.0
 
     Returns
     -------
     Dict[str, Any]
         Success/error message with details
     """
-    success, message = pantry.execute_recipe(recipe_name, scale_factor)
+    success, message = pantry.execute_recipe(recipe_name)
 
     if success:
         return {"status": "success", "message": message}

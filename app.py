@@ -214,19 +214,6 @@ def create_make_recipe_layout():
                                     ),
                                     dbc.Col(
                                         [
-                                            dbc.Label("Scale Factor"),
-                                            dbc.Input(
-                                                id="scale-factor",
-                                                type="number",
-                                                value=1,
-                                                min=0.1,
-                                                step=0.1,
-                                            ),
-                                        ],
-                                        width=3,
-                                    ),
-                                    dbc.Col(
-                                        [
                                             html.Br(),
                                             dbc.Button(
                                                 "Make Recipe",
@@ -262,19 +249,6 @@ def create_recipe_layout():
                             html.Div(id="recipe-modal-content"),
                             dbc.Row(
                                 [
-                                    dbc.Col(
-                                        [
-                                            dbc.Label("Scale Factor"),
-                                            dbc.Input(
-                                                id="scale-factor",
-                                                type="number",
-                                                value=1,
-                                                min=0.1,
-                                                step=0.1,
-                                            ),
-                                        ],
-                                        width=4,
-                                    ),
                                     dbc.Col(
                                         [
                                             dbc.Button(
@@ -1059,13 +1033,10 @@ def toggle_recipe_modal(active_cell, close_clicks, table_data):
     ],
     [
         State("recipe-modal-title", "children"),
-        State("scale-factor", "value"),
     ],
     prevent_initial_call=True,
 )
-def handle_recipe_actions(
-    make_clicks, close_clicks, edit_clicks, recipe_name, scale_factor
-):
+def handle_recipe_actions(make_clicks, close_clicks, edit_clicks, recipe_name):
     ctx = callback_context
     if not ctx.triggered:
         return None
@@ -1077,7 +1048,7 @@ def handle_recipe_actions(
 
     if trigger_id == "make-recipe-button" and make_clicks:
         try:
-            result = pantry.make_recipe(recipe_name, scale_factor)
+            result = pantry.make_recipe(recipe_name)
             return dbc.Alert(f"Successfully made recipe: {result}", color="success")
         except Exception as e:
             return dbc.Alert(f"Error making recipe: {str(e)}", color="danger")
