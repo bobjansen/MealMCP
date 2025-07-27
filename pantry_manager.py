@@ -483,7 +483,7 @@ class PantryManager:
                         FROM PantryTransactions t
                         JOIN Ingredients i ON t.ingredient_id = i.id
                         WHERE t.ingredient_id = ?
-                        ORDER BY t.transaction_date DESC
+                        ORDER BY t.transaction_date DESC, t.id desc
                         """,
                         (ingredient_id,),
                     )
@@ -495,7 +495,7 @@ class PantryManager:
                             i.name as item_name
                         FROM PantryTransactions t
                         JOIN Ingredients i ON t.ingredient_id = i.id
-                        ORDER BY t.transaction_date DESC
+                        ORDER BY t.transaction_date DESC, t.id desc
                         """
                     )
 
@@ -610,15 +610,12 @@ class PantryManager:
             print(f"Error editing recipe: {e}")
             return False
 
-    def execute_recipe(
-        self, recipe_name: str, scale_factor: float = 1.0
-    ) -> tuple[bool, str]:
+    def execute_recipe(self, recipe_name: str) -> tuple[bool, str]:
         """
         Execute a recipe by removing its ingredients from the pantry.
 
         Args:
             recipe_name: Name of the recipe to execute
-            scale_factor: Factor to scale recipe quantities (e.g., 0.5 for half recipe)
 
         Returns:
             tuple[bool, str]: (Success status, Message with details or error)
@@ -631,7 +628,7 @@ class PantryManager:
             # Check if we have enough of each ingredient
             missing_ingredients = []
             for ingredient in recipe["ingredients"]:
-                needed_quantity = ingredient["quantity"] * scale_factor
+                needed_quantity = ingredient["quantity"]
                 available_quantity = self.get_item_quantity(
                     ingredient["name"], ingredient["unit"]
                 )
@@ -649,7 +646,7 @@ class PantryManager:
             success = True
             used_ingredients = []
             for ingredient in recipe["ingredients"]:
-                quantity = ingredient["quantity"] * scale_factor
+                quantity = ingredient["quantity"]
                 if self.remove_item(
                     ingredient["name"],
                     quantity,
