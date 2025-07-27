@@ -429,6 +429,83 @@ class PantryManager:
             print(f"Error getting all recipes: {e}")
             return []
 
+    def edit_recipe(
+        self,
+        name: str,
+        instructions: str,
+        time_minutes: int,
+        ingredients: List[Dict[str, Any]],
+    ) -> bool:
+        """
+        Edit an existing recipe in the database.
+
+        Args:
+            name: Name of the recipe to edit
+            instructions: Updated cooking instructions
+            time_minutes: Updated time required to prepare the recipe
+            ingredients: Updated list of dictionaries containing:
+                - name: ingredient name
+                - quantity: amount needed
+                - unit: unit of measurement
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Check if recipe exists
+                cursor.execute("SELECT id FROM Recipes WHERE name = ?", (name,))
+                result = cursor.fetchone()
+                if not result:
+                    print(f"Recipe '{name}' not found")
+                    return False
+
+                recipe_id = result[0]
+                now = datetime.now().isoformat()
+
+                # Update recipe
+                cursor.execute(
+                    """
+                    UPDATE Recipes
+                    SET instructions = ?, time_minutes = ?, last_modified = ?
+                    WHERE id = ?
+                    """,
+                    (instructions, time_minutes, now, recipe_id),
+                )
+
+                # Delete existing ingredients
+                cursor.execute(
+                    "DELETE FROM RecipeIngredients WHERE recipe_id = ?", (recipe_id,)
+                )
+
+                # Add new ingredients
+                for ingredient in ingredients:
+                    ingredient_id = self.get_ingredient_id(ingredient["name"])
+                    if ingredient_id is None:
+                        # Create new ingredient if it doesn't exist
+                        self.add_ingredient(ingredient["name"], ingredient["unit"])
+                        ingredient_id = self.get_ingredient_id(ingredient["name"])
+
+                    cursor.execute(
+                        """
+                        INSERT INTO RecipeIngredients
+                        (recipe_id, ingredient_id, quantity, unit)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            recipe_id,
+                            ingredient_id,
+                            ingredient["quantity"],
+                            ingredient["unit"],
+                        ),
+                    )
+                return True
+        except Exception as e:
+            print(f"Error editing recipe: {e}")
+            return False
+
     def execute_recipe(
         self, recipe_name: str, scale_factor: float = 1.0
     ) -> tuple[bool, str]:

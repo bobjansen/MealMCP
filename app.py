@@ -1,4 +1,14 @@
-from dash import ALL, Dash, Input, Output, State, dash_table, dcc, html
+from dash import (
+    ALL,
+    Dash,
+    Input,
+    Output,
+    State,
+    dash_table,
+    dcc,
+    html,
+    callback_context,
+)
 import dash_bootstrap_components as dbc
 from pantry_manager import PantryManager
 
@@ -70,6 +80,78 @@ def create_make_recipe_layout():
 def create_recipe_layout():
     return html.Div(
         [
+            # Edit Recipe Modal
+            dbc.Modal(
+                [
+                    dbc.ModalHeader("Edit Recipe"),
+                    dbc.ModalBody(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Preparation Time (minutes)"),
+                                            dbc.Input(
+                                                id="edit-prep-time",
+                                                type="number",
+                                                placeholder="Enter preparation time",
+                                            ),
+                                        ],
+                                        width=12,
+                                    ),
+                                ],
+                                className="mb-3",
+                            ),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Instructions"),
+                                            dbc.Textarea(
+                                                id="edit-instructions",
+                                                placeholder="Enter cooking instructions",
+                                                style={"height": "150px"},
+                                            ),
+                                        ]
+                                    ),
+                                ],
+                                className="mb-3",
+                            ),
+                            html.Div(
+                                [
+                                    html.H5("Ingredients", className="mb-3"),
+                                    html.Div(
+                                        id="edit-ingredient-list",
+                                        children=[],
+                                    ),
+                                    dbc.Button(
+                                        "Add Ingredient",
+                                        id="edit-add-ingredient-row",
+                                        color="secondary",
+                                        size="sm",
+                                        className="mt-2",
+                                    ),
+                                ],
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button(
+                                "Cancel", id="edit-recipe-close", className="me-2"
+                            ),
+                            dbc.Button(
+                                "Save Changes",
+                                id="edit-recipe-save",
+                                color="primary",
+                            ),
+                        ]
+                    ),
+                ],
+                id="edit-recipe-modal",
+                size="lg",
+            ),
             dbc.Card(
                 [
                     dbc.CardHeader("Add New Recipe"),
@@ -198,6 +280,10 @@ def create_recipe_layout():
                                 "Refresh Recipes",
                                 id="refresh-recipes",
                                 color="secondary",
+                                className="mb-3",
+                            ),
+                            html.Div(
+                                id="recipe-cards",
                                 className="mt-3",
                             ),
                         ]
@@ -361,99 +447,6 @@ app.layout = dbc.Container(
 )
 
 
-# Callback to add ingredient row
-@app.callback(
-    Output("ingredient-list", "children"),
-    Input("add-ingredient-row", "n_clicks"),
-    State("ingredient-list", "children"),
-    prevent_initial_call=True,
-)
-def add_ingredient_row(n_clicks, current_rows):
-    if n_clicks is None:
-        return current_rows
-
-    new_index = len(current_rows)
-    new_row = dbc.Row(
-        [
-            dbc.Col(
-                [
-                    dbc.Input(
-                        id={"type": "ingredient-name", "index": new_index},
-                        type="text",
-                        placeholder="Ingredient name",
-                    ),
-                ],
-                width=4,
-            ),
-            dbc.Col(
-                [
-                    dbc.Input(
-                        id={"type": "ingredient-quantity", "index": new_index},
-                        type="number",
-                        placeholder="Quantity",
-                    ),
-                ],
-                width=3,
-            ),
-            dbc.Col(
-                [
-                    dbc.Input(
-                        id={"type": "ingredient-unit", "index": new_index},
-                        type="text",
-                        placeholder="Unit",
-                    ),
-                ],
-                width=3,
-            ),
-        ],
-        className="mb-2",
-    )
-
-    return current_rows + [new_row]
-
-
-# Callback to save recipe
-@app.callback(
-    Output("recipe-message", "children"),
-    Input("save-recipe", "n_clicks"),
-    [
-        State("recipe-name", "value"),
-        State("prep-time", "value"),
-        State("instructions", "value"),
-        State({"type": "ingredient-name", "index": ALL}, "value"),
-        State({"type": "ingredient-quantity", "index": ALL}, "value"),
-        State({"type": "ingredient-unit", "index": ALL}, "value"),
-    ],
-    prevent_initial_call=True,
-)
-def save_recipe(
-    n_clicks, name, time, instructions, ing_names, ing_quantities, ing_units
-):
-    if None in [name, time, instructions] or not name.strip():
-        return html.Div("Please fill in all required fields", className="text-danger")
-
-    ingredients = [
-        {"name": name, "quantity": float(qty), "unit": unit}
-        for name, qty, unit in zip(ing_names, ing_quantities, ing_units)
-        if name and qty and unit
-    ]
-
-    if not ingredients:
-        return html.Div("Please add at least one ingredient", className="text-danger")
-
-    success = pantry.add_recipe(
-        name=name.strip(),
-        instructions=instructions.strip(),
-        time_minutes=int(time),
-        ingredients=ingredients,
-    )
-
-    if success:
-        return html.Div("Recipe saved successfully!", className="text-success")
-    else:
-        return html.Div("Error saving recipe", className="text-danger")
-
-
 # Callback to display recipes
 @app.callback(
     Output("recipe-list", "children"),
@@ -499,6 +492,376 @@ def update_recipe_list(n_clicks, _):
 
 
 # Make Recipe callbacks
+# Display all recipes with edit buttons
+@app.callback(
+    Output("recipe-cards", "children"),
+    [Input("refresh-recipes", "n_clicks"), Input("recipe-message", "children")],
+)
+def display_recipe_cards(_n_clicks, _message):
+    recipes = pantry.get_all_recipes()
+    if not recipes:
+        return html.P("No recipes found")
+
+    cards = []
+    for recipe in recipes:
+        card = dbc.Card(
+            [
+                dbc.CardHeader(recipe["name"]),
+                dbc.CardBody(
+                    [
+                        html.H6("Ingredients:"),
+                        html.Ul(
+                            [
+                                html.Li(
+                                    f"{ing['quantity']} {ing['unit']} {ing['name']}"
+                                )
+                                for ing in recipe["ingredients"]
+                            ]
+                        ),
+                        html.H6("Instructions:"),
+                        html.P(recipe["instructions"]),
+                        html.P(f"Preparation time: {recipe['time_minutes']} minutes"),
+                        dbc.Button(
+                            "Edit",
+                            id={"type": "edit-recipe-button", "recipe": recipe["name"]},
+                            color="primary",
+                            size="sm",
+                        ),
+                    ]
+                ),
+            ],
+            className="mb-3",
+        )
+        cards.append(card)
+    return cards
+
+
+# Combined callback for ingredient lists and edit modal
+@app.callback(
+    [
+        Output("edit-recipe-modal", "is_open"),
+        Output("edit-prep-time", "value"),
+        Output("edit-instructions", "value"),
+        Output("ingredient-list", "children"),
+        Output("edit-ingredient-list", "children"),
+    ],
+    [
+        Input({"type": "edit-recipe-button", "recipe": ALL}, "n_clicks"),
+        Input("edit-recipe-close", "n_clicks"),
+        Input("edit-recipe-save", "n_clicks"),
+        Input("add-ingredient-row", "n_clicks"),
+        Input("edit-add-ingredient-row", "n_clicks"),
+    ],
+    [
+        State({"type": "edit-recipe-button", "recipe": ALL}, "id"),
+        State("ingredient-list", "children"),
+        State("edit-ingredient-list", "children"),
+    ],
+    prevent_initial_call=True,
+)
+def handle_ingredient_lists_and_edit(
+    edit_clicks,
+    close_clicks,
+    save_clicks,
+    new_ing_clicks,
+    edit_ing_clicks,
+    button_ids,
+    new_rows,
+    edit_rows,
+):
+    ctx = callback_context
+    if not ctx.triggered:
+        return False, None, None, new_rows, edit_rows
+
+    trigger_id = ctx.triggered[0]["prop_id"]
+
+    # Handle edit recipe button clicks
+    if ".n_clicks" not in trigger_id:  # It's an edit recipe button
+        clicked_idx = next(
+            (i for i, clicks in enumerate(edit_clicks) if clicks is not None),
+            None,
+        )
+        if clicked_idx is not None:
+            recipe_name = button_ids[clicked_idx]["recipe"]
+            recipe = pantry.get_recipe(recipe_name)
+
+            if recipe:
+                # Create ingredient rows for edit form
+                ingredient_rows = []
+                for i, ing in enumerate(recipe["ingredients"]):
+                    row = dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    dbc.Input(
+                                        id={"type": "edit-ingredient-name", "index": i},
+                                        type="text",
+                                        value=ing["name"],
+                                        placeholder="Ingredient name",
+                                    ),
+                                ],
+                                width=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    dbc.Input(
+                                        id={
+                                            "type": "edit-ingredient-quantity",
+                                            "index": i,
+                                        },
+                                        type="number",
+                                        value=ing["quantity"],
+                                        placeholder="Quantity",
+                                    ),
+                                ],
+                                width=3,
+                            ),
+                            dbc.Col(
+                                [
+                                    dbc.Input(
+                                        id={"type": "edit-ingredient-unit", "index": i},
+                                        type="text",
+                                        value=ing["unit"],
+                                        placeholder="Unit",
+                                    ),
+                                ],
+                                width=3,
+                            ),
+                        ],
+                        className="mb-2",
+                    )
+                    ingredient_rows.append(row)
+                return (
+                    True,
+                    recipe["time_minutes"],
+                    recipe["instructions"],
+                    new_rows,
+                    ingredient_rows,
+                )
+
+    # Handle modal close or save
+    if trigger_id in ["edit-recipe-close.n_clicks", "edit-recipe-save.n_clicks"]:
+        return False, None, None, new_rows, edit_rows
+
+    # Handle add ingredient row clicks
+    if trigger_id == "add-ingredient-row.n_clicks":
+        if new_ing_clicks is None:
+            return False, None, None, new_rows, edit_rows
+
+        new_index = len(new_rows)
+        new_row = dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "ingredient-name", "index": new_index},
+                            type="text",
+                            placeholder="Ingredient name",
+                        ),
+                    ],
+                    width=4,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "ingredient-quantity", "index": new_index},
+                            type="number",
+                            placeholder="Quantity",
+                        ),
+                    ],
+                    width=3,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "ingredient-unit", "index": new_index},
+                            type="text",
+                            placeholder="Unit",
+                        ),
+                    ],
+                    width=3,
+                ),
+            ],
+            className="mb-2",
+        )
+        return (
+            False,
+            None,
+            None,
+            new_rows + [new_row] if new_rows else [new_row],
+            edit_rows,
+        )
+
+    if trigger_id == "edit-add-ingredient-row.n_clicks":
+        if edit_ing_clicks is None:
+            return False, None, None, new_rows, edit_rows
+
+        new_index = len(edit_rows)
+        new_row = dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "edit-ingredient-name", "index": new_index},
+                            type="text",
+                            placeholder="Ingredient name",
+                        ),
+                    ],
+                    width=4,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "edit-ingredient-quantity", "index": new_index},
+                            type="number",
+                            placeholder="Quantity",
+                        ),
+                    ],
+                    width=3,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "edit-ingredient-unit", "index": new_index},
+                            type="text",
+                            placeholder="Unit",
+                        ),
+                    ],
+                    width=3,
+                ),
+            ],
+            className="mb-2",
+        )
+        return (
+            False,
+            None,
+            None,
+            new_rows,
+            edit_rows + [new_row] if edit_rows else [new_row],
+        )
+
+    return False, None, None, new_rows, edit_rows
+
+
+# Handle recipe save (both new and edit)
+@app.callback(
+    Output("recipe-message", "children"),
+    [Input("save-recipe", "n_clicks"), Input("edit-recipe-save", "n_clicks")],
+    [
+        # States for new recipe
+        State("recipe-name", "value"),
+        State("prep-time", "value"),
+        State("instructions", "value"),
+        State({"type": "ingredient-name", "index": ALL}, "value"),
+        State({"type": "ingredient-quantity", "index": ALL}, "value"),
+        State({"type": "ingredient-unit", "index": ALL}, "value"),
+        # States for edit recipe
+        State({"type": "edit-recipe-button", "recipe": ALL}, "id"),
+        State("edit-prep-time", "value"),
+        State("edit-instructions", "value"),
+        State({"type": "edit-ingredient-name", "index": ALL}, "value"),
+        State({"type": "edit-ingredient-quantity", "index": ALL}, "value"),
+        State({"type": "edit-ingredient-unit", "index": ALL}, "value"),
+    ],
+    prevent_initial_call=True,
+)
+def save_recipe(
+    new_clicks,
+    edit_clicks,
+    # New recipe states
+    recipe_name,
+    prep_time,
+    instructions,
+    ingredient_names,
+    ingredient_quantities,
+    ingredient_units,
+    # Edit recipe states
+    button_ids,
+    edit_prep_time,
+    edit_instructions,
+    edit_ingredient_names,
+    edit_ingredient_quantities,
+    edit_ingredient_units,
+):
+    ctx = callback_context
+    if not ctx.triggered:
+        return None
+
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if trigger_id == "save-recipe":
+        # Handle new recipe
+        if not all([recipe_name, prep_time, instructions]):
+            return dbc.Alert("Please fill in all required fields", color="warning")
+
+        ingredients = []
+        for name, quantity, unit in zip(
+            ingredient_names, ingredient_quantities, ingredient_units
+        ):
+            if name and quantity and unit:
+                ingredients.append(
+                    {
+                        "name": name,
+                        "quantity": float(quantity),
+                        "unit": unit,
+                    }
+                )
+
+        if not ingredients:
+            return dbc.Alert("Please add at least one ingredient", color="warning")
+
+        success = pantry.add_recipe(
+            name=recipe_name,
+            instructions=instructions,
+            time_minutes=int(prep_time),
+            ingredients=ingredients,
+        )
+
+        if success:
+            return dbc.Alert("Recipe added successfully", color="success")
+        else:
+            return dbc.Alert("Failed to add recipe", color="danger")
+
+    elif trigger_id == "edit-recipe-save":
+        # Handle edit recipe
+        recipe_name = next((bid["recipe"] for bid in button_ids), None)
+        if not recipe_name:
+            return dbc.Alert("Error: Recipe not found", color="danger")
+
+        if not all([edit_prep_time, edit_instructions]):
+            return dbc.Alert("Please fill in all required fields", color="warning")
+
+        ingredients = []
+        for name, quantity, unit in zip(
+            edit_ingredient_names, edit_ingredient_quantities, edit_ingredient_units
+        ):
+            if name and quantity and unit:
+                ingredients.append(
+                    {
+                        "name": name,
+                        "quantity": float(quantity),
+                        "unit": unit,
+                    }
+                )
+
+        if not ingredients:
+            return dbc.Alert("Please add at least one ingredient", color="warning")
+
+        success = pantry.edit_recipe(
+            name=recipe_name,
+            instructions=edit_instructions,
+            time_minutes=int(edit_prep_time),
+            ingredients=ingredients,
+        )
+
+        if success:
+            return dbc.Alert("Recipe updated successfully", color="success")
+        else:
+            return dbc.Alert("Failed to update recipe", color="danger")
+
+    return None
+
+
 @app.callback(
     Output("recipe-select", "options"),
     [Input("tabs", "active_tab")],
