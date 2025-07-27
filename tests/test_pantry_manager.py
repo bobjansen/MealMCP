@@ -20,6 +20,89 @@ class TestPantryManager(unittest.TestCase):
         # Run the database setup
         setup_database(self.db_path)
 
+    def test_preferences_crud(self):
+        """Test creating, reading, updating, and deleting preferences."""
+        # Test adding a preference
+        success = self.pantry.add_preference(
+            category="dietary",
+            item="vegetarian",
+            level="required",
+            notes="No meat or fish",
+        )
+        self.assertTrue(success, "Should successfully add a preference")
+
+        # Test getting preferences
+        prefs = self.pantry.get_preferences()
+        self.assertEqual(len(prefs), 1, "Should have one preference")
+        pref = prefs[0]
+        self.assertEqual(pref["category"], "dietary")
+        self.assertEqual(pref["item"], "vegetarian")
+        self.assertEqual(pref["level"], "required")
+        self.assertEqual(pref["notes"], "No meat or fish")
+
+        # Test adding another preference
+        success = self.pantry.add_preference(
+            category="allergy", item="peanuts", level="avoid", notes="Severe allergy"
+        )
+        self.assertTrue(success, "Should successfully add second preference")
+
+        prefs = self.pantry.get_preferences()
+        self.assertEqual(len(prefs), 2, "Should have two preferences")
+
+        # Test updating a preference
+        pref_id = prefs[0]["id"]
+        success = self.pantry.update_preference(
+            preference_id=pref_id, level="preferred", notes="Trying to be more flexible"
+        )
+        self.assertTrue(success, "Should successfully update preference")
+
+        # Verify the update
+        prefs = self.pantry.get_preferences()
+        updated_pref = next(p for p in prefs if p["id"] == pref_id)
+        self.assertEqual(updated_pref["level"], "preferred")
+        self.assertEqual(updated_pref["notes"], "Trying to be more flexible")
+        self.assertEqual(
+            updated_pref["category"], "dietary", "Category should not change"
+        )
+        self.assertEqual(updated_pref["item"], "vegetarian", "Item should not change")
+
+        # Test deleting a preference
+        success = self.pantry.delete_preference(pref_id)
+        self.assertTrue(success, "Should successfully delete preference")
+
+        # Verify the deletion
+        prefs = self.pantry.get_preferences()
+        self.assertEqual(len(prefs), 1, "Should have one preference remaining")
+        self.assertNotEqual(
+            prefs[0]["id"], pref_id, "Deleted preference should not be present"
+        )
+
+    def test_preference_constraints(self):
+        """Test preference constraints and edge cases."""
+        # Test duplicate preference
+        success1 = self.pantry.add_preference(
+            category="dietary", item="vegetarian", level="required"
+        )
+        self.assertTrue(success1, "Should add first preference")
+
+        success2 = self.pantry.add_preference(
+            category="dietary", item="vegetarian", level="preferred"
+        )
+        self.assertFalse(success2, "Should not add duplicate category/item combination")
+
+        # Test with empty values
+        with self.assertRaises(ValueError):
+            self.pantry.add_preference("", "item", "required")
+
+        # Test deleting non-existent preference
+        success = self.pantry.delete_preference(999)
+        self.assertFalse(success, "Should fail to delete non-existent preference")
+
+        # Test updating non-existent preference
+        success = self.pantry.update_preference(999, "required", "test")
+        self.assertFalse(success, "Should fail to update non-existent preference")
+        setup_database(self.db_path)
+
     def tearDown(self):
         # Close any remaining connections and remove the temporary database
         try:
@@ -88,20 +171,26 @@ class TestPantryManager(unittest.TestCase):
         # Test item with additions and removals
         self.pantry.remove_item("flour", 200, "g")
         quantity = self.pantry.get_item_quantity("flour", "g")
-        self.assertEqual(quantity, 600, "Additions and removals should calculate correctly")
+        self.assertEqual(
+            quantity, 600, "Additions and removals should calculate correctly"
+        )
 
         # Test item with different units
         self.pantry.add_item("flour", 2, "kg")
         quantity_g = self.pantry.get_item_quantity("flour", "g")
         quantity_kg = self.pantry.get_item_quantity("flour", "kg")
-        self.assertEqual(quantity_g, 600, "Different units should be tracked separately")
+        self.assertEqual(
+            quantity_g, 600, "Different units should be tracked separately"
+        )
         self.assertEqual(quantity_kg, 2, "Different units should be tracked separately")
 
         # Test rounding/floating point precision
         self.pantry.add_item("sugar", 1.5, "kg")
         self.pantry.remove_item("sugar", 0.75, "kg")
         quantity = self.pantry.get_item_quantity("sugar", "kg")
-        self.assertEqual(quantity, 0.75, "Floating point calculations should be precise")
+        self.assertEqual(
+            quantity, 0.75, "Floating point calculations should be precise"
+        )
 
     def test_pantry_contents(self):
         """Test getting pantry contents"""

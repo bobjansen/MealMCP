@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class PantryManager:
@@ -38,6 +38,110 @@ class PantryManager:
         except Exception as e:
             print(f"Error adding ingredient: {e}")
             return False
+
+    def add_preference(
+        self, category: str, item: str, level: str, notes: str = None
+    ) -> bool:
+        """
+        Add a new food preference to the database.
+
+        Args:
+            category: Type of preference (dietary, allergy, dislike)
+            item: The specific preference item
+            level: Importance level (required, preferred, avoid)
+            notes: Optional notes about the preference
+
+        Returns:
+            bool: True if successful, False otherwise
+
+        Raises:
+            ValueError: If category, item, or level is empty
+        """
+        if not category or not item or not level:
+            raise ValueError("Category, item, and level are required")
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO Preferences (category, item, level, notes, created_date)
+                    VALUES (?, ?, ?, ?, datetime('now'))
+                    """,
+                    (category, item, level, notes),
+                )
+                return True
+        except sqlite3.IntegrityError as e:
+            print(f"Error adding preference: {e}")
+            return False
+        except Exception as e:
+            print(f"Error adding preference: {e}")
+            return False
+
+    def update_preference(
+        self, preference_id: int, level: str, notes: str = None
+    ) -> bool:
+        """
+        Update an existing food preference.
+
+        Args:
+            preference_id: ID of the preference to update
+            level: New importance level (required/preferred/avoid)
+            notes: Optional new notes
+
+        Returns:
+            bool: True if successful, False otherwise
+
+        Raises:
+            ValueError: If level is empty
+        """
+        if not level:
+            raise ValueError("Level is required")
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE Preferences
+                    SET level = ?, notes = ?
+                    WHERE id = ?
+                    """,
+                    (level, notes, preference_id),
+                )
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating preference: {e}")
+            return False
+
+    def delete_preference(self, preference_id: int) -> bool:
+        """Delete a food preference by ID."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM Preferences WHERE id = ?", (preference_id,))
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting preference: {e}")
+            return False
+
+    def get_preferences(self) -> List[Dict[str, Any]]:
+        """Get all food preferences."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT id, category, item, level, notes, created_date
+                    FROM Preferences
+                    ORDER BY id
+                    """
+                )
+                columns = [col[0] for col in cursor.description]
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Error getting preferences: {e}")
+            return []
 
     def get_ingredient_id(self, name: str) -> Optional[int]:
         """Get the ID of an ingredient by name."""

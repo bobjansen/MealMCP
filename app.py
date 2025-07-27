@@ -18,6 +18,154 @@ pantry = PantryManager()
 
 
 # Layout components
+def create_preferences_layout():
+    """Create the layout for the preferences page."""
+    return html.Div(
+        [
+            dbc.Card(
+                [
+                    dbc.CardHeader("Food Preferences"),
+                    dbc.CardBody(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Form(
+                                                [
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                [
+                                                                    dbc.Label(
+                                                                        "Category"
+                                                                    ),
+                                                                    dcc.Dropdown(
+                                                                        id="pref-category",
+                                                                        options=[
+                                                                            {
+                                                                                "label": "Dietary Restriction",
+                                                                                "value": "dietary",
+                                                                            },
+                                                                            {
+                                                                                "label": "Allergy",
+                                                                                "value": "allergy",
+                                                                            },
+                                                                            {
+                                                                                "label": "Dislike",
+                                                                                "value": "dislike",
+                                                                            },
+                                                                        ],
+                                                                        placeholder="Select category",
+                                                                    ),
+                                                                ],
+                                                                width=3,
+                                                            ),
+                                                            dbc.Col(
+                                                                [
+                                                                    dbc.Label("Item"),
+                                                                    dbc.Input(
+                                                                        id="pref-item",
+                                                                        type="text",
+                                                                        placeholder="Enter item (e.g., vegetarian, peanuts)",
+                                                                    ),
+                                                                ],
+                                                                width=3,
+                                                            ),
+                                                            dbc.Col(
+                                                                [
+                                                                    dbc.Label("Level"),
+                                                                    dcc.Dropdown(
+                                                                        id="pref-level",
+                                                                        options=[
+                                                                            {
+                                                                                "label": "Required",
+                                                                                "value": "required",
+                                                                            },
+                                                                            {
+                                                                                "label": "Preferred",
+                                                                                "value": "preferred",
+                                                                            },
+                                                                            {
+                                                                                "label": "Avoid",
+                                                                                "value": "avoid",
+                                                                            },
+                                                                        ],
+                                                                        placeholder="Select level",
+                                                                    ),
+                                                                ],
+                                                                width=3,
+                                                            ),
+                                                            dbc.Col(
+                                                                [
+                                                                    dbc.Label("Notes"),
+                                                                    dbc.Input(
+                                                                        id="pref-notes",
+                                                                        type="text",
+                                                                        placeholder="Optional notes",
+                                                                    ),
+                                                                ],
+                                                                width=3,
+                                                            ),
+                                                        ],
+                                                        className="mb-3",
+                                                    ),
+                                                    dbc.Row(
+                                                        dbc.Col(
+                                                            dbc.Button(
+                                                                "Add Preference",
+                                                                id="add-preference-btn",
+                                                                color="primary",
+                                                            ),
+                                                            width="auto",
+                                                        )
+                                                    ),
+                                                ]
+                                            ),
+                                        ]
+                                    )
+                                ]
+                            ),
+                            html.Hr(),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.H4("Current Preferences"),
+                                            dash_table.DataTable(
+                                                id="preferences-table",
+                                                columns=[
+                                                    {
+                                                        "name": "Category",
+                                                        "id": "category",
+                                                    },
+                                                    {"name": "Item", "id": "item"},
+                                                    {"name": "Level", "id": "level"},
+                                                    {"name": "Notes", "id": "notes"},
+                                                ],
+                                                data=[],
+                                                style_cell={
+                                                    "textAlign": "left",
+                                                    "padding": "10px",
+                                                },
+                                                style_header={
+                                                    "backgroundColor": "rgb(230, 230, 230)",
+                                                    "fontWeight": "bold",
+                                                },
+                                                row_deletable=True,
+                                            ),
+                                        ]
+                                    )
+                                ]
+                            ),
+                        ]
+                    ),
+                ]
+            )
+        ]
+    )
+
+
 def create_make_recipe_layout():
     return html.Div(
         [
@@ -437,6 +585,11 @@ app.layout = dbc.Container(
                     create_make_recipe_layout(),
                     label="Make Recipe",
                     tab_id="make-recipe",
+                ),
+                dbc.Tab(
+                    create_preferences_layout(),
+                    label="Preferences",
+                    tab_id="preferences",
                 ),
             ],
             id="tabs",
@@ -889,34 +1042,71 @@ def display_recipe_details(recipe_name):
         return html.Div("Recipe not found", className="text-danger")
 
     return dbc.Card(
-        [
-            dbc.CardBody(
-                [
-                    html.H5("Required Ingredients:"),
-                    html.Ul(
-                        [
-                            html.Li(
-                                [
-                                    f"{ing['quantity']} {ing['unit']} {ing['name']} ",
-                                    html.Small(
-                                        f"(Available: {pantry.get_item_quantity(ing['name'], ing['unit'])} {ing['unit']})",
-                                        className="text-muted",
-                                    ),
-                                ]
-                            )
-                            for ing in recipe["ingredients"]
-                        ]
-                    ),
-                    html.H5("Instructions:"),
-                    dcc.Markdown(
-                        recipe["instructions"], className="recipe-instructions"
-                    ),
-                    html.P(f"Preparation time: {recipe['time_minutes']} minutes"),
-                ]
-            )
-        ],
-        className="mt-3",
+        dbc.CardBody(
+            [
+                html.H5(recipe["name"], className="card-title"),
+                html.P(f"Preparation Time: {recipe['time_minutes']} minutes"),
+                html.P("Instructions:"),
+                html.Pre(recipe["instructions"]),
+            ]
+        )
     )
+
+
+# Preferences page callbacks
+@app.callback(
+    [
+        Output("preferences-table", "data"),
+        Output("pref-category", "value"),
+        Output("pref-item", "value"),
+        Output("pref-level", "value"),
+        Output("pref-notes", "value"),
+    ],
+    [
+        Input("add-preference-btn", "n_clicks"),
+        Input("preferences-table", "data_previous"),
+    ],
+    [
+        State("pref-category", "value"),
+        State("pref-item", "value"),
+        State("pref-level", "value"),
+        State("pref-notes", "value"),
+        State("preferences-table", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def manage_preferences(
+    n_clicks, previous_data, category, item, level, notes, current_data
+):
+    """Handle adding and removing preferences."""
+    ctx = callback_context
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if not current_data:
+        current_data = []
+
+    if trigger == "add-preference-btn" and all([category, item, level]):
+        # Add new preference
+        success = pantry.add_preference(category, item, level, notes)
+        if success:
+            # Clear input fields and refresh table
+            return (
+                pantry.get_preferences(),
+                None,  # Clear category
+                "",  # Clear item
+                None,  # Clear level
+                "",  # Clear notes
+            )
+    elif trigger == "preferences-table":
+        # Handle row deletion
+        if previous_data and len(previous_data) > len(current_data):
+            # Find the deleted row
+            deleted_row = next(row for row in previous_data if row not in current_data)
+            pantry.delete_preference(deleted_row["id"])
+        return current_data + [None] * 4  # Keep current table data and clear inputs
+
+    # On first load or if no action taken
+    return pantry.get_preferences(), None, "", None, ""
 
 
 @app.callback(

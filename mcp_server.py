@@ -10,6 +10,63 @@ pantry = PantryManager()
 
 
 @mcp.tool()
+def list_preferences() -> List[Dict[str, Any]]:
+    """Get all food preferences from the database.
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        List of preferences, each containing:
+            - category: Type of preference (dietary, allergy, dislike)
+            - item: The specific preference item
+            - level: Importance level (required, preferred, avoid)
+            - notes: Optional notes about the preference
+    """
+    preferences = pantry.get_preferences()
+    return preferences
+
+
+@mcp.tool()
+def add_preference(
+    category: str, item: str, level: str, notes: str = None
+) -> Dict[str, Any]:
+    """Add a new food preference to the database.
+
+    Parameters
+    ----------
+    category : str
+        Type of preference (dietary, allergy, dislike)
+    item : str
+        The specific preference item
+    level : str
+        Importance level (required, preferred, avoid)
+    notes : str, optional
+        Additional notes about the preference
+
+    Returns
+    -------
+    Dict[str, Any]
+        Response with success/error message
+    """
+    try:
+        success = pantry.add_preference(
+            category=category,
+            item=item,
+            level=level,
+            notes=notes,
+        )
+        if success:
+            return {"status": "success", "message": "Preference added successfully"}
+        else:
+            return {
+                "status": "error",
+                "message": "Failed to add preference. Item may already exist with this category.",
+            }
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
 def add_recipe(
     name: str, instructions: str, time_minutes: int, ingredients: List[Dict[str, Any]]
 ) -> Dict[str, Any]:

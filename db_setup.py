@@ -48,6 +48,21 @@ def setup_database(
     """
     )
 
+    # Create Preferences table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS Preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,  -- e.g., 'dietary', 'allergy', 'dislike'
+            item TEXT NOT NULL,      -- e.g., 'vegetarian', 'peanuts', 'mushrooms'
+            level TEXT NOT NULL,     -- e.g., 'required', 'preferred', 'avoid'
+            notes TEXT,
+            created_date TEXT NOT NULL,
+            UNIQUE(category, item)
+        )
+    """
+    )
+
     # Create RecipeIngredients junction table
     cursor.execute(
         """
