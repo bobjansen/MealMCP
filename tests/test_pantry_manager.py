@@ -172,6 +172,42 @@ class TestPantryManager(unittest.TestCase):
         self.assertEqual(quantity_g, 1000)
         self.assertEqual(quantity_kg, 1)
 
+    def test_execute_recipe(self):
+        """Test executing a recipe and removing ingredients from pantry"""
+        # Add ingredients to pantry
+        self.pantry.add_item("flour", 500, "g")
+        self.pantry.add_item("sugar", 300, "g")
+        self.pantry.add_item("eggs", 6, "units")
+
+        # Create a recipe
+        recipe = {
+            "name": "Test Cookies",
+            "instructions": "Mix and bake",
+            "time_minutes": 30,
+            "ingredients": [
+                {"name": "flour", "quantity": 200, "unit": "g"},
+                {"name": "sugar", "quantity": 100, "unit": "g"},
+                {"name": "eggs", "quantity": 2, "unit": "units"},
+            ],
+        }
+        self.pantry.add_recipe(**recipe)
+
+        # Execute recipe
+        success, message = self.pantry.execute_recipe("Test Cookies")
+        self.assertTrue(success)
+
+        # Check remaining quantities
+        self.assertEqual(self.pantry.get_item_quantity("flour", "g"), 300)
+        self.assertEqual(self.pantry.get_item_quantity("sugar", "g"), 200)
+        self.assertEqual(self.pantry.get_item_quantity("eggs", "units"), 4)
+
+        # Try to execute recipe with insufficient ingredients
+        success, message = self.pantry.execute_recipe("Test Cookies")
+        self.assertTrue(success)
+        success, message = self.pantry.execute_recipe("Test Cookies")
+        self.assertFalse(success)
+        self.assertIn("Missing ingredients", message)
+
 
 if __name__ == "__main__":
     unittest.main()

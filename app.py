@@ -1,6 +1,5 @@
-from dash import Dash, html, dcc, Input, Output, State, dash_table, ALL, MATCH
+from dash import ALL, Dash, Input, Output, State, dash_table, dcc, html
 import dash_bootstrap_components as dbc
-import json
 from pantry_manager import PantryManager
 
 # Initialize the Dash app with Bootstrap theme
@@ -9,56 +8,36 @@ pantry = PantryManager()
 
 
 # Layout components
-def create_pantry_layout():
+def create_make_recipe_layout():
     return html.Div(
         [
             dbc.Card(
                 [
-                    dbc.CardHeader("Add Item to Pantry"),
+                    dbc.CardHeader("Make Recipe"),
                     dbc.CardBody(
                         [
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Item Name"),
-                                            dbc.Input(
-                                                id="item-name",
-                                                type="text",
-                                                placeholder="Enter item name",
+                                            dbc.Label("Select Recipe"),
+                                            dcc.Dropdown(
+                                                id="recipe-select",
+                                                options=[],
+                                                placeholder="Choose a recipe",
                                             ),
                                         ],
-                                        width=3,
+                                        width=6,
                                     ),
                                     dbc.Col(
                                         [
-                                            dbc.Label("Quantity"),
+                                            dbc.Label("Scale Factor"),
                                             dbc.Input(
-                                                id="quantity",
+                                                id="scale-factor",
                                                 type="number",
-                                                placeholder="Enter quantity",
-                                            ),
-                                        ],
-                                        width=2,
-                                    ),
-                                    dbc.Col(
-                                        [
-                                            dbc.Label("Unit"),
-                                            dbc.Input(
-                                                id="unit",
-                                                type="text",
-                                                placeholder="e.g., g, kg, ml",
-                                            ),
-                                        ],
-                                        width=2,
-                                    ),
-                                    dbc.Col(
-                                        [
-                                            dbc.Label("Notes"),
-                                            dbc.Input(
-                                                id="notes",
-                                                type="text",
-                                                placeholder="Optional notes",
+                                                value=1,
+                                                min=0.1,
+                                                step=0.1,
                                             ),
                                         ],
                                         width=3,
@@ -67,72 +46,22 @@ def create_pantry_layout():
                                         [
                                             html.Br(),
                                             dbc.Button(
-                                                "Add Item",
-                                                id="add-button",
+                                                "Make Recipe",
+                                                id="make-recipe-button",
                                                 color="primary",
                                                 className="mt-2",
                                             ),
                                         ],
-                                        width=2,
+                                        width=3,
                                     ),
                                 ]
                             ),
-                            html.Div(id="add-message", className="mt-3"),
+                            html.Div(id="recipe-details", className="mt-4"),
+                            html.Div(id="make-recipe-message", className="mt-3"),
                         ]
                     ),
                 ],
                 className="mb-4",
-            ),
-            # Current Pantry Contents
-            dbc.Card(
-                [
-                    dbc.CardHeader("Current Pantry Contents"),
-                    dbc.CardBody(
-                        [
-                            html.Div(id="pantry-contents"),
-                            dbc.Button(
-                                "Refresh",
-                                id="refresh-button",
-                                color="secondary",
-                                className="mt-3",
-                            ),
-                        ]
-                    ),
-                ],
-                className="mb-4",
-            ),
-            # Transaction History
-            dbc.Card(
-                [
-                    dbc.CardHeader("Transaction History"),
-                    dbc.CardBody(
-                        [
-                            dash_table.DataTable(
-                                id="transaction-table",
-                                columns=[
-                                    {"name": "Date", "id": "transaction_date"},
-                                    {"name": "Type", "id": "transaction_type"},
-                                    {"name": "Item", "id": "item_name"},
-                                    {"name": "Quantity", "id": "quantity"},
-                                    {"name": "Unit", "id": "unit"},
-                                    {"name": "Notes", "id": "notes"},
-                                ],
-                                style_table={"overflowX": "auto"},
-                                style_cell={
-                                    "textAlign": "left",
-                                    "padding": "10px",
-                                    "whiteSpace": "normal",
-                                    "height": "auto",
-                                },
-                                style_header={
-                                    "backgroundColor": "rgb(230, 230, 230)",
-                                    "fontWeight": "bold",
-                                },
-                                page_size=10,
-                            )
-                        ]
-                    ),
-                ]
             ),
         ]
     )
@@ -279,21 +208,156 @@ def create_recipe_layout():
     )
 
 
-# Main layout with tabs
+def create_pantry_layout():
+    return html.Div(
+        [
+            dbc.Card(
+                [
+                    dbc.CardHeader("Add Item to Pantry"),
+                    dbc.CardBody(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Item Name"),
+                                            dbc.Input(
+                                                id="item-name",
+                                                type="text",
+                                                placeholder="Enter item name",
+                                            ),
+                                        ],
+                                        width=3,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Quantity"),
+                                            dbc.Input(
+                                                id="quantity",
+                                                type="number",
+                                                placeholder="Enter quantity",
+                                            ),
+                                        ],
+                                        width=2,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Unit"),
+                                            dbc.Input(
+                                                id="unit",
+                                                type="text",
+                                                placeholder="e.g., g, kg, ml",
+                                            ),
+                                        ],
+                                        width=2,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Notes"),
+                                            dbc.Input(
+                                                id="notes",
+                                                type="text",
+                                                placeholder="Optional notes",
+                                            ),
+                                        ],
+                                        width=3,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Br(),
+                                            dbc.Button(
+                                                "Add Item",
+                                                id="add-button",
+                                                color="primary",
+                                                className="mt-2",
+                                            ),
+                                        ],
+                                        width=2,
+                                    ),
+                                ]
+                            ),
+                            html.Div(id="add-message", className="mt-3"),
+                        ]
+                    ),
+                ],
+                className="mb-4",
+            ),
+            # Current Pantry Contents
+            dbc.Card(
+                [
+                    dbc.CardHeader("Current Pantry Contents"),
+                    dbc.CardBody(
+                        [
+                            html.Div(id="pantry-contents"),
+                            dbc.Button(
+                                "Refresh",
+                                id="refresh-button",
+                                color="secondary",
+                                className="mt-3",
+                            ),
+                        ]
+                    ),
+                ],
+                className="mb-4",
+            ),
+            # Transaction History
+            dbc.Card(
+                [
+                    dbc.CardHeader("Transaction History"),
+                    dbc.CardBody(
+                        [
+                            dash_table.DataTable(
+                                id="transaction-table",
+                                columns=[
+                                    {"name": "Date", "id": "transaction_date"},
+                                    {"name": "Type", "id": "transaction_type"},
+                                    {"name": "Item", "id": "item_name"},
+                                    {"name": "Quantity", "id": "quantity"},
+                                    {"name": "Unit", "id": "unit"},
+                                    {"name": "Notes", "id": "notes"},
+                                ],
+                                style_table={"overflowX": "auto"},
+                                style_cell={
+                                    "textAlign": "left",
+                                    "padding": "10px",
+                                    "whiteSpace": "normal",
+                                    "height": "auto",
+                                },
+                                style_header={
+                                    "backgroundColor": "rgb(230, 230, 230)",
+                                    "fontWeight": "bold",
+                                },
+                                page_size=10,
+                            )
+                        ]
+                    ),
+                ]
+            ),
+        ]
+    )
+
+
+# App layout with tabs
 app.layout = dbc.Container(
     [
-        html.H1("Meal & Pantry Manager", className="my-4"),
+        html.H1("Meal Planner", className="my-4"),
         dbc.Tabs(
             [
-                dbc.Tab(create_pantry_layout(), label="Pantry", tab_id="pantry-tab"),
-                dbc.Tab(create_recipe_layout(), label="Recipes", tab_id="recipes-tab"),
+                dbc.Tab(
+                    create_pantry_layout(), label="Pantry Management", tab_id="pantry"
+                ),
+                dbc.Tab(create_recipe_layout(), label="Recipes", tab_id="recipes"),
+                dbc.Tab(
+                    create_make_recipe_layout(),
+                    label="Make Recipe",
+                    tab_id="make-recipe",
+                ),
             ],
             id="tabs",
-            active_tab="pantry-tab",
+            active_tab="pantry",
         ),
     ],
     fluid=True,
-    className="p-4",
 )
 
 
@@ -434,6 +498,88 @@ def update_recipe_list(n_clicks, _):
     return recipe_cards
 
 
+# Make Recipe callbacks
+@app.callback(
+    Output("recipe-select", "options"),
+    [Input("tabs", "active_tab")],
+)
+def update_recipe_dropdown(active_tab):
+    if active_tab == "make-recipe":
+        recipes = pantry.get_all_recipes()
+        return [
+            {"label": recipe["name"], "value": recipe["name"]} for recipe in recipes
+        ]
+    return []
+
+
+@app.callback(
+    Output("recipe-details", "children"),
+    Input("recipe-select", "value"),
+    prevent_initial_call=True,
+)
+def display_recipe_details(recipe_name):
+    if not recipe_name:
+        return ""
+
+    recipe = pantry.get_recipe(recipe_name)
+    if not recipe:
+        return html.Div("Recipe not found", className="text-danger")
+
+    return dbc.Card(
+        [
+            dbc.CardBody(
+                [
+                    html.H5("Required Ingredients:"),
+                    html.Ul(
+                        [
+                            html.Li(
+                                [
+                                    f"{ing['quantity']} {ing['unit']} {ing['name']} ",
+                                    html.Small(
+                                        f"(Available: {pantry.get_item_quantity(ing['name'], ing['unit'])} {ing['unit']})",
+                                        className="text-muted",
+                                    ),
+                                ]
+                            )
+                            for ing in recipe["ingredients"]
+                        ]
+                    ),
+                    html.H5("Instructions:"),
+                    html.P(recipe["instructions"]),
+                    html.P(f"Preparation time: {recipe['time_minutes']} minutes"),
+                ]
+            )
+        ],
+        className="mt-3",
+    )
+
+
+@app.callback(
+    Output("make-recipe-message", "children"),
+    [
+        Input("make-recipe-button", "n_clicks"),
+        State("recipe-select", "value"),
+        State("scale-factor", "value"),
+    ],
+    prevent_initial_call=True,
+)
+def execute_recipe(n_clicks, recipe_name, scale_factor):
+    if not recipe_name or not scale_factor:
+        return ""
+
+    success, message = pantry.execute_recipe(recipe_name, float(scale_factor))
+    # Split message by newlines and create a list of paragraphs
+    message_parts = message.split("\n")
+    message_components = []
+    for i, part in enumerate(message_parts):
+        message_components.append(html.P(part))
+
+    return html.Div(
+        message_components,
+        className=f"text-{'success' if success else 'danger'}",
+    )
+
+
 # Pantry management callbacks
 @app.callback(
     [
@@ -525,4 +671,3 @@ def update_transaction_history(_n_clicks, _add_message):
 
 if __name__ == "__main__":
     app.run(debug=True)
-    # Add Item Form

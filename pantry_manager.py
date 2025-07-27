@@ -428,3 +428,67 @@ class PantryManager:
         except Exception as e:
             print(f"Error getting all recipes: {e}")
             return []
+
+    def execute_recipe(
+        self, recipe_name: str, scale_factor: float = 1.0
+    ) -> tuple[bool, str]:
+        """
+        Execute a recipe by removing its ingredients from the pantry.
+
+        Args:
+            recipe_name: Name of the recipe to execute
+            scale_factor: Factor to scale recipe quantities (e.g., 0.5 for half recipe)
+
+        Returns:
+            tuple[bool, str]: (Success status, Message with details or error)
+        """
+        try:
+            recipe = self.get_recipe(recipe_name)
+            if not recipe:
+                return False, f"Recipe '{recipe_name}' not found"
+
+            # Check if we have enough of each ingredient
+            missing_ingredients = []
+            for ingredient in recipe["ingredients"]:
+                needed_quantity = ingredient["quantity"] * scale_factor
+                available_quantity = self.get_item_quantity(
+                    ingredient["name"], ingredient["unit"]
+                )
+
+                if available_quantity < needed_quantity:
+                    missing_ingredients.append(
+                        f"{ingredient['name']}: need {needed_quantity} {ingredient['unit']}, "
+                        f"have {available_quantity} {ingredient['unit']}"
+                    )
+
+            if missing_ingredients:
+                return False, "Missing ingredients:\n" + "\n".join(missing_ingredients)
+
+            # Remove ingredients from pantry
+            success = True
+            used_ingredients = []
+            for ingredient in recipe["ingredients"]:
+                quantity = ingredient["quantity"] * scale_factor
+                if self.remove_item(
+                    ingredient["name"],
+                    quantity,
+                    ingredient["unit"],
+                    f"Used in recipe: {recipe_name}",
+                ):
+                    used_ingredients.append(
+                        f"{quantity} {ingredient['unit']} of {ingredient['name']}"
+                    )
+                else:
+                    success = False
+                    break
+
+            if success:
+                return True, f"Successfully made {recipe_name} using:\n" + "\n".join(
+                    used_ingredients
+                )
+            else:
+                return False, "Error removing ingredients from pantry"
+
+        except Exception as e:
+            print(f"Error executing recipe: {e}")
+            return False, f"Error executing recipe: {str(e)}"
