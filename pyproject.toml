@@ -1,0 +1,7 @@
+[project]
+name = "mealmcp"
+version = "0.1.0"
+description = "Manage meal planning and pantry management using an LLM for business logic"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
