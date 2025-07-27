@@ -483,7 +483,7 @@ class PantryManager:
                         FROM PantryTransactions t
                         JOIN Ingredients i ON t.ingredient_id = i.id
                         WHERE t.ingredient_id = ?
-                        ORDER BY t.transaction_date DESC
+                        ORDER BY t.transaction_date DESC, t.id desc
                         """,
                         (ingredient_id,),
                     )
@@ -495,7 +495,7 @@ class PantryManager:
                             i.name as item_name
                         FROM PantryTransactions t
                         JOIN Ingredients i ON t.ingredient_id = i.id
-                        ORDER BY t.transaction_date DESC
+                        ORDER BY t.transaction_date DESC, t.id desc
                         """
                     )
 
