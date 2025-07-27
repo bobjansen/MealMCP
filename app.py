@@ -908,7 +908,9 @@ def display_recipe_details(recipe_name):
                         ]
                     ),
                     html.H5("Instructions:"),
-                    html.P(recipe["instructions"]),
+                    dcc.Markdown(
+                        recipe["instructions"], className="recipe-instructions"
+                    ),
                     html.P(f"Preparation time: {recipe['time_minutes']} minutes"),
                 ]
             )

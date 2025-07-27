@@ -59,7 +59,7 @@ def get_recipe(recipe_name: str) -> Dict[str, Any]:
     Returns
     -------
     Dict[str, Any]
-        Recipe details or error message
+        Recipe details or error message. The instructions are formatted in Markdown.
     """
     recipe = pantry.get_recipe(recipe_name)
 
@@ -93,7 +93,7 @@ def edit_recipe(
     name : str
         Name of the recipe to edit
     instructions : str
-        Updated cooking instructions
+        Updated cooking instructions, in Markdown format
     time_minutes : int
         Updated time required to prepare the recipe
     ingredients : List[Dict[str, Any]]
