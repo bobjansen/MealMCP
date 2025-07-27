@@ -692,9 +692,17 @@ def build_layout(lang: str) -> dbc.Container:
     )
 
 
-app.layout = html.Div(
-    [dcc.Store(id="lang-store", data=LANG), html.Div(id="layout-container")]
-)
+def serve_layout() -> html.Div:
+    """Initial page layout with default language."""
+    return html.Div(
+        [
+            dcc.Store(id="lang-store", data=LANG),
+            html.Div(build_layout(LANG), id="layout-container"),
+        ]
+    )
+
+
+app.layout = serve_layout
 
 
 @app.callback(Output("layout-container", "children"), Input("lang-store", "data"))
