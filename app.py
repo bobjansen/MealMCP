@@ -12,6 +12,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 from constants import UNITS
 from pantry_manager import PantryManager
+from i18n import t
 
 
 def format_recipe_markdown(recipe):
@@ -49,7 +50,7 @@ def create_preferences_layout():
         [
             dbc.Card(
                 [
-                    dbc.CardHeader("Food Preferences"),
+                    dbc.CardHeader(t("Food Preferences")),
                     dbc.CardBody(
                         [
                             dbc.Row(
@@ -63,71 +64,71 @@ def create_preferences_layout():
                                                             dbc.Col(
                                                                 [
                                                                     dbc.Label(
-                                                                        "Category"
+                                                                        t("Category")
                                                                     ),
                                                                     dcc.Dropdown(
                                                                         id="pref-category",
                                                                         options=[
                                                                             {
-                                                                                "label": "Dietary Restriction",
+                                                                                "label": t("Dietary Restriction"),
                                                                                 "value": "dietary",
                                                                             },
                                                                             {
-                                                                                "label": "Allergy",
+                                                                                "label": t("Allergy"),
                                                                                 "value": "allergy",
                                                                             },
                                                                             {
-                                                                                "label": "Dislike",
+                                                                                "label": t("Dislike"),
                                                                                 "value": "dislike",
                                                                             },
                                                                         ],
-                                                                        placeholder="Select category",
+                                                                        placeholder=t("Select category"),
                                                                     ),
                                                                 ],
                                                                 width=3,
                                                             ),
                                                             dbc.Col(
                                                                 [
-                                                                    dbc.Label("Item"),
+                                                                    dbc.Label(t("Item")),
                                                                     dbc.Input(
                                                                         id="pref-item",
                                                                         type="text",
-                                                                        placeholder="Enter item (e.g., vegetarian, peanuts)",
+                                                                        placeholder=t("Enter item (e.g., vegetarian, peanuts)"),
                                                                     ),
                                                                 ],
                                                                 width=3,
                                                             ),
                                                             dbc.Col(
                                                                 [
-                                                                    dbc.Label("Level"),
+                                                                    dbc.Label(t("Level")),
                                                                     dcc.Dropdown(
                                                                         id="pref-level",
                                                                         options=[
                                                                             {
-                                                                                "label": "Required",
+                                                                                "label": t("Required"),
                                                                                 "value": "required",
                                                                             },
                                                                             {
-                                                                                "label": "Preferred",
+                                                                                "label": t("Preferred"),
                                                                                 "value": "preferred",
                                                                             },
                                                                             {
-                                                                                "label": "Avoid",
+                                                                                "label": t("Avoid"),
                                                                                 "value": "avoid",
                                                                             },
                                                                         ],
-                                                                        placeholder="Select level",
+                                                                        placeholder=t("Select level"),
                                                                     ),
                                                                 ],
                                                                 width=3,
                                                             ),
                                                             dbc.Col(
                                                                 [
-                                                                    dbc.Label("Notes"),
+                                                                    dbc.Label(t("Notes")),
                                                                     dbc.Input(
                                                                         id="pref-notes",
                                                                         type="text",
-                                                                        placeholder="Optional notes",
+                                                                        placeholder=t("Optional notes"),
                                                                     ),
                                                                 ],
                                                                 width=3,
@@ -138,7 +139,7 @@ def create_preferences_layout():
                                                     dbc.Row(
                                                         dbc.Col(
                                                             dbc.Button(
-                                                                "Add Preference",
+                                                                t("Add Preference"),
                                                                 id="add-preference-btn",
                                                                 color="primary",
                                                             ),
@@ -156,17 +157,17 @@ def create_preferences_layout():
                                 [
                                     dbc.Col(
                                         [
-                                            html.H4("Current Preferences"),
+                                            html.H4(t("Current Preferences")),
                                             dash_table.DataTable(
                                                 id="preferences-table",
                                                 columns=[
                                                     {
-                                                        "name": "Category",
+                                                        "name": t("Category"),
                                                         "id": "category",
                                                     },
-                                                    {"name": "Item", "id": "item"},
-                                                    {"name": "Level", "id": "level"},
-                                                    {"name": "Notes", "id": "notes"},
+                                                    {"name": t("Item"), "id": "item"},
+                                                    {"name": t("Level"), "id": "level"},
+                                                    {"name": t("Notes"), "id": "notes"},
                                                 ],
                                                 data=[],
                                                 style_cell={
@@ -196,18 +197,18 @@ def create_make_recipe_layout():
         [
             dbc.Card(
                 [
-                    dbc.CardHeader("Make Recipe"),
+                    dbc.CardHeader(t("Make Recipe")),
                     dbc.CardBody(
                         [
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Select Recipe"),
+                                            dbc.Label(t("Select Recipe")),
                                             dcc.Dropdown(
                                                 id="recipe-select",
                                                 options=[],
-                                                placeholder="Choose a recipe",
+                                                placeholder=t("Choose a recipe"),
                                             ),
                                         ],
                                         width=6,
@@ -216,7 +217,7 @@ def create_make_recipe_layout():
                                         [
                                             html.Br(),
                                             dbc.Button(
-                                                "Make Recipe",
+                                                t("Make Recipe"),
                                                 id="make-recipe-button",
                                                 color="primary",
                                                 className="mt-2",
@@ -252,7 +253,7 @@ def create_recipe_layout():
                                     dbc.Col(
                                         [
                                             dbc.Button(
-                                                "Make Recipe",
+                                                t("Make Recipe"),
                                                 id="make-recipe-button",
                                                 color="success",
                                                 className="mt-4",
@@ -263,7 +264,7 @@ def create_recipe_layout():
                                     dbc.Col(
                                         [
                                             dbc.Button(
-                                                "Edit Recipe",
+                                                t("Edit Recipe"),
                                                 id="edit-recipe-button",
                                                 color="primary",
                                                 className="mt-4",
@@ -279,7 +280,7 @@ def create_recipe_layout():
                     ),
                     dbc.ModalFooter(
                         dbc.Button(
-                            "Close", id="recipe-modal-close", className="ms-auto"
+                            t("Close"), id="recipe-modal-close", className="ms-auto"
                         )
                     ),
                 ],
@@ -289,18 +290,18 @@ def create_recipe_layout():
             # Edit Recipe Modal
             dbc.Modal(
                 [
-                    dbc.ModalHeader("Edit Recipe"),
+                    dbc.ModalHeader(t("Edit Recipe")),
                     dbc.ModalBody(
                         [
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Preparation Time (minutes)"),
+                                            dbc.Label(t("Preparation Time (minutes)")),
                                             dbc.Input(
                                                 id="edit-prep-time",
                                                 type="number",
-                                                placeholder="Enter preparation time",
+                                                placeholder=t("Enter preparation time"),
                                             ),
                                         ],
                                         width=12,
@@ -312,10 +313,10 @@ def create_recipe_layout():
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Instructions"),
+                                            dbc.Label(t("Instructions")),
                                             dbc.Textarea(
                                                 id="edit-instructions",
-                                                placeholder="Enter cooking instructions",
+                                                placeholder=t("Enter cooking instructions"),
                                                 style={"height": "150px"},
                                             ),
                                         ]
@@ -325,13 +326,13 @@ def create_recipe_layout():
                             ),
                             html.Div(
                                 [
-                                    html.H5("Ingredients", className="mb-3"),
+                                    html.H5(t("Ingredients"), className="mb-3"),
                                     html.Div(
                                         id="edit-ingredient-list",
                                         children=[],
                                     ),
                                     dbc.Button(
-                                        "Add Ingredient",
+                                        t("Add Ingredient"),
                                         id="edit-add-ingredient-row",
                                         color="secondary",
                                         size="sm",
@@ -345,10 +346,10 @@ def create_recipe_layout():
                     dbc.ModalFooter(
                         [
                             dbc.Button(
-                                "Cancel", id="edit-recipe-close", className="me-2"
+                                t("Cancel"), id="edit-recipe-close", className="me-2"
                             ),
                             dbc.Button(
-                                "Save Changes",
+                                t("Save Changes"),
                                 id="edit-recipe-save",
                                 color="primary",
                             ),
@@ -360,29 +361,29 @@ def create_recipe_layout():
             ),
             dbc.Card(
                 [
-                    dbc.CardHeader("Add New Recipe"),
+                    dbc.CardHeader(t("Add New Recipe")),
                     dbc.CardBody(
                         [
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Recipe Name"),
+                                            dbc.Label(t("Recipe Name")),
                                             dbc.Input(
                                                 id="recipe-name",
                                                 type="text",
-                                                placeholder="Enter recipe name",
+                                                placeholder=t("Enter recipe name"),
                                             ),
                                         ],
                                         width=6,
                                     ),
                                     dbc.Col(
                                         [
-                                            dbc.Label("Preparation Time (minutes)"),
+                                            dbc.Label(t("Preparation Time (minutes)")),
                                             dbc.Input(
                                                 id="prep-time",
                                                 type="number",
-                                                placeholder="Enter preparation time",
+                                                placeholder=t("Enter preparation time"),
                                             ),
                                         ],
                                         width=6,
@@ -394,10 +395,10 @@ def create_recipe_layout():
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Instructions"),
+                                            dbc.Label(t("Instructions")),
                                             dbc.Textarea(
                                                 id="instructions",
-                                                placeholder="Enter cooking instructions",
+                                                placeholder=t("Enter cooking instructions"),
                                                 style={"height": "150px"},
                                             ),
                                         ]
@@ -407,7 +408,7 @@ def create_recipe_layout():
                             ),
                             html.Div(
                                 [
-                                    html.H5("Ingredients", className="mb-3"),
+                                    html.H5(t("Ingredients"), className="mb-3"),
                                     html.Div(
                                         id="ingredient-list",
                                         children=[
@@ -421,7 +422,7 @@ def create_recipe_layout():
                                                                     "index": 0,
                                                                 },
                                                                 type="text",
-                                                                placeholder="Ingredient name",
+                                                                placeholder=t("Ingredient name"),
                                                             ),
                                                         ],
                                                         width=4,
@@ -434,7 +435,7 @@ def create_recipe_layout():
                                                                     "index": 0,
                                                                 },
                                                                 type="number",
-                                                                placeholder="Quantity",
+                                                                placeholder=t("Quantity"),
                                                             ),
                                                         ],
                                                         width=3,
@@ -455,7 +456,7 @@ def create_recipe_layout():
                                         ],
                                     ),
                                     dbc.Button(
-                                        "Add Ingredient",
+                                        t("Add Ingredient"),
                                         id="add-ingredient-row",
                                         color="secondary",
                                         size="sm",
@@ -465,7 +466,7 @@ def create_recipe_layout():
                                 className="mb-3",
                             ),
                             dbc.Button(
-                                "Save Recipe", id="save-recipe", color="primary"
+                                t("Save Recipe"), id="save-recipe", color="primary"
                             ),
                             html.Div(id="recipe-message", className="mt-3"),
                         ]
@@ -475,16 +476,16 @@ def create_recipe_layout():
             ),
             dbc.Card(
                 [
-                    dbc.CardHeader("Recipe Management"),
+                    dbc.CardHeader(t("Recipe Management")),
                     dbc.CardBody(
                         [
                             dash_table.DataTable(
                                 id="recipes-table",
                                 columns=[
-                                    {"name": "Recipe Name", "id": "name"},
-                                    {"name": "Prep Time", "id": "time_minutes"},
+                                    {"name": t("Recipe Name"), "id": "name"},
+                                    {"name": t("Prep Time"), "id": "time_minutes"},
                                     {
-                                        "name": "Actions",
+                                        "name": t("Actions"),
                                         "id": "actions",
                                         "presentation": "markdown",
                                     },
@@ -505,7 +506,7 @@ def create_recipe_layout():
                                 markdown_options={"html": True},
                             ),
                             dbc.Button(
-                                "Refresh Recipes",
+                                t("Refresh Recipes"),
                                 id="refresh-recipes",
                                 color="secondary",
                                 className="mt-3",
@@ -523,51 +524,51 @@ def create_pantry_layout():
         [
             dbc.Card(
                 [
-                    dbc.CardHeader("Add Item to Pantry"),
+                    dbc.CardHeader(t("Add Item to Pantry")),
                     dbc.CardBody(
                         [
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         [
-                                            dbc.Label("Item Name"),
+                                            dbc.Label(t("Item Name")),
                                             dbc.Input(
                                                 id="item-name",
                                                 type="text",
-                                                placeholder="Enter item name",
+                                                placeholder=t("Enter item name"),
                                             ),
                                         ],
                                         width=3,
                                     ),
                                     dbc.Col(
                                         [
-                                            dbc.Label("Quantity"),
+                                            dbc.Label(t("Quantity")),
                                             dbc.Input(
                                                 id="quantity",
                                                 type="number",
-                                                placeholder="Enter quantity",
+                                                placeholder=t("Enter quantity"),
                                             ),
                                         ],
                                         width=2,
                                     ),
                                     dbc.Col(
                                         [
-                                            dbc.Label("Unit"),
+                                            dbc.Label(t("Unit")),
                                             dbc.Input(
                                                 id="unit",
                                                 type="text",
-                                                placeholder="e.g., g, kg, ml",
+                                                placeholder=t("e.g., g, kg, ml"),
                                             ),
                                         ],
                                         width=2,
                                     ),
                                     dbc.Col(
                                         [
-                                            dbc.Label("Notes"),
+                                            dbc.Label(t("Notes")),
                                             dbc.Input(
                                                 id="notes",
                                                 type="text",
-                                                placeholder="Optional notes",
+                                                placeholder=t("Optional notes"),
                                             ),
                                         ],
                                         width=3,
@@ -576,7 +577,7 @@ def create_pantry_layout():
                                         [
                                             html.Br(),
                                             dbc.Button(
-                                                "Add Item",
+                                                t("Add Item"),
                                                 id="add-button",
                                                 color="primary",
                                                 className="mt-2",
@@ -595,12 +596,12 @@ def create_pantry_layout():
             # Current Pantry Contents
             dbc.Card(
                 [
-                    dbc.CardHeader("Current Pantry Contents"),
+                    dbc.CardHeader(t("Current Pantry Contents")),
                     dbc.CardBody(
                         [
                             html.Div(id="pantry-contents"),
                             dbc.Button(
-                                "Refresh",
+                                t("Refresh"),
                                 id="refresh-button",
                                 color="secondary",
                                 className="mt-3",
@@ -613,18 +614,18 @@ def create_pantry_layout():
             # Transaction History
             dbc.Card(
                 [
-                    dbc.CardHeader("Transaction History"),
+                    dbc.CardHeader(t("Transaction History")),
                     dbc.CardBody(
                         [
                             dash_table.DataTable(
                                 id="transaction-table",
                                 columns=[
-                                    {"name": "Date", "id": "transaction_date"},
-                                    {"name": "Type", "id": "transaction_type"},
-                                    {"name": "Item", "id": "item_name"},
-                                    {"name": "Quantity", "id": "quantity"},
-                                    {"name": "Unit", "id": "unit"},
-                                    {"name": "Notes", "id": "notes"},
+                                    {"name": t("Date"), "id": "transaction_date"},
+                                    {"name": t("Type"), "id": "transaction_type"},
+                                    {"name": t("Item"), "id": "item_name"},
+                                    {"name": t("Quantity"), "id": "quantity"},
+                                    {"name": t("Unit"), "id": "unit"},
+                                    {"name": t("Notes"), "id": "notes"},
                                 ],
                                 style_table={"overflowX": "auto"},
                                 style_cell={
@@ -650,16 +651,16 @@ def create_pantry_layout():
 # App layout with tabs
 app.layout = dbc.Container(
     [
-        html.H1("Meal Planner", className="my-4"),
+        html.H1(t("Meal Planner"), className="my-4"),
         dbc.Tabs(
             [
                 dbc.Tab(
-                    create_pantry_layout(), label="Pantry Management", tab_id="pantry"
+                    create_pantry_layout(), label=t("Pantry Management"), tab_id="pantry"
                 ),
-                dbc.Tab(create_recipe_layout(), label="Recipes", tab_id="recipes"),
+                dbc.Tab(create_recipe_layout(), label=t("Recipes"), tab_id="recipes"),
                 dbc.Tab(
                     create_preferences_layout(),
-                    label="Preferences",
+                    label=t("Preferences"),
                     tab_id="preferences",
                 ),
             ],
@@ -758,7 +759,7 @@ def handle_ingredient_lists_and_edit(
                                         id={"type": "edit-ingredient-name", "index": i},
                                         type="text",
                                         value=ing["name"],
-                                        placeholder="Ingredient name",
+                                        placeholder=t("Ingredient name"),
                                     ),
                                 ],
                                 width=4,
@@ -772,7 +773,7 @@ def handle_ingredient_lists_and_edit(
                                         },
                                         type="number",
                                         value=ing["quantity"],
-                                        placeholder="Quantity",
+                                        placeholder=t("Quantity"),
                                     ),
                                 ],
                                 width=3,
@@ -783,7 +784,7 @@ def handle_ingredient_lists_and_edit(
                                         id={"type": "edit-ingredient-unit", "index": i},
                                         type="text",
                                         value=ing["unit"],
-                                        placeholder="Unit",
+                                        placeholder=t("Unit"),
                                     ),
                                 ],
                                 width=3,
@@ -817,7 +818,7 @@ def handle_ingredient_lists_and_edit(
                         dbc.Input(
                             id={"type": "ingredient-name", "index": new_index},
                             type="text",
-                            placeholder="Ingredient name",
+                            placeholder=t("Ingredient name"),
                         ),
                     ],
                     width=4,
@@ -827,7 +828,7 @@ def handle_ingredient_lists_and_edit(
                         dbc.Input(
                             id={"type": "ingredient-quantity", "index": new_index},
                             type="number",
-                            placeholder="Quantity",
+                            placeholder=t("Quantity"),
                         ),
                     ],
                     width=3,
@@ -837,7 +838,7 @@ def handle_ingredient_lists_and_edit(
                         dbc.Input(
                             id={"type": "ingredient-unit", "index": new_index},
                             type="text",
-                            placeholder="Unit",
+                            placeholder=t("Unit"),
                         ),
                     ],
                     width=3,
@@ -865,7 +866,7 @@ def handle_ingredient_lists_and_edit(
                         dbc.Input(
                             id={"type": "edit-ingredient-name", "index": new_index},
                             type="text",
-                            placeholder="Ingredient name",
+                            placeholder=t("Ingredient name"),
                         ),
                     ],
                     width=4,
@@ -875,7 +876,7 @@ def handle_ingredient_lists_and_edit(
                         dbc.Input(
                             id={"type": "edit-ingredient-quantity", "index": new_index},
                             type="number",
-                            placeholder="Quantity",
+                            placeholder=t("Quantity"),
                         ),
                     ],
                     width=3,
@@ -885,7 +886,7 @@ def handle_ingredient_lists_and_edit(
                         dbc.Input(
                             id={"type": "edit-ingredient-unit", "index": new_index},
                             type="text",
-                            placeholder="Unit",
+                            placeholder=t("Unit"),
                         ),
                     ],
                     width=3,
