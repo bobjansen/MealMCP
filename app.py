@@ -12,6 +12,31 @@ from dash import (
 import dash_bootstrap_components as dbc
 from pantry_manager import PantryManager
 
+
+def format_recipe_markdown(recipe):
+    """Format a recipe as markdown text."""
+    ingredients_list = "\n".join(
+        f"- {ing['quantity']} {ing['unit']} {ing['name']}"
+        for ing in recipe["ingredients"]
+    )
+
+    return f"""# {recipe['name']}
+
+## Preparation Time
+{recipe['time_minutes']} minutes
+
+## Ingredients
+{ingredients_list}
+
+## Instructions
+{recipe['instructions']}
+
+---
+*Created: {recipe['created_date']}*
+*Last Modified: {recipe['last_modified']}*
+"""
+
+
 # Initialize the Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 pantry = PantryManager()
@@ -612,29 +637,14 @@ def update_recipe_list(n_clicks, _):
 
     recipe_cards = []
     for recipe in recipes:
-        ingredients_list = [
-            html.Li(f"{ing['quantity']} {ing['unit']} {ing['name']}")
-            for ing in recipe["ingredients"]
-        ]
-
         recipe_cards.append(
             dbc.Card(
                 [
                     dbc.CardHeader(recipe["name"]),
                     dbc.CardBody(
-                        [
-                            html.H6("Ingredients:"),
-                            html.Ul(ingredients_list),
-                            html.H6("Instructions:"),
-                            html.P(recipe["instructions"]),
-                            html.P(
-                                f"Preparation time: {recipe['time_minutes']} minutes"
-                            ),
-                            html.Small(
-                                f"Created: {recipe['created_date']}",
-                                className="text-muted",
-                            ),
-                        ]
+                        dcc.Markdown(
+                            format_recipe_markdown(recipe), className="recipe-markdown"
+                        )
                     ),
                 ],
                 className="mb-3",
@@ -662,23 +672,20 @@ def display_recipe_cards(_n_clicks, _message):
                 dbc.CardHeader(recipe["name"]),
                 dbc.CardBody(
                     [
-                        html.H6("Ingredients:"),
-                        html.Ul(
-                            [
-                                html.Li(
-                                    f"{ing['quantity']} {ing['unit']} {ing['name']}"
-                                )
-                                for ing in recipe["ingredients"]
-                            ]
+                        dcc.Markdown(
+                            format_recipe_markdown(recipe), className="recipe-markdown"
                         ),
-                        html.H6("Instructions:"),
-                        html.P(recipe["instructions"]),
-                        html.P(f"Preparation time: {recipe['time_minutes']} minutes"),
-                        dbc.Button(
-                            "Edit",
-                            id={"type": "edit-recipe-button", "recipe": recipe["name"]},
-                            color="primary",
-                            size="sm",
+                        html.Div(
+                            dbc.Button(
+                                "Edit",
+                                id={
+                                    "type": "edit-recipe-button",
+                                    "recipe": recipe["name"],
+                                },
+                                color="primary",
+                                size="sm",
+                            ),
+                            className="mt-3",
                         ),
                     ]
                 ),
@@ -1043,12 +1050,7 @@ def display_recipe_details(recipe_name):
 
     return dbc.Card(
         dbc.CardBody(
-            [
-                html.H5(recipe["name"], className="card-title"),
-                html.P(f"Preparation Time: {recipe['time_minutes']} minutes"),
-                html.P("Instructions:"),
-                html.Pre(recipe["instructions"]),
-            ]
+            dcc.Markdown(format_recipe_markdown(recipe), className="recipe-markdown")
         )
     )
 
