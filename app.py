@@ -253,6 +253,65 @@ def create_make_recipe_layout():
 def create_recipe_layout():
     return html.Div(
         [
+            # Recipe Details Modal for viewing and making
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(html.H4(id="recipe-modal-title")),
+                    dbc.ModalBody(
+                        [
+                            html.Div(id="recipe-modal-content"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Label("Scale Factor"),
+                                            dbc.Input(
+                                                id="scale-factor",
+                                                type="number",
+                                                value=1,
+                                                min=0.1,
+                                                step=0.1,
+                                            ),
+                                        ],
+                                        width=4,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            dbc.Button(
+                                                "Make Recipe",
+                                                id="make-recipe-button",
+                                                color="success",
+                                                className="mt-4",
+                                            ),
+                                        ],
+                                        width=4,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            dbc.Button(
+                                                "Edit Recipe",
+                                                id="edit-recipe-button",
+                                                color="primary",
+                                                className="mt-4",
+                                            ),
+                                        ],
+                                        width=4,
+                                    ),
+                                ],
+                                className="mt-3",
+                            ),
+                            html.Div(id="make-recipe-message", className="mt-3"),
+                        ]
+                    ),
+                    dbc.ModalFooter(
+                        dbc.Button(
+                            "Close", id="recipe-modal-close", className="ms-auto"
+                        )
+                    ),
+                ],
+                id="recipe-view-modal",
+                size="lg",
+            ),
             # Edit Recipe Modal
             dbc.Modal(
                 [
@@ -445,18 +504,39 @@ def create_recipe_layout():
             ),
             dbc.Card(
                 [
-                    dbc.CardHeader("Saved Recipes"),
+                    dbc.CardHeader("Recipe Management"),
                     dbc.CardBody(
                         [
-                            html.Div(id="recipe-list"),
+                            dash_table.DataTable(
+                                id="recipes-table",
+                                columns=[
+                                    {"name": "Recipe Name", "id": "name"},
+                                    {"name": "Prep Time", "id": "time_minutes"},
+                                    {
+                                        "name": "Actions",
+                                        "id": "actions",
+                                        "presentation": "markdown",
+                                    },
+                                ],
+                                data=[],
+                                style_data={
+                                    "whiteSpace": "normal",
+                                    "height": "auto",
+                                },
+                                style_cell={
+                                    "textAlign": "left",
+                                    "padding": "10px",
+                                },
+                                style_header={
+                                    "backgroundColor": "rgb(230, 230, 230)",
+                                    "fontWeight": "bold",
+                                },
+                                markdown_options={"html": True},
+                            ),
                             dbc.Button(
                                 "Refresh Recipes",
                                 id="refresh-recipes",
                                 color="secondary",
-                                className="mb-3",
-                            ),
-                            html.Div(
-                                id="recipe-cards",
                                 className="mt-3",
                             ),
                         ]
@@ -607,11 +687,6 @@ app.layout = dbc.Container(
                 ),
                 dbc.Tab(create_recipe_layout(), label="Recipes", tab_id="recipes"),
                 dbc.Tab(
-                    create_make_recipe_layout(),
-                    label="Make Recipe",
-                    tab_id="make-recipe",
-                ),
-                dbc.Tab(
                     create_preferences_layout(),
                     label="Preferences",
                     tab_id="preferences",
@@ -627,73 +702,28 @@ app.layout = dbc.Container(
 
 # Callback to display recipes
 @app.callback(
-    Output("recipe-list", "children"),
+    Output("recipes-table", "data"),
     [Input("refresh-recipes", "n_clicks"), Input("recipe-message", "children")],
 )
 def update_recipe_list(n_clicks, _):
     recipes = pantry.get_all_recipes()
     if not recipes:
-        return html.Div("No recipes found")
+        return []
 
-    recipe_cards = []
+    table_data = []
     for recipe in recipes:
-        recipe_cards.append(
-            dbc.Card(
-                [
-                    dbc.CardHeader(recipe["name"]),
-                    dbc.CardBody(
-                        dcc.Markdown(
-                            format_recipe_markdown(recipe), className="recipe-markdown"
-                        )
-                    ),
-                ],
-                className="mb-3",
-            )
+        table_data.append(
+            {
+                "name": recipe["name"],
+                "time_minutes": f"{recipe['time_minutes']} mins",
+                "actions": f"<button id='view-{recipe['name']}' class='btn btn-primary btn-sm'>View</button>",
+            }
         )
 
-    return recipe_cards
+    return table_data
 
 
-# Make Recipe callbacks
-# Display all recipes with edit buttons
-@app.callback(
-    Output("recipe-cards", "children"),
-    [Input("refresh-recipes", "n_clicks"), Input("recipe-message", "children")],
-)
-def display_recipe_cards(_n_clicks, _message):
-    recipes = pantry.get_all_recipes()
-    if not recipes:
-        return html.P("No recipes found")
-
-    cards = []
-    for recipe in recipes:
-        card = dbc.Card(
-            [
-                dbc.CardHeader(recipe["name"]),
-                dbc.CardBody(
-                    [
-                        dcc.Markdown(
-                            format_recipe_markdown(recipe), className="recipe-markdown"
-                        ),
-                        html.Div(
-                            dbc.Button(
-                                "Edit",
-                                id={
-                                    "type": "edit-recipe-button",
-                                    "recipe": recipe["name"],
-                                },
-                                color="primary",
-                                size="sm",
-                            ),
-                            className="mt-3",
-                        ),
-                    ]
-                ),
-            ],
-            className="mb-3",
-        )
-        cards.append(card)
-    return cards
+# Recipe edit and ingredient management callbacks
 
 
 # Combined callback for ingredient lists and edit modal
@@ -945,114 +975,117 @@ def save_recipe(
 ):
     ctx = callback_context
     if not ctx.triggered:
-        return None
+        return ""
 
     trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if trigger_id == "save-recipe":
-        # Handle new recipe
-        if not all([recipe_name, prep_time, instructions]):
-            return dbc.Alert("Please fill in all required fields", color="warning")
+        if not recipe_name or not prep_time or not instructions:
+            return "Please fill in all required fields"
 
         ingredients = []
-        for name, quantity, unit in zip(
+        for name, qty, unit in zip(
             ingredient_names, ingredient_quantities, ingredient_units
         ):
-            if name and quantity and unit:
-                ingredients.append(
-                    {
-                        "name": name,
-                        "quantity": float(quantity),
-                        "unit": unit,
-                    }
-                )
+            if name and qty and unit:
+                ingredients.append({"name": name, "quantity": float(qty), "unit": unit})
 
-        if not ingredients:
-            return dbc.Alert("Please add at least one ingredient", color="warning")
-
-        success = pantry.add_recipe(
-            name=recipe_name,
-            instructions=instructions,
-            time_minutes=int(prep_time),
-            ingredients=ingredients,
-        )
-
-        if success:
-            return dbc.Alert("Recipe added successfully", color="success")
-        else:
-            return dbc.Alert("Failed to add recipe", color="danger")
+        try:
+            pantry.add_recipe(recipe_name, int(prep_time), instructions, ingredients)
+            return "Recipe saved successfully!"
+        except Exception as e:
+            return f"Error saving recipe: {str(e)}"
 
     elif trigger_id == "edit-recipe-save":
-        # Handle edit recipe
-        recipe_name = next((bid["recipe"] for bid in button_ids), None)
-        if not recipe_name:
-            return dbc.Alert("Error: Recipe not found", color="danger")
-
-        if not all([edit_prep_time, edit_instructions]):
-            return dbc.Alert("Please fill in all required fields", color="warning")
+        if not edit_prep_time or not edit_instructions:
+            return "Please fill in all required fields"
 
         ingredients = []
-        for name, quantity, unit in zip(
+        for name, qty, unit in zip(
             edit_ingredient_names, edit_ingredient_quantities, edit_ingredient_units
         ):
-            if name and quantity and unit:
-                ingredients.append(
-                    {
-                        "name": name,
-                        "quantity": float(quantity),
-                        "unit": unit,
-                    }
-                )
+            if name and qty and unit:
+                ingredients.append({"name": name, "quantity": float(qty), "unit": unit})
 
-        if not ingredients:
-            return dbc.Alert("Please add at least one ingredient", color="warning")
-
-        success = pantry.edit_recipe(
-            name=recipe_name,
-            instructions=edit_instructions,
-            time_minutes=int(edit_prep_time),
-            ingredients=ingredients,
+        clicked_idx = next(
+            (i for i, clicks in enumerate(edit_clicks) if clicks is not None), None
         )
+        if clicked_idx is not None:
+            recipe_name = button_ids[clicked_idx]["recipe"]
+            try:
+                pantry.update_recipe(
+                    recipe_name, int(edit_prep_time), edit_instructions, ingredients
+                )
+                return "Recipe updated successfully!"
+            except Exception as e:
+                return f"Error updating recipe: {str(e)}"
 
-        if success:
-            return dbc.Alert("Recipe updated successfully", color="success")
-        else:
-            return dbc.Alert("Failed to update recipe", color="danger")
-
-    return None
+    return ""
 
 
+# Callback for recipe view modal
 @app.callback(
-    Output("recipe-select", "options"),
-    [Input("tabs", "active_tab")],
+    [
+        Output("recipe-view-modal", "is_open"),
+        Output("recipe-modal-title", "children"),
+        Output("recipe-modal-content", "children"),
+    ],
+    [Input("recipes-table", "active_cell"), Input("recipe-modal-close", "n_clicks")],
+    [State("recipes-table", "data")],
 )
-def update_recipe_dropdown(active_tab):
-    if active_tab == "make-recipe":
-        recipes = pantry.get_all_recipes()
-        return [
-            {"label": recipe["name"], "value": recipe["name"]} for recipe in recipes
-        ]
-    return []
+def toggle_recipe_modal(active_cell, close_clicks, table_data):
+    ctx = callback_context
+    if not ctx.triggered:
+        return False, "", None
+
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if trigger_id == "recipe-modal-close":
+        return False, "", None
+
+    if active_cell is not None:
+        recipe_name = table_data[active_cell["row"]]["name"]
+        recipe = pantry.get_recipe(recipe_name)
+        if recipe:
+            return True, recipe["name"], dcc.Markdown(format_recipe_markdown(recipe))
+
+    return False, "", None
 
 
+# Callback for recipe actions (making, closing modal)
 @app.callback(
-    Output("recipe-details", "children"),
-    Input("recipe-select", "value"),
+    Output("make-recipe-message", "children"),
+    [
+        Input("make-recipe-button", "n_clicks"),
+        Input("recipe-modal-close", "n_clicks"),
+        Input("edit-recipe-button", "n_clicks"),
+    ],
+    [
+        State("recipe-modal-title", "children"),
+        State("scale-factor", "value"),
+    ],
     prevent_initial_call=True,
 )
-def display_recipe_details(recipe_name):
-    if not recipe_name:
-        return ""
+def handle_recipe_actions(
+    make_clicks, close_clicks, edit_clicks, recipe_name, scale_factor
+):
+    ctx = callback_context
+    if not ctx.triggered:
+        return None
 
-    recipe = pantry.get_recipe(recipe_name)
-    if not recipe:
-        return html.Div("Recipe not found", className="text-danger")
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    return dbc.Card(
-        dbc.CardBody(
-            dcc.Markdown(format_recipe_markdown(recipe), className="recipe-markdown")
-        )
-    )
+    if trigger_id == "recipe-modal-close":
+        return None
+
+    if trigger_id == "make-recipe-button" and make_clicks:
+        try:
+            result = pantry.make_recipe(recipe_name, scale_factor)
+            return dbc.Alert(f"Successfully made recipe: {result}", color="success")
+        except Exception as e:
+            return dbc.Alert(f"Error making recipe: {str(e)}", color="danger")
+
+    return None
 
 
 # Preferences page callbacks
@@ -1111,30 +1144,7 @@ def manage_preferences(
     return pantry.get_preferences(), None, "", None, ""
 
 
-@app.callback(
-    Output("make-recipe-message", "children"),
-    [
-        Input("make-recipe-button", "n_clicks"),
-        State("recipe-select", "value"),
-        State("scale-factor", "value"),
-    ],
-    prevent_initial_call=True,
-)
-def execute_recipe(n_clicks, recipe_name, scale_factor):
-    if not recipe_name or not scale_factor:
-        return ""
-
-    success, message = pantry.execute_recipe(recipe_name, float(scale_factor))
-    # Split message by newlines and create a list of paragraphs
-    message_parts = message.split("\n")
-    message_components = []
-    for i, part in enumerate(message_parts):
-        message_components.append(html.P(part))
-
-    return html.Div(
-        message_components,
-        className=f"text-{'success' if success else 'danger'}",
-    )
+# Recipe execution is now handled in the handle_recipe_actions callback
 
 
 # Pantry management callbacks
