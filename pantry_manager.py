@@ -673,3 +673,74 @@ class PantryManager:
         except Exception as e:
             print(f"Error executing recipe: {e}")
             return False, f"Error executing recipe: {str(e)}"
+
+    def schedule_meal(self, meal_date: str, recipe_name: str) -> bool:
+        """Link a recipe to a specific date in the meal calendar."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id FROM Recipes WHERE name = ?",
+                    (recipe_name,),
+                )
+                result = cursor.fetchone()
+                if not result:
+                    print(f"Recipe '{recipe_name}' not found")
+                    return False
+
+                recipe_id = result[0]
+                cursor.execute(
+                    """
+                    INSERT INTO MealCalendar (meal_date, recipe_id)
+                    VALUES (?, ?)
+                    """,
+                    (meal_date, recipe_id),
+                )
+                return True
+        except sqlite3.IntegrityError as e:
+            print(f"Error scheduling meal: {e}")
+            return False
+        except Exception as e:
+            print(f"Error scheduling meal: {e}")
+            return False
+
+    def get_meals_for_date(self, meal_date: str) -> List[str]:
+        """Return recipe names scheduled for the given date."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT r.name
+                    FROM MealCalendar mc
+                    JOIN Recipes r ON mc.recipe_id = r.id
+                    WHERE mc.meal_date = ?
+                    ORDER BY r.name
+                    """,
+                    (meal_date,),
+                )
+                return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Error retrieving meals for date: {e}")
+            return []
+
+    def get_meal_calendar(self) -> List[Dict[str, str]]:
+        """Return all scheduled meals with their dates and recipe names."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT mc.meal_date, r.name
+                    FROM MealCalendar mc
+                    JOIN Recipes r ON mc.recipe_id = r.id
+                    ORDER BY mc.meal_date, r.name
+                    """
+                )
+                return [
+                    {"meal_date": row[0], "recipe_name": row[1]}
+                    for row in cursor.fetchall()
+                ]
+        except Exception as e:
+            print(f"Error retrieving meal calendar: {e}")
+            return []

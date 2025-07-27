@@ -332,6 +332,37 @@ class TestPantryManager(unittest.TestCase):
         self.assertFalse(success)
         self.assertIn("Missing ingredients", message)
 
+    def test_meal_calendar(self):
+        """Test scheduling recipes on specific dates."""
+        recipe = {
+            "name": "Calendar Test",
+            "instructions": "test",
+            "time_minutes": 5,
+            "ingredients": [
+                {"name": "flour", "quantity": 100, "unit": "g"},
+            ],
+        }
+        self.pantry.add_recipe(**recipe)
+
+        # Schedule the recipe
+        success = self.pantry.schedule_meal("2024-01-01", "Calendar Test")
+        self.assertTrue(success)
+
+        meals = self.pantry.get_meals_for_date("2024-01-01")
+        self.assertEqual(meals, ["Calendar Test"])
+
+        # Verify full calendar retrieval
+        calendar = self.pantry.get_meal_calendar()
+        self.assertEqual(
+            calendar,
+            [
+                {
+                    "meal_date": "2024-01-01",
+                    "recipe_name": "Calendar Test",
+                }
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

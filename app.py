@@ -42,6 +42,102 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 pantry = PantryManager()
 
 
+def create_meal_calendar_layout():
+    """Layout for the meal calendar tab."""
+    return html.Div(
+        [
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dcc.DatePickerSingle(
+                            id="calendar-date",
+                            placeholder="Select date",
+                        ),
+                        width="auto",
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(id="calendar-recipe", placeholder="Select recipe"),
+                        width=4,
+                    ),
+                    dbc.Col(
+                        dbc.Button("Schedule", id="schedule-meal-btn", color="primary"),
+                        width="auto",
+                    ),
+                ],
+                className="mb-3",
+            ),
+            html.Div(id="calendar-message"),
+            dash_table.DataTable(
+                id="calendar-table",
+                columns=[
+                    {"name": "Date", "id": "meal_date"},
+                    {"name": "Recipe", "id": "recipe_name"},
+                ],
+                style_cell={"textAlign": "left"},
+                style_header={"backgroundColor": "rgb(230, 230, 230)", "fontWeight": "bold"},
+                page_size=10,
+            ),
+        ]
+    )
+
+
+# Meal Calendar callbacks
+@app.callback(
+    Output("calendar-recipe", "options"),
+    Input("tabs", "active_tab"),
+)
+def update_calendar_recipe_options(active_tab):
+    if active_tab == "meal-calendar":
+        recipes = pantry.get_all_recipes()
+        return [
+            {"label": recipe["name"], "value": recipe["name"]}
+            for recipe in recipes
+        ]
+    return []
+
+
+@app.callback(
+    [
+        Output("calendar-message", "children"),
+        Output("calendar-date", "date"),
+        Output("calendar-recipe", "value"),
+    ],
+    Input("schedule-meal-btn", "n_clicks"),
+    State("calendar-date", "date"),
+    State("calendar-recipe", "value"),
+    prevent_initial_call=True,
+)
+def schedule_meal_callback(n_clicks, meal_date, recipe_name):
+    if not meal_date or not recipe_name:
+        return (
+            dbc.Alert("Please select a date and recipe", color="warning"),
+            meal_date,
+            recipe_name,
+        )
+    success = pantry.schedule_meal(meal_date, recipe_name)
+    if success:
+        return (
+            dbc.Alert("Meal scheduled", color="success"),
+            None,
+            None,
+        )
+    return (
+        dbc.Alert("Failed to schedule meal", color="danger"),
+        meal_date,
+        recipe_name,
+    )
+
+
+@app.callback(
+    Output("calendar-table", "data"),
+    [Input("tabs", "active_tab"), Input("calendar-message", "children")],
+)
+def update_calendar_table(active_tab, _msg):
+    if active_tab == "meal-calendar":
+        return pantry.get_meal_calendar()
+    return []
+
+
 # Layout components
 def create_preferences_layout():
     """Create the layout for the preferences page."""
@@ -610,6 +706,11 @@ app.layout = dbc.Container(
                     create_make_recipe_layout(),
                     label="Make Recipe",
                     tab_id="make-recipe",
+                ),
+                dbc.Tab(
+                    create_meal_calendar_layout(),
+                    label="Meal Calendar",
+                    tab_id="meal-calendar",
                 ),
                 dbc.Tab(
                     create_preferences_layout(),
