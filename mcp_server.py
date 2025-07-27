@@ -1,5 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 from typing import Any, Dict, List
+from constants import UNITS
 from pantry_manager import PantryManager
 
 # Create an MCP server
@@ -7,6 +8,18 @@ mcp = FastMCP("RecipeManager")
 
 # Create pantry manager instance at server startup
 pantry = PantryManager()
+
+
+@mcp.tool()
+def list_units() -> List[Dict[str, Any]]:
+    """List all units of measurement
+
+    Returns
+    -------
+    List[str]
+        List of measurement units
+    """
+    return UNITS
 
 
 @mcp.tool()

@@ -10,6 +10,7 @@ from dash import (
     callback_context,
 )
 import dash_bootstrap_components as dbc
+from constants import UNITS
 from pantry_manager import PantryManager
 
 
@@ -44,7 +45,6 @@ pantry = PantryManager()
 
 # Layout components
 def create_preferences_layout():
-    """Create the layout for the preferences page."""
     return html.Div(
         [
             dbc.Card(
@@ -467,13 +467,10 @@ def create_recipe_layout():
                                                     ),
                                                     dbc.Col(
                                                         [
-                                                            dbc.Input(
-                                                                id={
-                                                                    "type": "ingredient-unit",
-                                                                    "index": 0,
-                                                                },
-                                                                type="text",
-                                                                placeholder="Unit",
+                                                            dcc.Dropdown(
+                                                                UNITS,
+                                                                UNITS[-1],
+                                                                id="ingredient-unit",
                                                             ),
                                                         ],
                                                         width=3,
@@ -1100,6 +1097,7 @@ def handle_recipe_actions(
     [
         Input("add-preference-btn", "n_clicks"),
         Input("preferences-table", "data_previous"),
+        Input("tabs", "active_tab"),
     ],
     [
         State("pref-category", "value"),
@@ -1111,7 +1109,7 @@ def handle_recipe_actions(
     prevent_initial_call=True,
 )
 def manage_preferences(
-    n_clicks, previous_data, category, item, level, notes, current_data
+    n_clicks, previous_data, active_tab, category, item, level, notes, current_data
 ):
     """Handle adding and removing preferences."""
     ctx = callback_context
@@ -1119,6 +1117,9 @@ def manage_preferences(
 
     if not current_data:
         current_data = []
+
+    if trigger == "tabs" and active_tab == "preferences":
+        return pantry.get_preferences(), None, "", None, ""
 
     if trigger == "add-preference-btn" and all([category, item, level]):
         # Add new preference
