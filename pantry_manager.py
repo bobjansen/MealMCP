@@ -9,7 +9,9 @@ class PantryManager:
 
     def _get_connection(self):
         """Get a database connection. Should be used in a context manager."""
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path)
+        conn.isolation_level = None  # Enable autocommit mode
+        return conn
 
     def add_ingredient(self, name: str, default_unit: str) -> bool:
         """
@@ -402,4 +404,27 @@ class PantryManager:
                 return transactions
         except Exception as e:
             print(f"Error getting transaction history: {e}")
+            return []
+
+    def get_all_recipes(self) -> List[Dict[str, Any]]:
+        """
+        Get all recipes from the database.
+
+        Returns:
+            List[Dict[str, Any]]: List of all recipes with their details
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM Recipes ORDER BY name")
+                recipes = []
+
+                for (name,) in cursor.fetchall():
+                    recipe = self.get_recipe(name)
+                    if recipe:
+                        recipes.append(recipe)
+
+                return recipes
+        except Exception as e:
+            print(f"Error getting all recipes: {e}")
             return []
