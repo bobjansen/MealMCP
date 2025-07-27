@@ -12,6 +12,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 from constants import UNITS
 from pantry_manager import PantryManager
+from i18n import translator, translate_component
 
 
 def format_recipe_markdown(recipe):
@@ -647,28 +648,52 @@ def create_pantry_layout():
     )
 
 
-# App layout with tabs
-app.layout = dbc.Container(
+def build_main_layout():
+    layout = dbc.Container(
+        [
+            html.H1("Meal Planner", className="my-4"),
+            dbc.Tabs(
+                [
+                    dbc.Tab(
+                        create_pantry_layout(), label="Pantry Management", tab_id="pantry"
+                    ),
+                    dbc.Tab(create_recipe_layout(), label="Recipes", tab_id="recipes"),
+                    dbc.Tab(
+                        create_preferences_layout(),
+                        label="Preferences",
+                        tab_id="preferences",
+                    ),
+                ],
+                id="tabs",
+                active_tab="pantry",
+            ),
+        ],
+        fluid=True,
+    )
+    return translate_component(layout)
+
+
+app.layout = html.Div(
     [
-        html.H1("Meal Planner", className="my-4"),
-        dbc.Tabs(
-            [
-                dbc.Tab(
-                    create_pantry_layout(), label="Pantry Management", tab_id="pantry"
-                ),
-                dbc.Tab(create_recipe_layout(), label="Recipes", tab_id="recipes"),
-                dbc.Tab(
-                    create_preferences_layout(),
-                    label="Preferences",
-                    tab_id="preferences",
-                ),
+        dcc.Dropdown(
+            id="language-selector",
+            options=[
+                {"label": "English", "value": "en"},
+                {"label": "Nederlands", "value": "nl"},
             ],
-            id="tabs",
-            active_tab="pantry",
+            value=translator.language,
+            clearable=False,
+            style={"width": "200px", "marginBottom": "20px"},
         ),
-    ],
-    fluid=True,
+        html.Div(id="page-content", children=build_main_layout()),
+    ]
 )
+
+
+@app.callback(Output("page-content", "children"), Input("language-selector", "value"))
+def update_language(lang):
+    translator.set_language(lang)
+    return build_main_layout()
 
 
 # Callback to display recipes
@@ -952,7 +977,7 @@ def save_recipe(
 
     if trigger_id == "save-recipe":
         if not recipe_name or not prep_time or not instructions:
-            return "Please fill in all required fields"
+            return translator.translate("Please fill in all required fields")
 
         ingredients = []
         for name, qty, unit in zip(
@@ -963,13 +988,13 @@ def save_recipe(
 
         try:
             pantry.add_recipe(recipe_name, int(prep_time), instructions, ingredients)
-            return "Recipe saved successfully!"
+            return translator.translate("Recipe saved successfully!")
         except Exception as e:
-            return f"Error saving recipe: {str(e)}"
+            return translator.translate("Error saving recipe: {error}").format(error=str(e))
 
     elif trigger_id == "edit-recipe-save":
         if not edit_prep_time or not edit_instructions:
-            return "Please fill in all required fields"
+            return translator.translate("Please fill in all required fields")
 
         ingredients = []
         for name, qty, unit in zip(
@@ -987,9 +1012,9 @@ def save_recipe(
                 pantry.update_recipe(
                     recipe_name, int(edit_prep_time), edit_instructions, ingredients
                 )
-                return "Recipe updated successfully!"
+                return translator.translate("Recipe updated successfully!")
             except Exception as e:
-                return f"Error updating recipe: {str(e)}"
+                return translator.translate("Error updating recipe: {error}").format(error=str(e))
 
     return ""
 
@@ -1049,9 +1074,11 @@ def handle_recipe_actions(make_clicks, close_clicks, edit_clicks, recipe_name):
     if trigger_id == "make-recipe-button" and make_clicks:
         try:
             result = pantry.make_recipe(recipe_name)
-            return dbc.Alert(f"Successfully made recipe: {result}", color="success")
+            msg = translator.translate("Successfully made recipe: {result}").format(result=result)
+            return dbc.Alert(msg, color="success")
         except Exception as e:
-            return dbc.Alert(f"Error making recipe: {str(e)}", color="danger")
+            msg = translator.translate("Error making recipe: {error}").format(error=str(e))
+            return dbc.Alert(msg, color="danger")
 
     return None
 
@@ -1140,7 +1167,10 @@ def manage_preferences(
 def add_item(n_clicks, item_name, quantity, unit, notes):
     if not all([item_name, quantity, unit]):
         return (
-            dbc.Alert("Please fill in all required fields", color="warning"),
+            dbc.Alert(
+                translator.translate("Please fill in all required fields"),
+                color="warning",
+            ),
             None,
             None,
             None,
@@ -1152,7 +1182,9 @@ def add_item(n_clicks, item_name, quantity, unit, notes):
         if pantry.add_item(item_name, quantity, unit, notes):
             return (
                 dbc.Alert(
-                    f"Successfully added {quantity} {unit} of {item_name}",
+                    translator.translate(
+                        "Successfully added {quantity} {unit} of {item_name}"
+                    ).format(quantity=quantity, unit=unit, item_name=item_name),
                     color="success",
                 ),
                 None,
@@ -1162,7 +1194,9 @@ def add_item(n_clicks, item_name, quantity, unit, notes):
             )
         else:
             return (
-                dbc.Alert("Failed to add item", color="danger"),
+                dbc.Alert(
+                    translator.translate("Failed to add item"), color="danger"
+                ),
                 None,
                 None,
                 None,
@@ -1170,7 +1204,9 @@ def add_item(n_clicks, item_name, quantity, unit, notes):
             )
     except ValueError:
         return (
-            dbc.Alert("Invalid quantity value", color="danger"),
+            dbc.Alert(
+                translator.translate("Invalid quantity value"), color="danger"
+            ),
             None,
             None,
             None,
@@ -1185,7 +1221,7 @@ def add_item(n_clicks, item_name, quantity, unit, notes):
 def update_pantry_contents(_n_clicks, _add_message):
     contents = pantry.get_pantry_contents()
     if not contents:
-        return html.P("No items in pantry")
+        return html.P(translator.translate("No items in pantry"))
 
     rows = []
     for item_name, units in contents.items():
