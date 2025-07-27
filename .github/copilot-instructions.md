@@ -14,4 +14,6 @@ The app should be usable through the Claude Desktop client or through a Dash web
 
 # Status
 
-At the moment, the project is empty. It will be written in Python and be managed using uv.
+The project is written in Python and be managed using uv.
+
+It includes a dash app and a MCP server. The data is stored in a sqlite database.
