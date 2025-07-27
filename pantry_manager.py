@@ -11,6 +11,47 @@ class PantryManager:
         """Get a database connection. Should be used in a context manager."""
         return sqlite3.connect(self.db_path)
 
+    def add_ingredient(self, name: str, default_unit: str) -> bool:
+        """
+        Add a new ingredient to the database.
+
+        Args:
+            name: Name of the ingredient
+            default_unit: Default unit of measurement for this ingredient
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO Ingredients (name, default_unit)
+                    VALUES (?, ?)
+                    """,
+                    (name, default_unit),
+                )
+                return True
+        except Exception as e:
+            print(f"Error adding ingredient: {e}")
+            return False
+
+    def get_ingredient_id(self, name: str) -> Optional[int]:
+        """Get the ID of an ingredient by name."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id FROM Ingredients WHERE name = ?",
+                    (name,),
+                )
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting ingredient ID: {e}")
+            return None
+
     def add_item(
         self, item_name: str, quantity: float, unit: str, notes: Optional[str] = None
     ) -> bool:
@@ -29,15 +70,22 @@ class PantryManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
+
+                # Get or create the ingredient
+                ingredient_id = self.get_ingredient_id(item_name)
+                if ingredient_id is None:
+                    self.add_ingredient(item_name, unit)
+                    ingredient_id = self.get_ingredient_id(item_name)
+
                 cursor.execute(
                     """
                     INSERT INTO PantryTransactions
-                    (transaction_type, item_name, quantity, unit, transaction_date, notes)
+                    (transaction_type, ingredient_id, quantity, unit, transaction_date, notes)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
                         "addition",
-                        item_name,
+                        ingredient_id,
                         quantity,
                         unit,
                         datetime.now().isoformat(),
@@ -75,15 +123,20 @@ class PantryManager:
 
             with self._get_connection() as conn:
                 cursor = conn.cursor()
+                ingredient_id = self.get_ingredient_id(item_name)
+                if ingredient_id is None:
+                    print(f"Ingredient {item_name} not found in database")
+                    return False
+
                 cursor.execute(
                     """
                     INSERT INTO PantryTransactions
-                    (transaction_type, item_name, quantity, unit, transaction_date, notes)
+                    (transaction_type, ingredient_id, quantity, unit, transaction_date, notes)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
                         "removal",
-                        item_name,
+                        ingredient_id,
                         quantity,
                         unit,
                         datetime.now().isoformat(),
@@ -109,6 +162,10 @@ class PantryManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
+                ingredient_id = self.get_ingredient_id(item_name)
+                if ingredient_id is None:
+                    return 0.0
+
                 cursor.execute(
                     """
                     SELECT
@@ -117,9 +174,9 @@ class PantryManager:
                             ELSE -quantity
                         END) as net_quantity
                     FROM PantryTransactions
-                    WHERE item_name = ? AND unit = ?
+                    WHERE ingredient_id = ? AND unit = ?
                     """,
-                    (item_name, unit),
+                    (ingredient_id, unit),
                 )
                 result = cursor.fetchone()[0]
                 return float(result) if result is not None else 0.0
@@ -140,14 +197,15 @@ class PantryManager:
                 cursor.execute(
                     """
                     SELECT
-                        item_name,
-                        unit,
+                        i.name,
+                        t.unit,
                         SUM(CASE
-                            WHEN transaction_type = 'addition' THEN quantity
-                            ELSE -quantity
+                            WHEN t.transaction_type = 'addition' THEN t.quantity
+                            ELSE -t.quantity
                         END) as net_quantity
-                    FROM PantryTransactions
-                    GROUP BY item_name, unit
+                    FROM PantryTransactions t
+                    JOIN Ingredients i ON t.ingredient_id = i.id
+                    GROUP BY i.name, t.unit
                     HAVING net_quantity > 0
                     """
                 )
@@ -163,6 +221,134 @@ class PantryManager:
         except Exception as e:
             print(f"Error getting pantry contents: {e}")
             return {}
+
+    def add_recipe(
+        self,
+        name: str,
+        instructions: str,
+        time_minutes: int,
+        ingredients: List[Dict[str, Any]],
+    ) -> bool:
+        """
+        Add a new recipe to the database.
+
+        Args:
+            name: Name of the recipe
+            instructions: Cooking instructions
+            time_minutes: Time required to prepare the recipe
+            ingredients: List of dictionaries containing:
+                - name: ingredient name
+                - quantity: amount needed
+                - unit: unit of measurement
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                now = datetime.now().isoformat()
+
+                # Insert recipe
+                cursor.execute(
+                    """
+                    INSERT INTO Recipes
+                    (name, instructions, time_minutes, created_date, last_modified)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (name, instructions, time_minutes, now, now),
+                )
+                recipe_id = cursor.lastrowid
+
+                # Add ingredients
+                for ingredient in ingredients:
+                    ingredient_id = self.get_ingredient_id(ingredient["name"])
+                    if ingredient_id is None:
+                        # Create new ingredient if it doesn't exist
+                        self.add_ingredient(ingredient["name"], ingredient["unit"])
+                        ingredient_id = self.get_ingredient_id(ingredient["name"])
+
+                    cursor.execute(
+                        """
+                        INSERT INTO RecipeIngredients
+                        (recipe_id, ingredient_id, quantity, unit)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            recipe_id,
+                            ingredient_id,
+                            ingredient["quantity"],
+                            ingredient["unit"],
+                        ),
+                    )
+                return True
+        except Exception as e:
+            print(f"Error adding recipe: {e}")
+            return False
+
+    def get_recipe(self, recipe_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a recipe and its ingredients by name.
+
+        Args:
+            recipe_name: Name of the recipe to retrieve
+
+        Returns:
+            Optional[Dict[str, Any]]: Recipe details including ingredients, or None if not found
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT
+                        r.id,
+                        r.instructions,
+                        r.time_minutes,
+                        r.created_date,
+                        r.last_modified
+                    FROM Recipes r
+                    WHERE r.name = ?
+                    """,
+                    (recipe_name,),
+                )
+                recipe = cursor.fetchone()
+                if not recipe:
+                    return None
+
+                recipe_id, instructions, time_minutes, created_date, last_modified = (
+                    recipe
+                )
+
+                # Get ingredients
+                cursor.execute(
+                    """
+                    SELECT
+                        i.name,
+                        ri.quantity,
+                        ri.unit
+                    FROM RecipeIngredients ri
+                    JOIN Ingredients i ON ri.ingredient_id = i.id
+                    WHERE ri.recipe_id = ?
+                    """,
+                    (recipe_id,),
+                )
+                ingredients = [
+                    {"name": name, "quantity": qty, "unit": unit}
+                    for name, qty, unit in cursor.fetchall()
+                ]
+
+                return {
+                    "name": recipe_name,
+                    "instructions": instructions,
+                    "time_minutes": time_minutes,
+                    "created_date": created_date,
+                    "last_modified": last_modified,
+                    "ingredients": ingredients,
+                }
+        except Exception as e:
+            print(f"Error getting recipe: {e}")
+            return None
 
     def get_transaction_history(
         self, item_name: Optional[str] = None
@@ -180,19 +366,30 @@ class PantryManager:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 if item_name:
+                    ingredient_id = self.get_ingredient_id(item_name)
+                    if ingredient_id is None:
+                        return []
                     cursor.execute(
                         """
-                        SELECT * FROM PantryTransactions
-                        WHERE item_name = ?
-                        ORDER BY transaction_date DESC
+                        SELECT
+                            t.*,
+                            i.name as item_name
+                        FROM PantryTransactions t
+                        JOIN Ingredients i ON t.ingredient_id = i.id
+                        WHERE t.ingredient_id = ?
+                        ORDER BY t.transaction_date DESC
                         """,
-                        (item_name,),
+                        (ingredient_id,),
                     )
                 else:
                     cursor.execute(
                         """
-                        SELECT * FROM PantryTransactions
-                        ORDER BY transaction_date DESC
+                        SELECT
+                            t.*,
+                            i.name as item_name
+                        FROM PantryTransactions t
+                        JOIN Ingredients i ON t.ingredient_id = i.id
+                        ORDER BY t.transaction_date DESC
                         """
                     )
 

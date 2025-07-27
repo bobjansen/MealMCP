@@ -6,17 +6,59 @@ def setup_database(
 ):  # Connect to SQLite database (or create it if it doesn't exist)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    # Create PantryTransactions table
+
+    # Create Ingredients table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS Ingredients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            default_unit TEXT NOT NULL
+        )
+    """
+    )
+
+    # Create PantryTransactions table with foreign key to Ingredients
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS PantryTransactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             transaction_type TEXT NOT NULL,  -- 'addition' or 'removal'
-            item_name TEXT NOT NULL,
+            ingredient_id INTEGER NOT NULL,
             quantity REAL NOT NULL,
             unit TEXT NOT NULL,
             transaction_date TEXT NOT NULL,
-            notes TEXT
+            notes TEXT,
+            FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
+        )
+    """
+    )
+
+    # Create Recipes table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS Recipes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            instructions TEXT NOT NULL,
+            time_minutes INTEGER NOT NULL,
+            created_date TEXT NOT NULL,
+            last_modified TEXT NOT NULL
+        )
+    """
+    )
+
+    # Create RecipeIngredients junction table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS RecipeIngredients (
+            recipe_id INTEGER NOT NULL,
+            ingredient_id INTEGER NOT NULL,
+            quantity REAL NOT NULL,
+            unit TEXT NOT NULL,
+            PRIMARY KEY (recipe_id, ingredient_id),
+            FOREIGN KEY (recipe_id) REFERENCES Recipes(id),
+            FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
         )
     """
     )
