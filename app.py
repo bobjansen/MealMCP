@@ -12,7 +12,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 from constants import UNITS
 from pantry_manager import PantryManager
-from i18n import t
+from i18n import LANG, set_lang, t
 
 
 def format_recipe_markdown(recipe):
@@ -648,28 +648,65 @@ def create_pantry_layout():
     )
 
 
-# App layout with tabs
-app.layout = dbc.Container(
-    [
-        html.H1(t("Meal Planner"), className="my-4"),
-        dbc.Tabs(
-            [
-                dbc.Tab(
-                    create_pantry_layout(), label=t("Pantry Management"), tab_id="pantry"
-                ),
-                dbc.Tab(create_recipe_layout(), label=t("Recipes"), tab_id="recipes"),
-                dbc.Tab(
-                    create_preferences_layout(),
-                    label=t("Preferences"),
-                    tab_id="preferences",
-                ),
-            ],
-            id="tabs",
-            active_tab="pantry",
-        ),
-    ],
-    fluid=True,
+# App layout with tabs and language selection
+def build_layout(lang: str) -> dbc.Container:
+    """Build the main app layout for the given language."""
+    set_lang(lang)
+    return dbc.Container(
+        [
+            dbc.Row(
+                [
+                    dbc.Col(html.H1(t("Meal Planner"), className="my-4"), width="auto"),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="language-selector",
+                            options=[
+                                {"label": "English", "value": "en"},
+                                {"label": "Nederlands", "value": "nl"},
+                            ],
+                            value=lang,
+                            clearable=False,
+                            style={"width": "150px"},
+                        ),
+                        width="auto",
+                        className="align-self-center",
+                    ),
+                ],
+                className="mb-3",
+            ),
+            dbc.Tabs(
+                [
+                    dbc.Tab(
+                        create_pantry_layout(), label=t("Pantry Management"), tab_id="pantry"
+                    ),
+                    dbc.Tab(create_recipe_layout(), label=t("Recipes"), tab_id="recipes"),
+                    dbc.Tab(
+                        create_preferences_layout(), label=t("Preferences"), tab_id="preferences"
+                    ),
+                ],
+                id="tabs",
+                active_tab="pantry",
+            ),
+        ],
+        fluid=True,
+    )
+
+
+app.layout = html.Div(
+    [dcc.Store(id="lang-store", data=LANG), html.Div(id="layout-container")]
 )
+
+
+@app.callback(Output("layout-container", "children"), Input("lang-store", "data"))
+def render_layout(lang):
+    """Render layout whenever the language changes."""
+    return build_layout(lang)
+
+
+@app.callback(Output("lang-store", "data"), Input("language-selector", "value"))
+def update_language(lang):
+    """Update the stored language from dropdown."""
+    return lang
 
 
 # Callback to display recipes

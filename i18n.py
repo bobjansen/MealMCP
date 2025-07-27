@@ -138,6 +138,15 @@ TRANSLATIONS = {
     },
 }
 
+
+def set_lang(lang: str) -> None:
+    """Set the active language."""
+    global LANG
+    if lang in TRANSLATIONS:
+        LANG = lang
+    else:
+        LANG = "en"
+
 def t(text: str, lang: str | None = None) -> str:
     """Translate text to the active language."""
     lang = lang or LANG
