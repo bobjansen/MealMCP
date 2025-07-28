@@ -353,6 +353,30 @@ class TestPantryManager(unittest.TestCase):
         retrieved = self.pantry.get_meal_plan(start, end)
         self.assertEqual(plan, retrieved)
 
+    def test_grocery_list(self):
+        """Test calculating grocery list based on meal plan and pantry contents."""
+        recipe = {
+            "name": "Toast",
+            "instructions": "Toast bread",
+            "time_minutes": 5,
+            "ingredients": [
+                {"name": "bread", "quantity": 2, "unit": "slices"},
+                {"name": "butter", "quantity": 1, "unit": "tbsp"},
+            ],
+        }
+        self.pantry.add_recipe(**recipe)
+        self.pantry.set_meal_plan(date.today().isoformat(), "Toast")
+
+        # Only one slice of bread in pantry, enough butter
+        self.pantry.add_item("bread", 1, "slices")
+        self.pantry.add_item("butter", 2, "tbsp")
+
+        grocery = self.pantry.get_grocery_list()
+        self.assertEqual(len(grocery), 1)
+        self.assertEqual(grocery[0]["name"], "bread")
+        self.assertEqual(grocery[0]["unit"], "slices")
+        self.assertEqual(grocery[0]["quantity"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
