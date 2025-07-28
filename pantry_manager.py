@@ -46,7 +46,7 @@ class PantryManager:
         Add a new food preference to the database.
 
         Args:
-            category: Type of preference (dietary, allergy, dislike)
+            category: Type of preference (dietary, allergy, dislike, like)
             item: The specific preference item
             level: Importance level (required, preferred, avoid)
             notes: Optional notes about the preference
@@ -705,9 +705,7 @@ class PantryManager:
                     """,
                     (start_date, end_date),
                 )
-                return [
-                    {"date": row[0], "recipe": row[1]} for row in cursor.fetchall()
-                ]
+                return [{"date": row[0], "recipe": row[1]} for row in cursor.fetchall()]
         except Exception as e:
             print(f"Error getting meal plan: {e}")
             return []
@@ -745,6 +743,8 @@ class PantryManager:
         for (name, unit), qty in required.items():
             have = self.get_item_quantity(name, unit)
             if have < qty:
-                grocery_list.append({"name": name, "quantity": qty - have, "unit": unit})
+                grocery_list.append(
+                    {"name": name, "quantity": qty - have, "unit": unit}
+                )
 
         return grocery_list

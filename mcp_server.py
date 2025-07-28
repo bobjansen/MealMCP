@@ -32,7 +32,7 @@ def list_preferences() -> List[Dict[str, Any]]:
     -------
     List[Dict[str, Any]]
         List of preferences, each containing:
-            - category: Type of preference (dietary, allergy, dislike)
+            - category: Type of preference (dietary, allergy, dislike, like)
             - item: The specific preference item
             - level: Importance level (required, preferred, avoid)
             - notes: Optional notes about the preference
@@ -75,7 +75,9 @@ def add_preference(
         else:
             return {
                 "status": "error",
-                "message": t("Failed to add preference. Item may already exist with this category."),
+                "message": t(
+                    "Failed to add preference. Item may already exist with this category."
+                ),
             }
     except ValueError as e:
         return {"status": "error", "message": str(e)}
@@ -138,7 +140,10 @@ def get_recipe(recipe_name: str) -> Dict[str, Any]:
     if recipe:
         return {"status": "success", "recipe": recipe}
     else:
-        return {"status": "error", "message": t("Recipe '{name}' not found").format(name=recipe_name)}
+        return {
+            "status": "error",
+            "message": t("Recipe '{name}' not found").format(name=recipe_name),
+        }
 
 
 @mcp.tool()
@@ -189,7 +194,10 @@ def edit_recipe(
     if success:
         return {"status": "success", "message": t("Recipe updated successfully")}
     else:
-        return {"status": "error", "message": t("Failed to update recipe '{name}'").format(name=name)}
+        return {
+            "status": "error",
+            "message": t("Failed to update recipe '{name}'").format(name=name),
+        }
 
 
 @mcp.tool()
