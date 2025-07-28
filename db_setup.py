@@ -78,6 +78,17 @@ def setup_database(
     """
     )
 
+    # Create MealPlan table for linking dates to recipes
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS MealPlan (
+            meal_date TEXT PRIMARY KEY,
+            recipe_id INTEGER NOT NULL,
+            FOREIGN KEY (recipe_id) REFERENCES Recipes(id)
+        )
+        """
+    )
+
     # Commit changes and close the connection
     conn.commit()
     conn.close()
