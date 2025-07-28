@@ -53,7 +53,7 @@ def setup_database(
         """
         CREATE TABLE IF NOT EXISTS Preferences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category TEXT NOT NULL,  -- e.g., 'dietary', 'allergy', 'dislike'
+            category TEXT NOT NULL,  -- e.g., 'dietary', 'allergy', 'dislike', 'like'
             item TEXT NOT NULL,      -- e.g., 'vegetarian', 'peanuts', 'mushrooms'
             level TEXT NOT NULL,     -- e.g., 'required', 'preferred', 'avoid'
             notes TEXT,

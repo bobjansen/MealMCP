@@ -72,65 +72,97 @@ def create_preferences_layout():
                                                                         id="pref-category",
                                                                         options=[
                                                                             {
-                                                                                "label": t("Dietary Restriction"),
+                                                                                "label": t(
+                                                                                    "Like"
+                                                                                ),
+                                                                                "value": "like",
+                                                                            },
+                                                                            {
+                                                                                "label": t(
+                                                                                    "Dietary Restriction"
+                                                                                ),
                                                                                 "value": "dietary",
                                                                             },
                                                                             {
-                                                                                "label": t("Allergy"),
+                                                                                "label": t(
+                                                                                    "Allergy"
+                                                                                ),
                                                                                 "value": "allergy",
                                                                             },
                                                                             {
-                                                                                "label": t("Dislike"),
+                                                                                "label": t(
+                                                                                    "Dislike"
+                                                                                ),
                                                                                 "value": "dislike",
                                                                             },
                                                                         ],
-                                                                        placeholder=t("Select category"),
+                                                                        placeholder=t(
+                                                                            "Select category"
+                                                                        ),
                                                                     ),
                                                                 ],
                                                                 width=3,
                                                             ),
                                                             dbc.Col(
                                                                 [
-                                                                    dbc.Label(t("Item")),
+                                                                    dbc.Label(
+                                                                        t("Item")
+                                                                    ),
                                                                     dbc.Input(
                                                                         id="pref-item",
                                                                         type="text",
-                                                                        placeholder=t("Enter item (e.g., vegetarian, peanuts)"),
+                                                                        placeholder=t(
+                                                                            "Enter item (e.g., vegetarian, peanuts)"
+                                                                        ),
                                                                     ),
                                                                 ],
                                                                 width=3,
                                                             ),
                                                             dbc.Col(
                                                                 [
-                                                                    dbc.Label(t("Level")),
+                                                                    dbc.Label(
+                                                                        t("Level")
+                                                                    ),
                                                                     dcc.Dropdown(
                                                                         id="pref-level",
                                                                         options=[
                                                                             {
-                                                                                "label": t("Required"),
+                                                                                "label": t(
+                                                                                    "Required"
+                                                                                ),
                                                                                 "value": "required",
                                                                             },
                                                                             {
-                                                                                "label": t("Preferred"),
+                                                                                "label": t(
+                                                                                    "Preferred"
+                                                                                ),
                                                                                 "value": "preferred",
                                                                             },
                                                                             {
-                                                                                "label": t("Avoid"),
+                                                                                "label": t(
+                                                                                    "Avoid"
+                                                                                ),
                                                                                 "value": "avoid",
                                                                             },
                                                                         ],
-                                                                        placeholder=t("Select level"),
+                                                                        placeholder=t(
+                                                                            "Select level"
+                                                                        ),
                                                                     ),
                                                                 ],
                                                                 width=3,
                                                             ),
                                                             dbc.Col(
                                                                 [
-                                                                    dbc.Label(t("Notes")),
+                                                                    dbc.Label(
+                                                                        t("Notes")
+                                                                    ),
                                                                     dbc.Input(
                                                                         id="pref-notes",
                                                                         type="text",
-                                                                        placeholder=t("Optional notes"),
+                                                                        placeholder=t(
+                                                                            "Optional notes"
+                                                                        ),
                                                                     ),
                                                                 ],
                                                                 width=3,
@@ -318,7 +350,9 @@ def create_recipe_layout():
                                             dbc.Label(t("Instructions")),
                                             dbc.Textarea(
                                                 id="edit-instructions",
-                                                placeholder=t("Enter cooking instructions"),
+                                                placeholder=t(
+                                                    "Enter cooking instructions"
+                                                ),
                                                 style={"height": "150px"},
                                             ),
                                         ]
@@ -400,7 +434,9 @@ def create_recipe_layout():
                                             dbc.Label(t("Instructions")),
                                             dbc.Textarea(
                                                 id="instructions",
-                                                placeholder=t("Enter cooking instructions"),
+                                                placeholder=t(
+                                                    "Enter cooking instructions"
+                                                ),
                                                 style={"height": "150px"},
                                             ),
                                         ]
@@ -424,7 +460,9 @@ def create_recipe_layout():
                                                                     "index": 0,
                                                                 },
                                                                 type="text",
-                                                                placeholder=t("Ingredient name"),
+                                                                placeholder=t(
+                                                                    "Ingredient name"
+                                                                ),
                                                             ),
                                                         ],
                                                         width=4,
@@ -437,7 +475,9 @@ def create_recipe_layout():
                                                                     "index": 0,
                                                                 },
                                                                 type="number",
-                                                                placeholder=t("Quantity"),
+                                                                placeholder=t(
+                                                                    "Quantity"
+                                                                ),
                                                             ),
                                                         ],
                                                         width=3,
@@ -526,7 +566,9 @@ def create_calendar_layout():
         [
             dbc.Row(
                 dbc.Col(
-                    dbc.Button(t("Generate Plan"), id="generate-plan-btn", color="primary"),
+                    dbc.Button(
+                        t("Generate Plan"), id="generate-plan-btn", color="primary"
+                    ),
                     width="auto",
                 ),
                 className="mb-3",
@@ -539,7 +581,10 @@ def create_calendar_layout():
                 ],
                 data=[],
                 style_cell={"textAlign": "left"},
-                style_header={"backgroundColor": "rgb(230, 230, 230)", "fontWeight": "bold"},
+                style_header={
+                    "backgroundColor": "rgb(230, 230, 230)",
+                    "fontWeight": "bold",
+                },
             ),
         ]
     )
@@ -726,13 +771,27 @@ def build_layout(lang: str) -> dbc.Container:
             dbc.Tabs(
                 [
                     dbc.Tab(
-                        create_pantry_layout(), label=t("Pantry Management"), tab_id="pantry"
+                        create_pantry_layout(),
+                        label=t("Pantry Management"),
+                        tab_id="pantry",
                     ),
-                    dbc.Tab(create_recipe_layout(), label=t("Recipes"), tab_id="recipes"),
-                    dbc.Tab(create_calendar_layout(), label=t("Meal Calendar"), tab_id="calendar"),
-                    dbc.Tab(create_grocery_layout(), label=t("Grocery List"), tab_id="grocery"),
                     dbc.Tab(
-                        create_preferences_layout(), label=t("Preferences"), tab_id="preferences"
+                        create_recipe_layout(), label=t("Recipes"), tab_id="recipes"
+                    ),
+                    dbc.Tab(
+                        create_calendar_layout(),
+                        label=t("Meal Calendar"),
+                        tab_id="calendar",
+                    ),
+                    dbc.Tab(
+                        create_grocery_layout(),
+                        label=t("Grocery List"),
+                        tab_id="grocery",
+                    ),
+                    dbc.Tab(
+                        create_preferences_layout(),
+                        label=t("Preferences"),
+                        tab_id="preferences",
                     ),
                 ],
                 id="tabs",
@@ -1316,7 +1375,9 @@ def update_transaction_history(_n_clicks, _add_message):
     return pantry.get_transaction_history()
 
 
-@app.callback(Output("grocery-table", "children"), Input("refresh-grocery-btn", "n_clicks"))
+@app.callback(
+    Output("grocery-table", "children"), Input("refresh-grocery-btn", "n_clicks")
+)
 def update_grocery_list(_n_clicks):
     items = pantry.get_grocery_list()
     if not items:

@@ -10,6 +10,7 @@ TRANSLATIONS = {
         "Dietary Restriction": "Dietary Restriction",
         "Allergy": "Allergy",
         "Dislike": "Dislike",
+        "Like": "Like",
         "Select category": "Select category",
         "Item": "Item",
         "Enter item (e.g., vegetarian, peanuts)": "Enter item (e.g., vegetarian, peanuts)",
@@ -79,6 +80,7 @@ TRANSLATIONS = {
         "Dietary Restriction": "Dieetbeperking",
         "Allergy": "Allergie",
         "Dislike": "Afkeer",
+        "Like": "Voorkeur",
         "Select category": "Selecteer categorie",
         "Item": "Item",
         "Enter item (e.g., vegetarian, peanuts)": "Voer item in (bijv. vegetarisch, pinda's)",
@@ -150,6 +152,7 @@ def set_lang(lang: str) -> None:
         LANG = lang
     else:
         LANG = "en"
+
 
 def t(text: str, lang: str | None = None) -> str:
     """Translate text to the active language."""
