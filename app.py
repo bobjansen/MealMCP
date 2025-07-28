@@ -42,6 +42,7 @@ def format_recipe_markdown(recipe):
 
 # Initialize the Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.config.suppress_callback_exceptions = True
 pantry = PantryManager()
 
 
