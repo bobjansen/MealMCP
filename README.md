@@ -2,6 +2,8 @@
 
 MealMCP is a sophisticated meal planning and pantry management system that leverages Large Language Models (LLMs) for business logic. The application provides two interfaces: a Model Context Protocol (MCP) server for integration with Claude Desktop client and a Dash web interface for direct user interaction.
 
+![MealMCP Interface](example.png)
+
 ## Features
 
 - 🧾 Recipe Management
