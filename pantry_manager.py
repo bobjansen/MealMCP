@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -670,3 +670,58 @@ class PantryManager:
         except Exception as e:
             print(f"Error executing recipe: {e}")
             return False, f"Error executing recipe: {str(e)}"
+
+    def set_meal_plan(self, meal_date: str, recipe_name: str) -> bool:
+        """Assign a recipe to a specific date in the MealPlan table."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM Recipes WHERE name = ?", (recipe_name,))
+                result = cursor.fetchone()
+                if not result:
+                    return False
+
+                cursor.execute(
+                    "INSERT OR REPLACE INTO MealPlan (meal_date, recipe_id) VALUES (?, ?)",
+                    (meal_date, result[0]),
+                )
+                return True
+        except Exception as e:
+            print(f"Error setting meal plan: {e}")
+            return False
+
+    def get_meal_plan(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        """Retrieve planned meals between two dates."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT meal_date, r.name
+                    FROM MealPlan m
+                    JOIN Recipes r ON m.recipe_id = r.id
+                    WHERE meal_date BETWEEN ? AND ?
+                    ORDER BY meal_date
+                    """,
+                    (start_date, end_date),
+                )
+                return [
+                    {"date": row[0], "recipe": row[1]} for row in cursor.fetchall()
+                ]
+        except Exception as e:
+            print(f"Error getting meal plan: {e}")
+            return []
+
+    def generate_week_plan(self) -> List[Dict[str, Any]]:
+        """Generate meal plan entries for the coming week using available recipes."""
+        recipes = self.get_all_recipes()
+        if not recipes:
+            return []
+
+        start = date.today()
+        plan = []
+        for idx, recipe in enumerate(recipes[:7]):
+            meal_date = start + timedelta(days=idx)
+            if self.set_meal_plan(meal_date.isoformat(), recipe["name"]):
+                plan.append({"date": meal_date.isoformat(), "recipe": recipe["name"]})
+        return plan
