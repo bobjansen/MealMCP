@@ -9,6 +9,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from pantry_manager import PantryManager
 from db_setup import setup_database
+from datetime import date, timedelta
 
 
 class TestPantryManager(unittest.TestCase):
@@ -331,6 +332,26 @@ class TestPantryManager(unittest.TestCase):
         success, message = self.pantry.execute_recipe("Test Cookies")
         self.assertFalse(success)
         self.assertIn("Missing ingredients", message)
+
+    def test_meal_plan_generation(self):
+        """Test generating and retrieving a weekly meal plan."""
+        # Add simple recipes
+        for i in range(3):
+            recipe = {
+                "name": f"Recipe {i}",
+                "instructions": "Cook it",
+                "time_minutes": 10,
+                "ingredients": [{"name": "flour", "quantity": 1, "unit": "g"}],
+            }
+            self.pantry.add_recipe(**recipe)
+
+        plan = self.pantry.generate_week_plan()
+        self.assertGreater(len(plan), 0)
+
+        start = date.today().isoformat()
+        end = (date.today() + timedelta(days=6)).isoformat()
+        retrieved = self.pantry.get_meal_plan(start, end)
+        self.assertEqual(plan, retrieved)
 
 
 if __name__ == "__main__":
