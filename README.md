@@ -46,25 +46,38 @@ Core business logic handling:
 
 ## Setup and Installation
 
-1. Ensure Python is installed on your system
+1. Ensure Python and uv are installed on your system
 2. Clone this repository
 3. Install dependencies using `uv`:
    ```
-   uv venv
-   uv pip install -r requirements.txt
+   uv sync
    ```
 
 ## Usage
 
 ### Running the Dash Web Interface
 ```bash
-python app.py
+uv run app.py
 ```
 Access the web interface through your browser at `http://localhost:8050`
 
 ### Using the MCP Server
-```bash
-python mcp_server.py
+Put this in your Claude Desktop config (`claude_desktop_config.json`):
+```json
+ {
+  "mcpServers": {
+    "mealmcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "path/to/mealmcp",
+        "run",
+        "mcp_server.py"
+      ]
+    }
+  },
+  "isUsingBuiltInNodeForMcp": true
+}
 ```
 Connect to the MCP server using Claude Desktop client or any MCP-compatible client.
 
