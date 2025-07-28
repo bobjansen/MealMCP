@@ -12,6 +12,10 @@ The PantryManager class can be used to interface with the database.
 
 The app should be usable through the Claude Desktop client or through a Dash website that uses API calling.
 
+# Internationalization
+
+Internationalization is done using the Python i18n module. Currently English and Dutch are supported.
+
 # Status
 
 The project is written in Python and be managed using uv.
