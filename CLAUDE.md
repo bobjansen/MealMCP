@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Running the Application
 - **Web Interface**: `uv run app.py` - Starts the Dash web interface on http://localhost:8050
-- **MCP Server**: `uv run mcp_server.py` - Starts the Model Context Protocol server for Claude Desktop integration
+- **MCP Server (Local)**: `uv run mcp_server.py` - Starts the MCP server in single-user local mode
+- **MCP Server (Remote)**: `MCP_MODE=remote uv run mcp_server.py` - Starts the MCP server in multi-user remote mode
+- **MCP Server (Start Script)**: `uv run start_server.py` - Starts server with mode selection and configuration
 
 ### Testing
 - **Run Tests**: `pytest` or `uv run pytest` - Runs the test suite located in the `tests/` directory
@@ -28,9 +30,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **MCP Server (`mcp_server.py`)**
 - FastMCP-based server providing tools for Claude Desktop integration
-- Exposes pantry management functions as MCP tools
+- Supports both single-user local mode and multi-user remote mode
+- Exposes pantry management functions as MCP tools with optional authentication
 - Key tools include: `list_units()`, `add_preference()`, `list_recipes()`, `add_recipe()`, `plan_meals()`
-- Instantiates a single `PantryManager` instance at startup
+- Uses `MCPContext` for user management and `UserManager` for authentication
+- In local mode: single `PantryManager` instance, no authentication
+- In remote mode: per-user `PantryManager` instances with token-based authentication
 
 **Dash Web App (`app.py`)**
 - Multi-tab web interface built with Dash and Bootstrap components
@@ -49,6 +54,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `constants.py`: Defines `UNITS` list for measurement units
 - `db_setup.py`: Database schema creation and initialization
 - `i18n.py`: Internationalization support (English/Dutch) with environment variable `MCP_LANG`
+- `user_manager.py`: User authentication and database isolation for multi-user mode
+- `mcp_context.py`: Context management for user sessions and PantryManager instances
+- `start_server.py`: Server startup script with mode selection and configuration
 
 ## Development Guidelines
 
@@ -65,7 +73,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### MCP Tool Development
 - New MCP tools should be added to `mcp_server.py` using `@mcp.tool()` decorator
-- Follow the existing pattern: accept parameters, call `PantryManager` methods, return structured data
+- All tools must include optional `token: Optional[str] = None` parameter for authentication
+- Use `get_user_pantry(token)` helper to authenticate and get user's PantryManager instance
+- Return `{"status": "error", "message": "Authentication required"}` if authentication fails
+- Follow the existing pattern: authenticate, call `PantryManager` methods, return structured data
 - Include proper type hints and docstrings
 
 ### Web Interface Development
@@ -73,3 +84,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use Bootstrap components from `dash_bootstrap_components`
 - Follow the existing callback pattern with proper Input/Output/State decorators
 - Support internationalization using `i18n.t()` function
+- Web interface only supports local mode (single user)
+
+### Multi-User Mode Configuration
+- Set `MCP_MODE=remote` environment variable to enable multi-user mode
+- Use `ADMIN_TOKEN` environment variable to set admin authentication token
+- User databases are stored in `user_data/{username}/pantry.db`
+- Tokens should be kept secure and not committed to version control
+- See `README_MULTIUSER.md` for detailed setup instructions
