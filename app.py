@@ -42,6 +42,7 @@ def format_recipe_markdown(recipe):
 
 # Initialize the Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.config.suppress_callback_exceptions = True
 pantry = PantryManager()
 
 
@@ -544,6 +545,29 @@ def create_calendar_layout():
     )
 
 
+def create_grocery_layout():
+    return html.Div(
+        [
+            dbc.Card(
+                [
+                    dbc.CardHeader(t("Grocery List")),
+                    dbc.CardBody(
+                        [
+                            dbc.Button(
+                                t("Refresh"),
+                                id="refresh-grocery-btn",
+                                color="secondary",
+                                className="mb-3",
+                            ),
+                            html.Div(id="grocery-table"),
+                        ]
+                    ),
+                ]
+            )
+        ]
+    )
+
+
 def create_pantry_layout():
     return html.Div(
         [
@@ -706,6 +730,7 @@ def build_layout(lang: str) -> dbc.Container:
                     ),
                     dbc.Tab(create_recipe_layout(), label=t("Recipes"), tab_id="recipes"),
                     dbc.Tab(create_calendar_layout(), label=t("Meal Calendar"), tab_id="calendar"),
+                    dbc.Tab(create_grocery_layout(), label=t("Grocery List"), tab_id="grocery"),
                     dbc.Tab(
                         create_preferences_layout(), label=t("Preferences"), tab_id="preferences"
                     ),
@@ -1289,6 +1314,24 @@ def update_pantry_contents(_n_clicks, _add_message):
 )
 def update_transaction_history(_n_clicks, _add_message):
     return pantry.get_transaction_history()
+
+
+@app.callback(Output("grocery-table", "children"), Input("refresh-grocery-btn", "n_clicks"))
+def update_grocery_list(_n_clicks):
+    items = pantry.get_grocery_list()
+    if not items:
+        return html.P("No items needed")
+
+    return dash_table.DataTable(
+        data=items,
+        columns=[
+            {"name": "Item", "id": "name"},
+            {"name": "Quantity", "id": "quantity"},
+            {"name": "Unit", "id": "unit"},
+        ],
+        style_cell={"textAlign": "left"},
+        style_header={"backgroundColor": "rgb(230, 230, 230)", "fontWeight": "bold"},
+    )
 
 
 if __name__ == "__main__":
