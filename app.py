@@ -13,6 +13,7 @@ import dash_bootstrap_components as dbc
 from constants import UNITS
 from pantry_manager import PantryManager
 from i18n import LANG, set_lang, t
+from datetime import date, timedelta
 
 
 def format_recipe_markdown(recipe):
@@ -519,6 +520,30 @@ def create_recipe_layout():
     )
 
 
+def create_calendar_layout():
+    return html.Div(
+        [
+            dbc.Row(
+                dbc.Col(
+                    dbc.Button(t("Generate Plan"), id="generate-plan-btn", color="primary"),
+                    width="auto",
+                ),
+                className="mb-3",
+            ),
+            dash_table.DataTable(
+                id="calendar-table",
+                columns=[
+                    {"name": t("Date"), "id": "date"},
+                    {"name": t("Recipe Name"), "id": "recipe"},
+                ],
+                data=[],
+                style_cell={"textAlign": "left"},
+                style_header={"backgroundColor": "rgb(230, 230, 230)", "fontWeight": "bold"},
+            ),
+        ]
+    )
+
+
 def create_pantry_layout():
     return html.Div(
         [
@@ -680,6 +705,7 @@ def build_layout(lang: str) -> dbc.Container:
                         create_pantry_layout(), label=t("Pantry Management"), tab_id="pantry"
                     ),
                     dbc.Tab(create_recipe_layout(), label=t("Recipes"), tab_id="recipes"),
+                    dbc.Tab(create_calendar_layout(), label=t("Meal Calendar"), tab_id="calendar"),
                     dbc.Tab(
                         create_preferences_layout(), label=t("Preferences"), tab_id="preferences"
                     ),
@@ -738,6 +764,17 @@ def update_recipe_list(n_clicks, _):
         )
 
     return table_data
+
+
+@app.callback(Output("calendar-table", "data"), Input("generate-plan-btn", "n_clicks"))
+def update_calendar(n_clicks):
+    if n_clicks:
+        plan = pantry.generate_week_plan()
+    else:
+        start = date.today()
+        end = start + timedelta(days=6)
+        plan = pantry.get_meal_plan(start.isoformat(), end.isoformat())
+    return plan
 
 
 # Recipe edit and ingredient management callbacks

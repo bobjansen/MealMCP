@@ -70,6 +70,8 @@ TRANSLATIONS = {
         "Recipe updated successfully": "Recipe updated successfully",
         "Failed to update recipe '{name}'": "Failed to update recipe '{name}'",
         "Recipe '{name}' not found": "Recipe '{name}' not found",
+        "Meal Calendar": "Meal Calendar",
+        "Generate Plan": "Generate Plan",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -135,6 +137,8 @@ TRANSLATIONS = {
         "Recipe updated successfully": "Recept succesvol bijgewerkt",
         "Failed to update recipe '{name}'": "Bijwerken van recept '{name}' mislukt",
         "Recipe '{name}' not found": "Recept '{name}' niet gevonden",
+        "Meal Calendar": "Maaltijdkalender",
+        "Generate Plan": "Plan genereren",
     },
 }
 

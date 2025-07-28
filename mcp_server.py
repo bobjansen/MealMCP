@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from constants import UNITS
 from pantry_manager import PantryManager
 from i18n import t
+from datetime import date, timedelta
 
 # Create an MCP server
 mcp = FastMCP("RecipeManager")
@@ -225,6 +226,22 @@ def get_pantry_contents() -> Dict[str, Any]:
     """
     contents = pantry.get_pantry_contents()
     return {"status": "success", "contents": contents}
+
+
+@mcp.tool()
+def generate_week_plan() -> Dict[str, Any]:
+    """Generate a meal plan for the upcoming week."""
+    plan = pantry.generate_week_plan()
+    return {"status": "success", "plan": plan}
+
+
+@mcp.tool()
+def get_week_plan() -> Dict[str, Any]:
+    """Get the meal plan for the next 7 days."""
+    start = date.today()
+    end = start + timedelta(days=6)
+    plan = pantry.get_meal_plan(start.isoformat(), end.isoformat())
+    return {"status": "success", "plan": plan}
 
 
 # Entry point to run the server
