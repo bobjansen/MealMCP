@@ -244,6 +244,13 @@ def get_week_plan() -> Dict[str, Any]:
     return {"status": "success", "plan": plan}
 
 
+@mcp.tool()
+def get_grocery_list() -> Dict[str, Any]:
+    """Return grocery items needed for the coming week's meal plan."""
+    items = pantry.get_grocery_list()
+    return {"status": "success", "grocery": items}
+
+
 # Entry point to run the server
 if __name__ == "__main__":
     mcp.run()

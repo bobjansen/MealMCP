@@ -725,3 +725,26 @@ class PantryManager:
             if self.set_meal_plan(meal_date.isoformat(), recipe["name"]):
                 plan.append({"date": meal_date.isoformat(), "recipe": recipe["name"]})
         return plan
+
+    def get_grocery_list(self) -> List[Dict[str, Any]]:
+        """Calculate grocery items needed for the coming week's meal plan."""
+        start = date.today()
+        end = start + timedelta(days=6)
+        plan = self.get_meal_plan(start.isoformat(), end.isoformat())
+
+        required: Dict[tuple[str, str], float] = {}
+        for entry in plan:
+            recipe = self.get_recipe(entry["recipe"])
+            if not recipe:
+                continue
+            for ing in recipe["ingredients"]:
+                key = (ing["name"], ing["unit"])
+                required[key] = required.get(key, 0) + ing["quantity"]
+
+        grocery_list = []
+        for (name, unit), qty in required.items():
+            have = self.get_item_quantity(name, unit)
+            if have < qty:
+                grocery_list.append({"name": name, "quantity": qty - have, "unit": unit})
+
+        return grocery_list
