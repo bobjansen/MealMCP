@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 class PantryManager:
@@ -709,20 +709,6 @@ class PantryManager:
         except Exception as e:
             print(f"Error getting meal plan: {e}")
             return []
-
-    def generate_week_plan(self) -> List[Dict[str, Any]]:
-        """Generate meal plan entries for the coming week using available recipes."""
-        recipes = self.get_all_recipes()
-        if not recipes:
-            return []
-
-        start = date.today()
-        plan = []
-        for idx, recipe in enumerate(recipes[:7]):
-            meal_date = start + timedelta(days=idx)
-            if self.set_meal_plan(meal_date.isoformat(), recipe["name"]):
-                plan.append({"date": meal_date.isoformat(), "recipe": recipe["name"]})
-        return plan
 
     def get_grocery_list(self) -> List[Dict[str, Any]]:
         """Calculate grocery items needed for the coming week's meal plan."""

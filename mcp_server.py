@@ -237,13 +237,6 @@ def get_pantry_contents() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def generate_week_plan() -> Dict[str, Any]:
-    """Generate a meal plan for the upcoming week."""
-    plan = pantry.generate_week_plan()
-    return {"status": "success", "plan": plan}
-
-
-@mcp.tool()
 def get_week_plan() -> Dict[str, Any]:
     """Get the meal plan for the next 7 days."""
     start = date.today()
@@ -257,6 +250,27 @@ def get_grocery_list() -> Dict[str, Any]:
     """Return grocery items needed for the coming week's meal plan."""
     items = pantry.get_grocery_list()
     return {"status": "success", "grocery": items}
+
+
+@mcp.tool()
+def set_recipe_for_date(meal_date: str, recipe_name: str) -> Dict[str, Any]:
+    """Assign a recipe to a certain date
+
+    Parameters
+    ----------
+    meal_date : str
+        Date to use the recipe
+    recipe_name : str
+        Name of the recipe to execute
+    Returns
+    -------
+    Dict[str, Any]
+        status: status_string
+    """
+    result = pantry.set_meal_plan(meal_date=meal_date, recipe_name=recipe_name)
+    if result:
+        return {"status": "success"}
+    return {"status": "error"}
 
 
 # Entry point to run the server
