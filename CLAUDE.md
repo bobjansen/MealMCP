@@ -16,17 +16,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Environment Setup
 - **Install Dependencies**: `uv sync` - Installs all project dependencies
-- **Database Setup**: The database is automatically initialized when the PantryManager class is first instantiated
+- **Database Setup**: Database is automatically initialized when PantryManager instances are created through the factory
+- **PostgreSQL Setup**: Install with `pip install psycopg2-binary` and ensure PostgreSQL server is running
 
 ## Architecture Overview
 
 ### Core Components
 
-**PantryManager (`pantry_manager.py`)**
-- Central business logic class that handles all database operations
+**PantryManager Interface**
+- Abstract interface defined in `pantry_manager_abc.py` that standardizes pantry management operations
+- Two implementations: `SQLitePantryManager` (default) and `PostgreSQLPantryManager`
+- Created through `PantryManagerFactory` for flexible backend selection
 - Manages ingredients, recipes, pantry inventory, preferences, and meal planning
-- Uses SQLite with `pantry.db` as the default database file
-- All database interactions go through this class for consistency
+- All database interactions go through concrete implementations for consistency
 
 **MCP Server (`mcp_server.py`)**
 - FastMCP-based server providing tools for Claude Desktop integration
@@ -52,7 +54,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Key Files
 - `constants.py`: Defines `UNITS` list for measurement units
-- `db_setup.py`: Database schema creation and initialization
+- `pantry_manager_abc.py`: Abstract base class defining the PantryManager interface
+- `pantry_manager_sqlite.py`: SQLite implementation of PantryManager (default backend)
+- `pantry_manager_postgresql.py`: PostgreSQL implementation of PantryManager
+- `pantry_manager_factory.py`: Factory class for creating PantryManager instances
+- `db_setup_unified.py`: Unified database setup supporting both SQLite and PostgreSQL
+- `db_setup.py`: SQLite-specific database schema creation
+- `db_setup_postgresql.py`: PostgreSQL-specific database schema creation
 - `i18n.py`: Internationalization support (English/Dutch) with environment variable `MCP_LANG`
 - `user_manager.py`: User authentication and database isolation for multi-user mode
 - `mcp_context.py`: Context management for user sessions and PantryManager instances
@@ -67,9 +75,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Include unit tests in the `tests/` directory
 
 ### Database Changes
-- Modify `db_setup.py` for schema changes
-- Update `PantryManager` methods accordingly
-- Test with both interfaces (web and MCP)
+- For SQLite: Modify `db_setup.py` for schema changes
+- For PostgreSQL: Modify `db_setup_postgresql.py` for schema changes
+- Update both `SQLitePantryManager` and `PostgreSQLPantryManager` implementations
+- Test with both database backends and both interfaces (web and MCP)
+
+### Database Backend Configuration
+- **Default**: Uses SQLite with automatic backend detection
+- **Environment Variables**:
+  - `PANTRY_BACKEND`: Set to 'sqlite' or 'postgresql'
+  - `PANTRY_DB_PATH`: SQLite database file path (default: 'pantry.db')
+  - `PANTRY_DATABASE_URL`: PostgreSQL connection string
+- **Usage**: `create_pantry_manager(backend='postgresql', connection_string='postgresql://...')`
+- **Factory Methods**: `PantryManagerFactory.from_environment()` or `PantryManagerFactory.from_config()`
 
 ### MCP Tool Development
 - New MCP tools should be added to `mcp_server.py` using `@mcp.tool()` decorator

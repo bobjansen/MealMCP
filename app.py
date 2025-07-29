@@ -11,7 +11,7 @@ from dash import (
 )
 import dash_bootstrap_components as dbc
 from constants import UNITS
-from pantry_manager import PantryManager
+from pantry_manager_factory import create_pantry_manager
 from i18n import LANG, set_lang, t
 from datetime import date, timedelta
 
@@ -43,7 +43,7 @@ def format_recipe_markdown(recipe):
 # Initialize the Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.config.suppress_callback_exceptions = True
-pantry = PantryManager()
+pantry = create_pantry_manager()
 
 
 # Layout components

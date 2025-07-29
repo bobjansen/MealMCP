@@ -12,6 +12,7 @@ mcp = FastMCP("RecipeManager")
 # Create context manager for user handling
 context = MCPContext()
 
+
 # Helper function to get user context
 def get_user_pantry(token: Optional[str] = None) -> tuple[Optional[str], Optional[Any]]:
     """Get authenticated user and their PantryManager instance."""
@@ -51,7 +52,7 @@ def list_preferences(token: Optional[str] = None) -> Dict[str, Any]:
     user_id, pantry = get_user_pantry(token)
     if not pantry:
         return {"status": "error", "message": "Authentication required"}
-    
+
     preferences = pantry.get_preferences()
     return {"status": "success", "preferences": preferences}
 
@@ -83,7 +84,7 @@ def add_preference(
     user_id, pantry = get_user_pantry(token)
     if not pantry:
         return {"status": "error", "message": "Authentication required"}
-    
+
     try:
         success = pantry.add_preference(
             category=category,
@@ -106,7 +107,11 @@ def add_preference(
 
 @mcp.tool()
 def add_recipe(
-    name: str, instructions: str, time_minutes: int, ingredients: List[Dict[str, Any]], token: Optional[str] = None
+    name: str,
+    instructions: str,
+    time_minutes: int,
+    ingredients: List[Dict[str, Any]],
+    token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Add a new recipe to the database.
 
@@ -203,7 +208,11 @@ def get_all_recipes(token: Optional[str] = None) -> Dict[str, Any]:
 
 @mcp.tool()
 def edit_recipe(
-    name: str, instructions: str, time_minutes: int, ingredients: List[Dict[str, Any]], token: Optional[str] = None
+    name: str,
+    instructions: str,
+    time_minutes: int,
+    ingredients: List[Dict[str, Any]],
+    token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Edit an existing recipe in the database.
 
@@ -301,7 +310,11 @@ def get_pantry_contents(token: Optional[str] = None) -> Dict[str, Any]:
 
 @mcp.tool()
 def add_pantry_item(
-    item_name: str, quantity: float, unit: str, notes: str = None, token: Optional[str] = None
+    item_name: str,
+    quantity: float,
+    unit: str,
+    notes: str = None,
+    token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Add an item to the pantry.
 
@@ -329,14 +342,21 @@ def add_pantry_item(
 
     success = pantry.add_item(item_name, quantity, unit, notes)
     if success:
-        return {"status": "success", "message": f"Added {quantity} {unit} of {item_name} to pantry"}
+        return {
+            "status": "success",
+            "message": f"Added {quantity} {unit} of {item_name} to pantry",
+        }
     else:
         return {"status": "error", "message": "Failed to add item to pantry"}
 
 
 @mcp.tool()
 def remove_pantry_item(
-    item_name: str, quantity: float, unit: str, notes: str = None, token: Optional[str] = None
+    item_name: str,
+    quantity: float,
+    unit: str,
+    notes: str = None,
+    token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Remove an item from the pantry.
 
@@ -364,7 +384,10 @@ def remove_pantry_item(
 
     success = pantry.remove_item(item_name, quantity, unit, notes)
     if success:
-        return {"status": "success", "message": f"Removed {quantity} {unit} of {item_name} from pantry"}
+        return {
+            "status": "success",
+            "message": f"Removed {quantity} {unit} of {item_name} from pantry",
+        }
     else:
         return {"status": "error", "message": "Failed to remove item from pantry"}
 
@@ -372,7 +395,7 @@ def remove_pantry_item(
 @mcp.tool()
 def get_week_plan(token: Optional[str] = None) -> Dict[str, Any]:
     """Get the meal plan for the next 7 days.
-    
+
     Parameters
     ----------
     token : str, optional
@@ -391,7 +414,7 @@ def get_week_plan(token: Optional[str] = None) -> Dict[str, Any]:
 @mcp.tool()
 def get_grocery_list(token: Optional[str] = None) -> Dict[str, Any]:
     """Return grocery items needed for the coming week's meal plan.
-    
+
     Parameters
     ----------
     token : str, optional
@@ -406,7 +429,9 @@ def get_grocery_list(token: Optional[str] = None) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def set_recipe_for_date(meal_date: str, recipe_name: str, token: Optional[str] = None) -> Dict[str, Any]:
+def set_recipe_for_date(
+    meal_date: str, recipe_name: str, token: Optional[str] = None
+) -> Dict[str, Any]:
     """Assign a recipe to a certain date
 
     Parameters
@@ -417,7 +442,7 @@ def set_recipe_for_date(meal_date: str, recipe_name: str, token: Optional[str] =
         Name of the recipe to execute
     token : str, optional
         Authentication token (required for remote mode)
-        
+
     Returns
     -------
     Dict[str, Any]
@@ -451,8 +476,11 @@ def create_user(username: str, admin_token: str) -> Dict[str, Any]:
         Response with new user token or error
     """
     if context.mode == "local":
-        return {"status": "error", "message": "User creation not available in local mode"}
-    
+        return {
+            "status": "error",
+            "message": "User creation not available in local mode",
+        }
+
     return context.create_user(username, admin_token)
 
 
@@ -472,12 +500,12 @@ def list_users(admin_token: str) -> Dict[str, Any]:
     """
     if context.mode == "local":
         return {"status": "success", "users": ["local_user"]}
-    
+
     # Verify admin token
     admin_user = context.user_manager.authenticate(admin_token)
     if admin_user != "admin":
         return {"status": "error", "message": "Admin access required"}
-    
+
     users = context.user_manager.list_users()
     return {"status": "success", "users": users}
 
@@ -489,7 +517,7 @@ def get_server_info() -> Dict[str, Any]:
         "status": "success",
         "mode": context.mode,
         "multi_user": context.mode == "remote",
-        "authentication_required": context.mode == "remote"
+        "authentication_required": context.mode == "remote",
     }
 
 

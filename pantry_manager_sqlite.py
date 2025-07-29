@@ -2,10 +2,21 @@ import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from pantry_manager_abc import PantryManager
 
-class PantryManager:
-    def __init__(self, db_path: str = "pantry.db"):
-        self.db_path = db_path
+
+class SQLitePantryManager(PantryManager):
+    """SQLite implementation of the PantryManager interface."""
+
+    def __init__(self, connection_string: str = "pantry.db", **kwargs):
+        """
+        Initialize the SQLite pantry manager.
+
+        Args:
+            connection_string: Path to the SQLite database file
+            **kwargs: Additional configuration options (ignored for SQLite)
+        """
+        self.db_path = connection_string
 
     def _get_connection(self):
         """Get a database connection. Should be used in a context manager."""
