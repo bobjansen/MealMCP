@@ -266,6 +266,20 @@ class PantryManager(ABC):
         pass
 
     @abstractmethod
+    def rate_recipe(self, recipe_name: str, rating: int) -> bool:
+        """
+        Rate a recipe on a scale of 1-5.
+
+        Args:
+            recipe_name: Name of the recipe to rate
+            rating: Rating from 1 (poor) to 5 (excellent)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
     def execute_recipe(self, recipe_name: str) -> tuple[bool, str]:
         """
         Execute a recipe by removing its ingredients from the pantry.

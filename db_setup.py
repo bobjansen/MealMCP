@@ -42,6 +42,7 @@ def setup_database(
             name TEXT NOT NULL UNIQUE,
             instructions TEXT NOT NULL,
             time_minutes INTEGER NOT NULL,
+            rating INTEGER DEFAULT NULL CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
             created_date TEXT NOT NULL,
             last_modified TEXT NOT NULL
         )

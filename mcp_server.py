@@ -286,6 +286,44 @@ def execute_recipe(recipe_name: str, token: Optional[str] = None) -> Dict[str, A
 
 
 @mcp.tool()
+def rate_recipe(
+    recipe_name: str, rating: int, token: Optional[str] = None
+) -> Dict[str, Any]:
+    """Rate a recipe on a scale of 1-5.
+
+    Parameters
+    ----------
+    recipe_name : str
+        Name of the recipe to rate
+    rating : int
+        Rating from 1 (poor) to 5 (excellent)
+    token : str, optional
+        Authentication token (required for remote mode)
+
+    Returns
+    -------
+    Dict[str, Any]
+        Success status and message
+    """
+    user_id, pantry = get_user_pantry(token)
+    if not pantry:
+        return {"status": "error", "message": "Authentication required"}
+
+    if not (1 <= rating <= 5):
+        return {"status": "error", "message": "Rating must be between 1 and 5"}
+
+    success = pantry.rate_recipe(recipe_name, rating)
+
+    if success:
+        return {
+            "status": "success",
+            "message": f"Recipe '{recipe_name}' rated {rating} stars",
+        }
+    else:
+        return {"status": "error", "message": f"Failed to rate recipe '{recipe_name}'"}
+
+
+@mcp.tool()
 def get_pantry_contents(token: Optional[str] = None) -> Dict[str, Any]:
     """Get the current contents of the pantry.
 

@@ -23,10 +23,16 @@ def format_recipe_markdown(recipe):
         for ing in recipe["ingredients"]
     )
 
+    rating_display = ""
+    if recipe.get("rating"):
+        stars = "★" * recipe["rating"] + "☆" * (5 - recipe["rating"])
+        rating_display = f"\n## Rating\n{stars} ({recipe['rating']}/5)"
+
     return f"""# {recipe['name']}
 
 ## Preparation Time
 {recipe['time_minutes']} minutes
+{rating_display}
 
 ## Ingredients
 {ingredients_list}
@@ -293,7 +299,7 @@ def create_recipe_layout():
                                                 className="mt-4",
                                             ),
                                         ],
-                                        width=4,
+                                        width=3,
                                     ),
                                     dbc.Col(
                                         [
@@ -304,7 +310,31 @@ def create_recipe_layout():
                                                 className="mt-4",
                                             ),
                                         ],
-                                        width=4,
+                                        width=3,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                t("Rate Recipe"), className="mt-2"
+                                            ),
+                                            dcc.Dropdown(
+                                                id="recipe-rating-dropdown",
+                                                options=[
+                                                    {"label": f"{i} ★", "value": i}
+                                                    for i in range(1, 6)
+                                                ],
+                                                placeholder=t("Select rating"),
+                                                className="mt-1",
+                                            ),
+                                            dbc.Button(
+                                                t("Rate"),
+                                                id="rate-recipe-button",
+                                                color="warning",
+                                                size="sm",
+                                                className="mt-2",
+                                            ),
+                                        ],
+                                        width=3,
                                     ),
                                 ],
                                 className="mt-3",
@@ -526,6 +556,7 @@ def create_recipe_layout():
                                 columns=[
                                     {"name": t("Recipe Name"), "id": "name"},
                                     {"name": t("Prep Time"), "id": "time_minutes"},
+                                    {"name": t("Rating"), "id": "rating"},
                                     {
                                         "name": t("Actions"),
                                         "id": "actions",
@@ -839,10 +870,17 @@ def update_recipe_list(n_clicks, _):
 
     table_data = []
     for recipe in recipes:
+        rating_display = ""
+        if recipe.get("rating"):
+            rating_display = "★" * recipe["rating"] + "☆" * (5 - recipe["rating"])
+        else:
+            rating_display = "Not rated"
+
         table_data.append(
             {
                 "name": recipe["name"],
                 "time_minutes": f"{recipe['time_minutes']} mins",
+                "rating": rating_display,
                 "actions": f"<button id='view-{recipe['name']}' class='btn btn-primary btn-sm'>View</button>",
             }
         )
@@ -867,14 +905,82 @@ def update_calendar(n_clicks):
 # Combined callback for ingredient lists and edit modal
 @app.callback(
     [
-        Output("edit-recipe-modal", "is_open"),
+        Output("edit-recipe-modal", "is_open", allow_duplicate=True),
+        Output("edit-prep-time", "value", allow_duplicate=True),
+        Output("edit-instructions", "value", allow_duplicate=True),
+        Output("edit-ingredient-list", "children", allow_duplicate=True),
+    ],
+    Input("edit-recipe-button", "n_clicks"),
+    State("recipe-modal-title", "children"),
+    prevent_initial_call=True,
+)
+def open_edit_modal(n_clicks, recipe_title):
+    """Open edit modal and populate with recipe data."""
+    if not n_clicks:
+        return False, None, None, []
+    
+    # Get recipe name from title
+    recipe_name = recipe_title if recipe_title else ""
+    recipe = pantry.get_recipe(recipe_name)
+    
+    if not recipe:
+        return True, None, None, []
+    
+    # Create ingredient rows for edit form
+    ingredient_rows = []
+    for i, ing in enumerate(recipe["ingredients"]):
+        row = dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "edit-ingredient-name", "index": i},
+                            type="text",
+                            value=ing["name"],
+                            placeholder=t("Ingredient name"),
+                        ),
+                    ],
+                    width=4,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            id={"type": "edit-ingredient-quantity", "index": i},
+                            type="number",
+                            value=ing["quantity"],
+                            placeholder=t("Quantity"),
+                        ),
+                    ],
+                    width=3,
+                ),
+                dbc.Col(
+                    [
+                        dcc.Dropdown(
+                            id={"type": "edit-ingredient-unit", "index": i},
+                            options=[{"label": unit, "value": unit} for unit in UNITS],
+                            value=ing["unit"],
+                            placeholder=t("Unit"),
+                        ),
+                    ],
+                    width=3,
+                ),
+            ],
+            className="mb-2",
+        )
+        ingredient_rows.append(row)
+    
+    return True, recipe["time_minutes"], recipe["instructions"], ingredient_rows
+
+
+@app.callback(
+    [
         Output("edit-prep-time", "value"),
         Output("edit-instructions", "value"),
         Output("ingredient-list", "children"),
         Output("edit-ingredient-list", "children"),
     ],
     [
-        Input({"type": "edit-recipe-button", "recipe": ALL}, "n_clicks"),
+        Input("edit-recipe-modal", "is_open"),
         Input("edit-recipe-close", "n_clicks"),
         Input("edit-recipe-save", "n_clicks"),
         Input("add-ingredient-row", "n_clicks"),
@@ -888,7 +994,7 @@ def update_calendar(n_clicks):
     prevent_initial_call=True,
 )
 def handle_ingredient_lists_and_edit(
-    edit_clicks,
+    modal_open,
     close_clicks,
     save_clicks,
     new_ing_clicks,
@@ -899,19 +1005,18 @@ def handle_ingredient_lists_and_edit(
 ):
     ctx = callback_context
     if not ctx.triggered:
-        return False, None, None, new_rows, edit_rows
+        return None, None, new_rows, edit_rows
 
     trigger_id = ctx.triggered[0]["prop_id"]
+    
+    # Handle modal opening - populate with recipe data
+    if trigger_id == "edit-recipe-modal.is_open" and modal_open:
+        # We need to get the recipe name from somewhere - let's add a callback to store it
+        # For now, return empty form
+        return None, None, new_rows, []
 
-    # Handle edit recipe button clicks
-    if ".n_clicks" not in trigger_id:  # It's an edit recipe button
-        clicked_idx = next(
-            (i for i, clicks in enumerate(edit_clicks) if clicks is not None),
-            None,
-        )
-        if clicked_idx is not None:
-            recipe_name = button_ids[clicked_idx]["recipe"]
-            recipe = pantry.get_recipe(recipe_name)
+    # Handle modal close or save  
+    if trigger_id in ["edit-recipe-close.n_clicks", "edit-recipe-save.n_clicks"]:
 
             if recipe:
                 # Create ingredient rows for edit form
@@ -1185,25 +1290,28 @@ def toggle_recipe_modal(active_cell, close_clicks, table_data):
         recipe_name = table_data[active_cell["row"]]["name"]
         recipe = pantry.get_recipe(recipe_name)
         if recipe:
-            return True, recipe["name"], dcc.Markdown(format_recipe_markdown(recipe))
+            return (
+                True,
+                recipe["name"],
+                dcc.Markdown(format_recipe_markdown(recipe)),
+            )
 
     return False, "", None
 
 
 # Callback for recipe actions (making, closing modal)
 @app.callback(
-    Output("make-recipe-message", "children"),
+    Output("make-recipe-message", "children", allow_duplicate=True),
     [
         Input("make-recipe-button", "n_clicks"),
         Input("recipe-modal-close", "n_clicks"),
-        Input("edit-recipe-button", "n_clicks"),
     ],
     [
         State("recipe-modal-title", "children"),
     ],
     prevent_initial_call=True,
 )
-def handle_recipe_actions(make_clicks, close_clicks, edit_clicks, recipe_name):
+def handle_recipe_actions(make_clicks, close_clicks, recipe_name):
     ctx = callback_context
     if not ctx.triggered:
         return None
@@ -1393,6 +1501,52 @@ def update_grocery_list(_n_clicks):
         style_cell={"textAlign": "left"},
         style_header={"backgroundColor": "rgb(230, 230, 230)", "fontWeight": "bold"},
     )
+
+
+@app.callback(
+    [
+        Output("make-recipe-message", "children", allow_duplicate=True),
+        Output("recipes-table", "data", allow_duplicate=True),
+    ],
+    Input("rate-recipe-button", "n_clicks"),
+    [State("recipe-rating-dropdown", "value"), State("recipe-modal-title", "children")],
+    prevent_initial_call=True,
+)
+def rate_recipe(n_clicks, rating, recipe_title):
+    if not n_clicks or not rating:
+        return "", []
+
+    # Extract recipe name from title (remove "Recipe: " prefix)
+    recipe_name = recipe_title.replace("Recipe: ", "") if recipe_title else ""
+
+    if pantry.rate_recipe(recipe_name, rating):
+        # Refresh the recipes table
+        recipes = pantry.get_all_recipes()
+        table_data = []
+        for recipe in recipes:
+            rating_display = ""
+            if recipe.get("rating"):
+                rating_display = "★" * recipe["rating"] + "☆" * (5 - recipe["rating"])
+            else:
+                rating_display = "Not rated"
+
+            table_data.append(
+                {
+                    "name": recipe["name"],
+                    "time_minutes": f"{recipe['time_minutes']} mins",
+                    "rating": rating_display,
+                    "actions": f"<button id='view-{recipe['name']}' class='btn btn-primary btn-sm'>View</button>",
+                }
+            )
+
+        return (
+            dbc.Alert(
+                f"Recipe rated {rating} stars!", color="success", dismissable=True
+            ),
+            table_data,
+        )
+    else:
+        return dbc.Alert("Failed to rate recipe", color="danger", dismissable=True), []
 
 
 if __name__ == "__main__":

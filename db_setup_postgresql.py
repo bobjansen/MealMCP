@@ -71,6 +71,7 @@ def setup_postgresql_database(connection_string: str, drop_existing: bool = Fals
                     name VARCHAR(255) NOT NULL UNIQUE,
                     instructions TEXT NOT NULL,
                     time_minutes INTEGER NOT NULL,
+                    rating INTEGER DEFAULT NULL CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
                     created_date TIMESTAMP NOT NULL,
                     last_modified TIMESTAMP NOT NULL
                 )

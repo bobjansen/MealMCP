@@ -357,6 +357,47 @@ class TestPantryManager(unittest.TestCase):
         self.assertEqual(grocery[0]["unit"], "slices")
         self.assertEqual(grocery[0]["quantity"], 1)
 
+    def test_recipe_rating(self):
+        """Test recipe rating functionality."""
+        # First add a recipe
+        success = self.pantry.add_recipe(
+            name="Test Recipe",
+            instructions="Test instructions",
+            time_minutes=30,
+            ingredients=[
+                {"name": "flour", "quantity": 2, "unit": "cups"},
+                {"name": "eggs", "quantity": 3, "unit": "whole"},
+            ],
+        )
+        self.assertTrue(success, "Should successfully add recipe")
+
+        # Test rating the recipe
+        success = self.pantry.rate_recipe("Test Recipe", 5)
+        self.assertTrue(success, "Should successfully rate recipe")
+
+        # Verify the rating was saved
+        recipe = self.pantry.get_recipe("Test Recipe")
+        self.assertIsNotNone(recipe, "Recipe should exist")
+        self.assertEqual(recipe["rating"], 5, "Recipe should have rating of 5")
+
+        # Test rating with different value
+        success = self.pantry.rate_recipe("Test Recipe", 3)
+        self.assertTrue(success, "Should successfully update rating")
+
+        recipe = self.pantry.get_recipe("Test Recipe")
+        self.assertEqual(recipe["rating"], 3, "Recipe should have updated rating of 3")
+
+        # Test invalid rating values
+        success = self.pantry.rate_recipe("Test Recipe", 0)
+        self.assertFalse(success, "Should fail with rating 0")
+
+        success = self.pantry.rate_recipe("Test Recipe", 6)
+        self.assertFalse(success, "Should fail with rating 6")
+
+        # Test rating non-existent recipe
+        success = self.pantry.rate_recipe("Non-existent Recipe", 4)
+        self.assertFalse(success, "Should fail to rate non-existent recipe")
+
 
 if __name__ == "__main__":
     unittest.main()

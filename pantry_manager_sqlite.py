@@ -422,6 +422,7 @@ class SQLitePantryManager(PantryManager):
                         r.id,
                         r.instructions,
                         r.time_minutes,
+                        r.rating,
                         r.created_date,
                         r.last_modified
                     FROM Recipes r
@@ -433,9 +434,14 @@ class SQLitePantryManager(PantryManager):
                 if not recipe:
                     return None
 
-                recipe_id, instructions, time_minutes, created_date, last_modified = (
-                    recipe
-                )
+                (
+                    recipe_id,
+                    instructions,
+                    time_minutes,
+                    rating,
+                    created_date,
+                    last_modified,
+                ) = recipe
 
                 # Get ingredients
                 cursor.execute(
@@ -459,6 +465,7 @@ class SQLitePantryManager(PantryManager):
                     "name": recipe_name,
                     "instructions": instructions,
                     "time_minutes": time_minutes,
+                    "rating": rating,
                     "created_date": created_date,
                     "last_modified": last_modified,
                     "ingredients": ingredients,
@@ -619,6 +626,37 @@ class SQLitePantryManager(PantryManager):
                 return True
         except Exception as e:
             print(f"Error editing recipe: {e}")
+            return False
+
+    def rate_recipe(self, recipe_name: str, rating: int) -> bool:
+        """
+        Rate a recipe on a scale of 1-5.
+
+        Args:
+            recipe_name: Name of the recipe to rate
+            rating: Rating from 1 (poor) to 5 (excellent)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not (1 <= rating <= 5):
+            print("Rating must be between 1 and 5")
+            return False
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE Recipes
+                    SET rating = ?, last_modified = ?
+                    WHERE name = ?
+                    """,
+                    (rating, datetime.now().isoformat(), recipe_name),
+                )
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error rating recipe: {e}")
             return False
 
     def execute_recipe(self, recipe_name: str) -> tuple[bool, str]:
