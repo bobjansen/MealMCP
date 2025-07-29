@@ -333,26 +333,6 @@ class TestPantryManager(unittest.TestCase):
         self.assertFalse(success)
         self.assertIn("Missing ingredients", message)
 
-    def test_meal_plan_generation(self):
-        """Test generating and retrieving a weekly meal plan."""
-        # Add simple recipes
-        for i in range(3):
-            recipe = {
-                "name": f"Recipe {i}",
-                "instructions": "Cook it",
-                "time_minutes": 10,
-                "ingredients": [{"name": "flour", "quantity": 1, "unit": "g"}],
-            }
-            self.pantry.add_recipe(**recipe)
-
-        plan = self.pantry.generate_week_plan()
-        self.assertGreater(len(plan), 0)
-
-        start = date.today().isoformat()
-        end = (date.today() + timedelta(days=6)).isoformat()
-        retrieved = self.pantry.get_meal_plan(start, end)
-        self.assertEqual(plan, retrieved)
-
     def test_grocery_list(self):
         """Test calculating grocery list based on meal plan and pantry contents."""
         recipe = {

@@ -11,3 +11,6 @@ wheels/
 
 # Sqlite database
 *.db
+
+# vim or other editors
+*.swp
