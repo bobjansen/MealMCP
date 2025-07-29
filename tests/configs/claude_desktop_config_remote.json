@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "mealmcp-remote": {
+      "command": "uv",
+      "args": [
+        "--directory", 
+        "/home/brj/MealMCP",
+        "run",
+        "mcp_server.py"
+      ],
+      "env": {
+        "MCP_MODE": "remote",
+        "ADMIN_TOKEN": "your-admin-token-here"
+      }
+    }
+  }
+}

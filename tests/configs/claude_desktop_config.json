@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "mealmcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/home/brj/MealMCP",
+        "run",
+        "mcp_server.py"
+      ]
+    }
+  }
+}
