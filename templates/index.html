@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Preferences</h5>
+                        <p class="card-text">Manage your food preferences and dietary restrictions</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-cog fa-2x"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('preferences') }}" class="btn btn-light mt-2">
+                    <i class="fas fa-arrow-right"></i> Manage
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Pantry</h5>
+                        <p class="card-text">Track your ingredients and pantry inventory</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('pantry_view') }}" class="btn btn-light mt-2">
+                    <i class="fas fa-arrow-right"></i> View
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Recipes</h5>
+                        <p class="card-text">Create and manage your recipe collection</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-book fa-2x"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('recipes') }}" class="btn btn-light mt-2">
+                    <i class="fas fa-arrow-right"></i> Browse
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Meal Plan</h5>
+                        <p class="card-text">Plan your meals and generate grocery lists</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar fa-2x"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('meal_plan') }}" class="btn btn-light mt-2">
+                    <i class="fas fa-arrow-right"></i> Plan
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Getting Started
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-list-ol"></i> Quick Start Guide:</h6>
+                        <ol>
+                            <li>Set up your <a href="{{ url_for('preferences') }}">food preferences</a></li>
+                            <li>Add ingredients to your <a href="{{ url_for('pantry_view') }}">pantry</a></li>
+                            <li>Create and manage <a href="{{ url_for('recipes') }}">recipes</a></li>
+                            <li>Plan your <a href="{{ url_for('meal_plan') }}">weekly meals</a></li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-star"></i> Features:</h6>
+                        <ul>
+                            <li>Track pantry inventory with transaction history</li>
+                            <li>Rate recipes from 1-5 stars</li>
+                            <li>Execute recipes (removes ingredients from pantry)</li>
+                            <li>Generate grocery lists from meal plans</li>
+                            <li>Manage dietary preferences and allergies</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

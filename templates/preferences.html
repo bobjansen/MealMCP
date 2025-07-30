@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Preferences - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-cog"></i> Food Preferences
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-plus"></i> Add Preference
+                </h5>
+            </div>
+            <form method="POST" action="{{ url_for('add_preference') }}">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select name="category" id="category" class="form-select" required>
+                            <option value="">Select category...</option>
+                            <option value="like">Like</option>
+                            <option value="dietary">Dietary Restriction</option>
+                            <option value="allergy">Allergy</option>
+                            <option value="dislike">Dislike</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="item" class="form-label">Item</label>
+                        <input type="text" class="form-control" id="item" name="item" 
+                               placeholder="e.g., vegetarian, peanuts, mushrooms" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="level" class="form-label">Level</label>
+                        <select name="level" id="level" class="form-select" required>
+                            <option value="">Select level...</option>
+                            <option value="required">Required</option>
+                            <option value="preferred">Preferred</option>
+                            <option value="avoid">Avoid</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                  placeholder="Additional details..."></textarea>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus"></i> Add Preference
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Current Preferences
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if preferences %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Category</th>
+                                <th>Item</th>
+                                <th>Level</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pref in preferences %}
+                            <tr>
+                                <td>
+                                    {% if pref.category == 'like' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-heart"></i> Like
+                                        </span>
+                                    {% elif pref.category == 'dietary' %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-leaf"></i> Dietary
+                                        </span>
+                                    {% elif pref.category == 'allergy' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-exclamation-triangle"></i> Allergy
+                                        </span>
+                                    {% elif pref.category == 'dislike' %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-thumbs-down"></i> Dislike
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ pref.item }}</td>
+                                <td>
+                                    {% if pref.level == 'required' %}
+                                        <span class="badge bg-danger">Required</span>
+                                    {% elif pref.level == 'preferred' %}
+                                        <span class="badge bg-primary">Preferred</span>
+                                    {% elif pref.level == 'avoid' %}
+                                        <span class="badge bg-warning text-dark">Avoid</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ pref.notes or '-' }}</td>
+                                <td>
+                                    <a href="{{ url_for('delete_preference', pref_id=pref.id) }}" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('Are you sure you want to delete this preference?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-cog fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No preferences set</h5>
+                    <p class="text-muted">Add your first food preference to get started!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

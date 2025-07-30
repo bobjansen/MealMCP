@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Pantry - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-box"></i> Pantry Management
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <!-- Add Item Form -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-plus"></i> Add Item to Pantry
+                </h5>
+            </div>
+            <form method="POST" action="{{ url_for('add_pantry_item') }}">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="item_name" class="form-label">Item Name</label>
+                        <input type="text" class="form-control" id="item_name" name="item_name" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="quantity" class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                                   step="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="unit" class="form-label">Unit</label>
+                            <select name="unit" id="unit" class="form-select" required>
+                                <option value="">Select unit...</option>
+                                {% for unit in units %}
+                                <option value="{{ unit }}">{{ unit }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <input type="text" class="form-control" id="notes" name="notes" 
+                               placeholder="e.g., expiry date, brand">
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-plus"></i> Add to Pantry
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Remove Item Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-minus"></i> Remove Item from Pantry
+                </h5>
+            </div>
+            <form method="POST" action="{{ url_for('remove_pantry_item') }}">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="remove_item_name" class="form-label">Item Name</label>
+                        <input type="text" class="form-control" id="remove_item_name" name="item_name" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="remove_quantity" class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="remove_quantity" name="quantity" 
+                                   step="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="remove_unit" class="form-label">Unit</label>
+                            <select name="unit" id="remove_unit" class="form-select" required>
+                                <option value="">Select unit...</option>
+                                {% for unit in units %}
+                                <option value="{{ unit }}">{{ unit }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="remove_notes" class="form-label">Notes (optional)</label>
+                        <input type="text" class="form-control" id="remove_notes" name="notes" 
+                               placeholder="e.g., used for cooking">
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="fas fa-minus"></i> Remove from Pantry
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <!-- Current Pantry Contents -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Current Pantry Contents
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if contents %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Item</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item_name, units_dict in contents.items() %}
+                                {% for unit, quantity in units_dict.items() %}
+                                <tr>
+                                    <td>{{ item_name }}</td>
+                                    <td>{{ "%.2f"|format(quantity) }}</td>
+                                    <td>{{ unit }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Pantry is empty</h5>
+                    <p class="text-muted">Add your first item to get started!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i> Recent Transactions
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions[:10] %}
+                            <tr>
+                                <td>
+                                    <small>{{ transaction.transaction_date[:10] }}</small>
+                                </td>
+                                <td>
+                                    {% if transaction.transaction_type == 'addition' %}
+                                        <span class="badge bg-success">+</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ transaction.item_name }}</td>
+                                <td>{{ "%.2f"|format(transaction.quantity) }}</td>
+                                <td>{{ transaction.unit }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No transactions yet</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

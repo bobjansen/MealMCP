@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ recipe.name }} - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('recipes') }}">Recipes</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('view_recipe', recipe_name=recipe.name) }}">{{ recipe.name }}</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-edit"></i> Edit Recipe: {{ recipe.name }}
+                </h2>
+            </div>
+            <form method="POST" action="{{ url_for('edit_recipe', recipe_name=recipe.name) }}">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="time_minutes" class="form-label">Preparation Time (minutes)</label>
+                            <input type="number" class="form-control" id="time_minutes" name="time_minutes" 
+                                   value="{{ recipe.time_minutes }}" required min="1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Current Rating</label>
+                            <div class="form-control-plaintext">
+                                {% if recipe.rating %}
+                                    {% for i in range(recipe.rating) %}★{% endfor %}{% for i in range(5 - recipe.rating) %}☆{% endfor %}
+                                    ({{ recipe.rating }}/5)
+                                {% else %}
+                                    <span class="text-muted">Not rated</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="instructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" id="instructions" name="instructions" 
+                                  rows="6" required>{{ recipe.instructions }}</textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-list"></i> Ingredients</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addIngredient()">
+                                <i class="fas fa-plus"></i> Add Ingredient
+                            </button>
+                        </div>
+                        
+                        <div id="ingredients-container">
+                            {% for ingredient in recipe.ingredients %}
+                            <div class="ingredient-row mb-2">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" name="ingredient_name[]" 
+                                               placeholder="Ingredient name" value="{{ ingredient.name }}" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" class="form-control" name="ingredient_quantity[]" 
+                                               placeholder="Quantity" value="{{ ingredient.quantity }}" step="0.01" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" name="ingredient_unit[]" required>
+                                            <option value="">Select unit...</option>
+                                            {% for unit in units %}
+                                            <option value="{{ unit }}" {% if unit == ingredient.unit %}selected{% endif %}>{{ unit }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger w-100" onclick="removeIngredient(this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if not recipe.ingredients %}
+                        <div class="ingredient-row mb-2">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="ingredient_name[]" 
+                                           placeholder="Ingredient name" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control" name="ingredient_quantity[]" 
+                                           placeholder="Quantity" step="0.01" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select" name="ingredient_unit[]" required>
+                                        <option value="">Select unit...</option>
+                                        {% for unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger w-100" onclick="removeIngredient(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('view_recipe', recipe_name=recipe.name) }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addIngredient() {
+    const container = document.getElementById('ingredients-container');
+    const newRow = document.createElement('div');
+    newRow.className = 'ingredient-row mb-2';
+    newRow.innerHTML = `
+        <div class="row">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="ingredient_name[]" 
+                       placeholder="Ingredient name" required>
+            </div>
+            <div class="col-md-3">
+                <input type="number" class="form-control" name="ingredient_quantity[]" 
+                       placeholder="Quantity" step="0.01" required>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="ingredient_unit[]" required>
+                    <option value="">Select unit...</option>
+                    {% for unit in units %}
+                    <option value="{{ unit }}">{{ unit }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger w-100" onclick="removeIngredient(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(newRow);
+}
+
+function removeIngredient(button) {
+    const ingredientRow = button.closest('.ingredient-row');
+    const container = document.getElementById('ingredients-container');
+    
+    // Don't remove if it's the last ingredient
+    if (container.children.length > 1) {
+        ingredientRow.remove();
+    } else {
+        // Clear the inputs instead of removing the row
+        const inputs = ingredientRow.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.value = '';
+        });
+    }
+}
+</script>
+{% endblock %}
