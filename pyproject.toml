@@ -11,4 +11,7 @@ dependencies = [
     "mcp[cli]>=1.12.2",
     "pytest>=8.4.1",
     "psycopg2-binary>=2.9.0",
+    "flask>=2.0.0",
+    "werkzeug>=2.0.0",
+    "gunicorn>=23.0.0",
 ]

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-user-circle"></i> My Profile</h1>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+
+        <!-- User Information Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Account Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Username:</strong>
+                        <p class="text-muted">{{ user.username }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Email:</strong>
+                        <p class="text-muted">{{ user.email }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Account Created:</strong>
+                        <p class="text-muted">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong>
+                        <p class="text-success">
+                            <i class="fas fa-check-circle"></i> Active
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-key"></i> Change Password</h5>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('change_password') }}">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="old_password" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="old_password" name="old_password" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required minlength="8">
+                            <small class="form-text text-muted">At least 8 characters</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-key"></i> Change Password
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Data Management Card -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-database"></i> Data Management</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Your meal data is stored securely in a shared database with complete user isolation. 
+                    All recipes, pantry items, and preferences are private to your account.
+                    Each user's data is separated using secure database queries that ensure no cross-user access.
+                </p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-shield-alt fa-2x text-success mb-2"></i>
+                                <h6>Secure & Private</h6>
+                                <small class="text-muted">Your data is protected and isolated</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-sync-alt fa-2x text-primary mb-2"></i>
+                                <h6>Always Available</h6>
+                                <small class="text-muted">Access your data from anywhere</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Client-side password confirmation validation
+    document.getElementById('confirm_password').addEventListener('input', function() {
+        const newPassword = document.getElementById('new_password').value;
+        const confirmPassword = this.value;
+        
+        if (newPassword !== confirmPassword) {
+            this.setCustomValidity('Passwords do not match');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+</script>
+{% endblock %}
