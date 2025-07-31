@@ -106,7 +106,7 @@ def main():
 
     # Import and run the Flask app
     try:
-        from app_enhanced import app
+        from app_flask import app
 
         app.run(host="0.0.0.0", port=5000, debug=True)
     except KeyboardInterrupt:
