@@ -26,9 +26,9 @@ class MCPContext:
             )
 
             # Initialize database if it doesn't exist
-            from db_setup_unified import setup_database
+            from db_setup import setup_database
 
-            setup_database(connection_string=db_path)
+            setup_database(db_path)
 
     def authenticate_and_get_pantry(
         self, token: Optional[str] = None
@@ -58,9 +58,9 @@ class MCPContext:
             )
 
             # Initialize database if it doesn't exist
-            from db_setup_unified import setup_database
+            from db_setup import setup_database
 
-            setup_database(connection_string=db_path)
+            setup_database(db_path)
 
         return user_id, self.pantry_managers[user_id]
 

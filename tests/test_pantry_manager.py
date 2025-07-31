@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from pantry_manager_factory import create_pantry_manager
-from db_setup_unified import setup_database
+from db_setup import setup_database
 from datetime import date, timedelta
 
 
@@ -19,7 +19,7 @@ class TestPantryManager(unittest.TestCase):
         self.pantry = create_pantry_manager(connection_string=self.db_path)
 
         # Run the database setup
-        setup_database(connection_string=self.db_path)
+        setup_database(self.db_path)
 
     def test_preferences_crud(self):
         """Test creating, reading, updating, and deleting preferences."""
@@ -102,7 +102,6 @@ class TestPantryManager(unittest.TestCase):
         # Test updating non-existent preference
         success = self.pantry.update_preference(999, "required", "test")
         self.assertFalse(success, "Should fail to update non-existent preference")
-        setup_database(connection_string=self.db_path)
 
     def tearDown(self):
         # Close any remaining connections and remove the temporary database

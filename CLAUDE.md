@@ -76,10 +76,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pantry_manager_postgresql.py`: PostgreSQL implementation of PantryManager (single-user backend)
 - `pantry_manager_shared.py`: SharedPantryManager implementation for multi-user PostgreSQL with user_id scoping
 - `pantry_manager_factory.py`: Factory class for creating PantryManager instances
-- `db_setup_unified.py`: Unified database setup supporting both SQLite and PostgreSQL
-- `db_setup.py`: SQLite-specific database schema creation
-- `db_setup_postgresql.py`: PostgreSQL-specific database schema creation
-- `db_setup_shared.py`: Shared PostgreSQL database schema with user_id foreign keys
+- `db_setup.py`: SQLite database schema creation for single-user mode
+- `db_setup_shared.py`: PostgreSQL database schema with user_id scoping for multi-user mode
 - `web_auth_simple.py`: Simple user authentication system for Flask web interface
 - `app_flask.py`: Main Flask web application with multi-user support
 - `run_web.py`: Smart web application launcher with backend detection and validation
@@ -97,9 +95,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Include unit tests in the `tests/` directory
 
 ### Database Changes
-- For SQLite: Modify `db_setup.py` for schema changes
-- For PostgreSQL: Modify `db_setup_postgresql.py` for schema changes
-- Update both `SQLitePantryManager` and `PostgreSQLPantryManager` implementations
+- **For SQLite (single-user)**: Modify `db_setup.py` for schema changes
+- **For PostgreSQL (multi-user)**: Modify `db_setup_shared.py` for schema changes
+- Update corresponding PantryManager implementations (`SQLitePantryManager` and `SharedPantryManager`)
 - Test with both database backends and both interfaces (web and MCP)
 
 ### Database Backend Configuration
