@@ -3,25 +3,6 @@
 {% block title %}Dashboard - Meal Manager{% endblock %}
 
 {% block content %}
-{% if requires_auth and current_user %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-success" role="alert">
-            <h4 class="alert-heading"><i class="fas fa-user-circle"></i> Welcome back, {{ current_user }}!</h4>
-            <p class="mb-0">You're using PostgreSQL mode with secure user accounts. Your data is private and isolated.</p>
-        </div>
-    </div>
-</div>
-{% elif not requires_auth %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-info" role="alert">
-            <h4 class="alert-heading"><i class="fas fa-database"></i> SQLite Mode</h4>
-            <p class="mb-0">You're running in local SQLite mode. No authentication required - perfect for personal use!</p>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <div class="row">
     <div class="col-md-6 col-lg-3 mb-4">

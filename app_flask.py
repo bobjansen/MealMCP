@@ -95,7 +95,6 @@ def login():
         if success:
             session["user_id"] = user_info["id"]
             session["username"] = user_info["username"]
-            flash(f'Welcome back, {user_info["username"]}!', "success")
             return redirect(url_for("index"))
         else:
             flash("Invalid username or password.", "error")
