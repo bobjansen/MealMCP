@@ -38,6 +38,16 @@ from psycopg2.extras import RealDictCursor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# Add middleware to log all requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")
+    return response
+
+
 # Create FastAPI app for OAuth endpoints
 app = FastAPI(title="MealMCP OAuth Server", version="1.0.0")
 
@@ -93,6 +103,12 @@ async def oauth_protected_resource_metadata():
 
 
 # OAuth Endpoints
+@app.options("/register")
+async def register_options():
+    """OPTIONS for CORS preflight on register endpoint."""
+    return {"message": "OK"}
+
+
 @app.post("/register")
 async def register_client(request: Request):
     """Dynamic Client Registration (RFC 7591)."""
@@ -107,6 +123,12 @@ async def register_client(request: Request):
     except Exception as e:
         logger.error(f"Client registration error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.options("/authorize")
+async def authorize_options():
+    """OPTIONS for CORS preflight on authorize endpoint."""
+    return {"message": "OK"}
 
 
 @app.get("/authorize")
@@ -390,6 +412,12 @@ async def register_user_post(
         return HTMLResponse(content=register_form_with_error, status_code=400)
 
 
+@app.options("/token")
+async def token_options():
+    """OPTIONS for CORS preflight on token endpoint."""
+    return {"message": "OK"}
+
+
 @app.post("/token")
 async def token_endpoint(
     grant_type: str = Form(...),
@@ -571,6 +599,50 @@ async def debug_clients():
             )
             clients = [dict(row) for row in cursor.fetchall()]
             return {"clients": clients}
+
+
+# MCP Tool endpoints that require authentication
+@app.post("/mcp/tools/list")
+async def mcp_list_tools(request: Request, user_id: str = Depends(get_current_user)):
+    """MCP list tools endpoint."""
+    if not user_id:
+        return JSONResponse(
+            content={"error": "unauthorized", "message": "Authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"tools": []}
+
+
+@app.post("/mcp/tools/call")
+async def mcp_call_tool(request: Request, user_id: str = Depends(get_current_user)):
+    """MCP call tool endpoint."""
+    if not user_id:
+        return JSONResponse(
+            content={"error": "unauthorized", "message": "Authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"result": "success"}
+
+
+# Catch-all MCP endpoint for other possible tool calls
+@app.api_route("/mcp/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+async def mcp_catchall(
+    request: Request, path: str, user_id: str = Depends(get_current_user)
+):
+    """Catch-all for MCP endpoints."""
+    logger.info(f"MCP request to /{path} without authentication")
+    if not user_id:
+        return JSONResponse(
+            content={"error": "unauthorized", "message": "Authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"status": "not_implemented", "path": path}
 
 
 # Health check endpoint
