@@ -1,4 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    session,
+)
 from functools import wraps
 from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
@@ -9,8 +18,16 @@ from datetime import date, timedelta, datetime
 import json
 import os
 
+# Generate secret key if not provided
+secret_key = os.getenv("FLASK_SECRET_KEY")
+if not secret_key:
+    secret_key = secrets.token_urlsafe(32)
+    os.environ["FLASK_SECRET_KEY"] = secret_key
+    print(f"Generated Flask secret key: {secret_key}")
+
+
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "77399cbcac5777e1b6ffc34c7418628adb1fb7d17a04761e6408e9d63ab66e06")
+app.secret_key = secret_key
 
 # Determine backend mode
 backend = os.getenv("PANTRY_BACKEND", "sqlite")
@@ -30,14 +47,14 @@ def get_current_user_pantry():
     """Get the current user's pantry manager."""
     if backend == "sqlite":
         return pantry
-    
+
     if "user_id" not in session:
         return None
-        
+
     user_info = auth_manager.get_user_by_id(session["user_id"])
     if not user_info:
         return None
-    
+
     # Use SharedPantryManager with user_id scoping for PostgreSQL
     return SharedPantryManager(
         connection_string=connection_string,
@@ -48,16 +65,18 @@ def get_current_user_pantry():
 
 def requires_auth(f):
     """Decorator to require authentication in PostgreSQL mode."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if backend == "sqlite":
             return f(*args, **kwargs)
-            
+
         if "user_id" not in session:
             flash("Please log in to access this page.", "warning")
             return redirect(url_for("login"))
-            
+
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -81,24 +100,24 @@ def login():
     """User login page."""
     if backend == "sqlite":
         return redirect(url_for("index"))
-        
+
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        
+
         if not username or not password:
             flash("Please enter both username and password.", "error")
             return render_template("auth/login.html")
-            
+
         success, user_info = auth_manager.authenticate_user(username, password)
-        
+
         if success:
             session["user_id"] = user_info["id"]
             session["username"] = user_info["username"]
             return redirect(url_for("index"))
         else:
             flash("Invalid username or password.", "error")
-            
+
     return render_template("auth/login.html")
 
 
@@ -107,29 +126,29 @@ def register():
     """User registration page."""
     if backend == "sqlite":
         return redirect(url_for("index"))
-        
+
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
-        
+
         if not all([username, email, password, confirm_password]):
             flash("Please fill in all fields.", "error")
             return render_template("auth/register.html")
-            
+
         if password != confirm_password:
             flash("Passwords do not match.", "error")
             return render_template("auth/register.html")
-            
+
         success, message = auth_manager.create_user(username, email, password)
-        
+
         if success:
             flash("Account created successfully! Please log in.", "success")
             return redirect(url_for("login"))
         else:
             flash(message, "error")
-            
+
     return render_template("auth/register.html")
 
 
@@ -148,7 +167,7 @@ def profile():
     """User profile page."""
     if backend == "sqlite":
         return redirect(url_for("index"))
-        
+
     user_info = auth_manager.get_user_by_id(session["user_id"])
     return render_template("auth/profile.html", user=user_info)
 
@@ -159,28 +178,28 @@ def change_password():
     """Change user password."""
     if backend == "sqlite":
         return redirect(url_for("index"))
-        
+
     old_password = request.form.get("old_password")
     new_password = request.form.get("new_password")
     confirm_password = request.form.get("confirm_password")
-    
+
     if not all([old_password, new_password, confirm_password]):
         flash("Please fill in all password fields.", "error")
         return redirect(url_for("profile"))
-        
+
     if new_password != confirm_password:
         flash("New passwords do not match.", "error")
         return redirect(url_for("profile"))
-        
+
     success, message = auth_manager.change_password(
         session["user_id"], old_password, new_password
     )
-    
+
     if success:
         flash(message, "success")
     else:
         flash(message, "error")
-        
+
     return redirect(url_for("profile"))
 
 
@@ -202,7 +221,7 @@ def preferences():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     prefs = user_pantry.get_preferences()
     return render_template("preferences.html", preferences=prefs)
 
@@ -215,7 +234,7 @@ def add_preference():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     category = request.form.get("category")
     item = request.form.get("item")
     level = request.form.get("level")
@@ -237,7 +256,7 @@ def delete_preference(pref_id):
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     if user_pantry.delete_preference(pref_id):
         flash("Preference deleted successfully!", "success")
     else:
@@ -254,7 +273,7 @@ def pantry_view():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     contents = user_pantry.get_pantry_contents()
     transactions = user_pantry.get_transaction_history()
     return render_template(
@@ -270,7 +289,7 @@ def add_pantry_item():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     item_name = request.form.get("item_name")
     quantity = float(request.form.get("quantity", 0))
     unit = request.form.get("unit")
@@ -292,7 +311,7 @@ def remove_pantry_item():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     item_name = request.form.get("item_name")
     quantity = float(request.form.get("quantity", 0))
     unit = request.form.get("unit")
@@ -314,7 +333,7 @@ def recipes():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     recipes_list = user_pantry.get_all_recipes()
     return render_template("recipes.html", recipes=recipes_list)
 
@@ -327,7 +346,7 @@ def view_recipe(recipe_name):
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     recipe = user_pantry.get_recipe(recipe_name)
     if not recipe:
         flash("Recipe not found.", "error")
@@ -350,7 +369,7 @@ def add_recipe():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     name = request.form.get("name")
     instructions = request.form.get("instructions")
     time_minutes = int(request.form.get("time_minutes", 0))
@@ -387,7 +406,7 @@ def edit_recipe_form(recipe_name):
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     recipe = user_pantry.get_recipe(recipe_name)
     if not recipe:
         flash("Recipe not found.", "error")
@@ -403,7 +422,7 @@ def edit_recipe(recipe_name):
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     instructions = request.form.get("instructions")
     time_minutes = int(request.form.get("time_minutes", 0))
 
@@ -439,7 +458,7 @@ def rate_recipe(recipe_name):
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     rating = int(request.form.get("rating", 0))
 
     if user_pantry.rate_recipe(recipe_name, rating):
@@ -458,7 +477,7 @@ def execute_recipe(recipe_name):
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     success, message = user_pantry.execute_recipe(recipe_name)
 
     if success:
@@ -477,7 +496,7 @@ def meal_plan():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     # Get current week's meal plan
     start = date.today()
     end = start + timedelta(days=6)
@@ -503,7 +522,7 @@ def set_meal_plan():
     if not user_pantry:
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
-        
+
     meal_date = request.form.get("meal_date")
     recipe_name = request.form.get("recipe_name")
 
