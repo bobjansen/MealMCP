@@ -616,50 +616,33 @@ async def health():
     return {"status": "healthy", "server": "MealMCP"}
 
 
-@app.post("/mcp")
-async def mcp_http_handler(request: Request):
-    """Handle MCP protocol over HTTP."""
-    try:
-        # Get request body
-        body = await request.body()
-        data = json.loads(body)
-        
-        # Process MCP request through FastMCP
-        # Note: This is a simplified implementation
-        # A full implementation would need proper MCP protocol handling
-        return {"message": "MCP HTTP endpoint - implementation needed"}
-        
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+# Create separate FastAPI apps for MCP transports to avoid path conflicts
+sse_app = FastAPI()
+sse_app.mount("/", mcp.sse_app())
 
+http_app = FastAPI()
+http_app.mount("/", mcp.streamable_http_app())
 
-@app.get("/sse")
-async def sse_endpoint(request: Request):
-    """Server-Sent Events endpoint for MCP protocol."""
-    async def event_generator():
-        try:
-            # Send initial connection event
-            yield f"data: {json.dumps({'type': 'connected', 'server': 'MealMCP'})}\n\n"
-            
-            # Keep connection alive
-            while True:
-                # In a real implementation, this would handle MCP protocol over SSE
-                await asyncio.sleep(30)  # Send heartbeat every 30 seconds
-                yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': str(date.today())})}\n\n"
-                
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-    
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
+# Add CORS to the MCP transport apps
+sse_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+http_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"],
+)
+
+# Mount the transport apps to the main app
+app.mount("/sse", sse_app)
+app.mount("/mcp", http_app)
 
 
 # Mount the FastMCP app for stdio compatibility
