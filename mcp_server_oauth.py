@@ -267,6 +267,7 @@ async def authorize_post(
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
         # Create authorization code
+        logger.info(f"Creating authorization code for user {user_id}")
         auth_code = oauth.create_authorization_code(
             client_id=client_id,
             user_id=user_id,
@@ -282,6 +283,7 @@ async def authorize_post(
             params["state"] = state
 
         redirect_url = f"{redirect_uri}?{urlencode(params)}"
+        logger.info(f"OAuth flow successful! Redirecting to Claude: {redirect_url}")
         return RedirectResponse(url=redirect_url)
 
     except Exception as e:
