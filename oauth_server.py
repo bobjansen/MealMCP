@@ -356,6 +356,45 @@ class OAuthServer:
                 print(f"[DEBUG] SQLite query result: {result}")
                 return result is not None
 
+    def register_existing_client(
+        self, client_id: str, client_name: str, redirect_uris: list
+    ) -> bool:
+        """Register a client with a specific client_id (for Claude Desktop compatibility)."""
+        print(f"[DEBUG] Registering existing client_id: {client_id}")
+
+        client_secret = secrets.token_urlsafe(32)
+        redirect_uris_json = json.dumps(redirect_uris)
+
+        try:
+            if self.use_postgresql:
+                with psycopg2.connect(self.postgres_url) as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            """
+                            INSERT INTO oauth_clients (client_id, client_secret, redirect_uris, client_name)
+                            VALUES (%s, %s, %s, %s)
+                        """,
+                            (client_id, client_secret, redirect_uris_json, client_name),
+                        )
+                        conn.commit()
+                        print(
+                            f"[DEBUG] Existing client registered successfully in PostgreSQL"
+                        )
+            else:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        """
+                        INSERT INTO oauth_clients (client_id, client_secret, redirect_uris, client_name)
+                        VALUES (?, ?, ?, ?)
+                    """,
+                        (client_id, client_secret, redirect_uris_json, client_name),
+                    )
+                    print(f"[DEBUG] Existing client registered successfully in SQLite")
+            return True
+        except Exception as e:
+            print(f"[DEBUG] Failed to register existing client: {e}")
+            return False
+
     def validate_redirect_uri(self, client_id: str, redirect_uri: str) -> bool:
         """Validate redirect URI for client."""
         if self.use_postgresql:

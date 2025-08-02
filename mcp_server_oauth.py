@@ -127,7 +127,32 @@ async def authorize(
     # Validate client
     if not oauth.validate_client(client_id):
         logger.error(f"Invalid client_id: {client_id}")
-        raise HTTPException(status_code=400, detail="Invalid client_id")
+        logger.error(
+            f"Client not found. This usually means Claude Desktop didn't register the client first."
+        )
+        logger.error(f"Expected flow: 1) POST /register 2) GET /authorize")
+
+        # Auto-register Claude client if it looks like a Claude request
+        if redirect_uri.startswith("https://claude.ai/api/"):
+            logger.info(f"Auto-registering Claude client with existing client_id...")
+
+            # Register the client with Claude's specific client_id
+            redirect_uris = [redirect_uri, "https://claude.ai/api/mcp/auth_callback"]
+            success = oauth.register_existing_client(
+                client_id=client_id,
+                client_name="Claude.ai (Auto-registered)",
+                redirect_uris=redirect_uris,
+            )
+
+            if success:
+                logger.info(
+                    f"Successfully auto-registered Claude client with ID: {client_id}"
+                )
+            else:
+                logger.error(f"Failed to auto-register Claude client")
+                raise HTTPException(status_code=400, detail="Invalid client_id")
+        else:
+            raise HTTPException(status_code=400, detail="Invalid client_id")
 
     # Validate redirect URI
     if not oauth.validate_redirect_uri(client_id, redirect_uri):
