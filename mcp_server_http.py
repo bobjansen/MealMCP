@@ -616,33 +616,68 @@ async def health():
     return {"status": "healthy", "server": "MealMCP"}
 
 
-# Create separate FastAPI apps for MCP transports to avoid path conflicts
-sse_app = FastAPI()
-sse_app.mount("/", mcp.sse_app())
+@app.get("/sse")
+async def sse_endpoint(request: Request):
+    """Custom SSE endpoint for MCP protocol."""
+    async def event_generator():
+        try:
+            # Send MCP initialization
+            yield f"event: message\n"
+            yield f"data: {json.dumps({'jsonrpc': '2.0', 'method': 'notifications/initialized', 'params': {}})}\n\n"
+            
+            # Keep connection alive and handle MCP messages
+            while True:
+                await asyncio.sleep(1)
+                # Send heartbeat to keep connection alive
+                yield f"event: ping\n"
+                yield f"data: {json.dumps({'type': 'ping', 'timestamp': str(date.today())})}\n\n"
+                
+        except Exception as e:
+            yield f"event: error\n"
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "*",
+        }
+    )
 
-http_app = FastAPI()
-http_app.mount("/", mcp.streamable_http_app())
-
-# Add CORS to the MCP transport apps
-sse_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-http_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"], 
-    allow_headers=["*"],
-)
-
-# Mount the transport apps to the main app
-app.mount("/sse", sse_app)
-app.mount("/mcp", http_app)
+@app.post("/mcp")
+async def mcp_http_handler(request: Request):
+    """Handle MCP protocol over HTTP."""
+    try:
+        body = await request.body()
+        data = json.loads(body)
+        
+        # Simple MCP request handler
+        if data.get("method") == "tools/list":
+            tools_response = await mcp.list_tools()
+            return {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "result": {
+                    "tools": tools_response.tools if hasattr(tools_response, 'tools') else tools_response
+                }
+            }
+        
+        return {
+            "jsonrpc": "2.0", 
+            "id": data.get("id"),
+            "error": {"code": -32601, "message": "Method not found"}
+        }
+        
+    except Exception as e:
+        return {
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {"code": -32700, "message": f"Parse error: {str(e)}"}
+        }
 
 
 # Mount the FastMCP app for stdio compatibility
@@ -694,7 +729,24 @@ def run_server():
         log_level="info"
     )
 
+def run_sse_server():
+    """Run just the FastMCP SSE server directly."""
+    host = os.getenv("MCP_HOST", "localhost")
+    port = int(os.getenv("MCP_PORT", "8000"))
+    
+    print(f"Starting FastMCP SSE server on {host}:{port}")
+    print(f"Mode: {context.mode}")
+    print(f"SSE Endpoint: http://{host}:{port}/")
+    
+    # Run FastMCP SSE server directly
+    import asyncio
+    asyncio.run(mcp.run_sse_async(host=host, port=port))
+
 
 # Entry point to run the server
 if __name__ == "__main__":
-    run_server()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--sse-only":
+        run_sse_server()
+    else:
+        run_server()
