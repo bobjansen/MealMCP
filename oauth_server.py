@@ -294,17 +294,45 @@ class OAuthServer:
         self, username: str, password: str
     ) -> Optional[str]:
         """Authenticate user credentials against PostgreSQL."""
+        print(f"[DEBUG] Attempting PostgreSQL authentication for username: {username}")
+
         with psycopg2.connect(self.postgres_url) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                # First, let's see what users exist
+                cursor.execute("SELECT username, password_hash FROM users LIMIT 5")
+                all_users = cursor.fetchall()
+                print(
+                    f"[DEBUG] Sample users in database: {[(u['username'], u['password_hash'][:10] + '...') for u in all_users]}"
+                )
+
+                # Now try to authenticate
                 cursor.execute(
                     """
-                    SELECT id FROM users
+                    SELECT id, username, password_hash FROM users
                     WHERE username = %s AND password_hash = %s
                 """,
                     (username, password),
                 )
 
                 result = cursor.fetchone()
+                print(f"[DEBUG] Authentication result for {username}: {result}")
+
+                if not result:
+                    # Check if user exists with different password
+                    cursor.execute(
+                        "SELECT id, username, password_hash FROM users WHERE username = %s",
+                        (username,),
+                    )
+                    user_check = cursor.fetchone()
+                    if user_check:
+                        print(
+                            f"[DEBUG] User {username} exists but password doesn't match"
+                        )
+                        print(f"[DEBUG] Expected: {password}")
+                        print(f"[DEBUG] In DB: {user_check['password_hash']}")
+                    else:
+                        print(f"[DEBUG] User {username} does not exist in database")
+
                 return str(result["id"]) if result else None
 
     def validate_client(self, client_id: str, client_secret: str = None) -> bool:

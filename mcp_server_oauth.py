@@ -253,9 +253,16 @@ async def authorize_post(
 ):
     """Handle authorization form submission."""
     try:
+        logger.info(
+            f"Authorization form submitted: username={username}, client_id={client_id}"
+        )
+
         # Authenticate user
         user_id = oauth.authenticate_user(username, password)
+        logger.info(f"Authentication result for {username}: {user_id}")
+
         if not user_id:
+            logger.error(f"Authentication failed for username: {username}")
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
         # Create authorization code
