@@ -50,16 +50,20 @@ For local testing, use:
 
 ### 3. Authentication Flow
 
-When Claude Desktop first connects:
+Claude Desktop uses its own OAuth proxy system. Here's the actual flow:
 
 1. **Initial Request**: Claude attempts to call MCP tools
 2. **401 Response**: Server responds with `401 Unauthorized` and `WWW-Authenticate: Bearer` header
 3. **OAuth Discovery**: Claude fetches `/.well-known/oauth-authorization-server`
-4. **Authorization Request**: Claude opens authorization URL in browser
-5. **User Login**: You log in or register at `https://mcp.bobjansen.net/authorize`
-6. **Authorization Code**: Server redirects back to Claude with auth code
-7. **Token Exchange**: Claude exchanges code for access token using PKCE
-8. **Authenticated Access**: Claude uses Bearer token for all subsequent requests
+4. **Dynamic Client Registration**: Claude automatically registers as OAuth client via `/register`
+5. **Claude Proxy**: Claude opens `https://claude.ai/api/organizations/.../mcp/start-auth/...`
+6. **Proxy to Your Server**: Claude's proxy redirects to your server's `/authorize` endpoint
+7. **User Login**: You log in or register at `https://mcp.bobjansen.net/authorize`
+8. **Authorization Code**: Server redirects back to Claude's proxy with auth code
+9. **Token Exchange**: Claude exchanges code for access token using PKCE
+10. **Authenticated Access**: Claude uses Bearer token for all subsequent requests
+
+**Important**: The redirect URLs you see like `https://claude.ai/api/organizations/...` are Claude's OAuth proxy system, not an error!
 
 ### 4. User Registration
 

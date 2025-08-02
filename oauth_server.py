@@ -84,10 +84,16 @@ class OAuthServer:
             "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code", "refresh_token"],
             "code_challenge_methods_supported": ["S256"],
-            "token_endpoint_auth_methods_supported": ["none", "client_secret_basic"],
+            "token_endpoint_auth_methods_supported": [
+                "none"
+            ],  # PKCE only, no client secrets
             "subject_types_supported": ["public"],
             "id_token_signing_alg_values_supported": ["RS256"],
             "claims_supported": ["sub", "iss", "aud", "exp", "iat"],
+            # Claude.ai specific metadata
+            "registration_client_uri": f"{self.base_url}/register",
+            "require_request_uri_registration": False,
+            "require_signed_request_object": False,
         }
 
     def get_protected_resource_metadata(self) -> Dict:
@@ -106,7 +112,19 @@ class OAuthServer:
         client_secret = secrets.token_urlsafe(32)
 
         client_name = client_metadata.get("client_name", "Unnamed Client")
-        redirect_uris = json.dumps(client_metadata.get("redirect_uris", []))
+        redirect_uris = client_metadata.get("redirect_uris", [])
+
+        # For Claude.ai, automatically add common proxy redirect patterns
+        if "claude" in client_name.lower() or any(
+            "claude.ai" in uri for uri in redirect_uris
+        ):
+            # Add wildcard pattern for Claude proxy URLs
+            if not any("claude.ai/api/organizations" in uri for uri in redirect_uris):
+                redirect_uris.append(
+                    "https://claude.ai/api/organizations/*/mcp/oauth/callback"
+                )
+
+        redirect_uris_json = json.dumps(redirect_uris)
 
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
@@ -114,17 +132,17 @@ class OAuthServer:
                 INSERT INTO oauth_clients (client_id, client_secret, redirect_uris, client_name)
                 VALUES (?, ?, ?, ?)
             """,
-                (client_id, client_secret, redirect_uris, client_name),
+                (client_id, client_secret, redirect_uris_json, client_name),
             )
 
         return {
             "client_id": client_id,
             "client_secret": client_secret,
             "client_name": client_name,
-            "redirect_uris": json.loads(redirect_uris),
+            "redirect_uris": redirect_uris,
             "grant_types": ["authorization_code", "refresh_token"],
             "response_types": ["code"],
-            "token_endpoint_auth_method": "client_secret_basic",
+            "token_endpoint_auth_method": "none",  # Claude uses PKCE, no client secret needed
         }
 
     def create_user(self, username: str, password: str, email: str = None) -> str:
@@ -197,7 +215,28 @@ class OAuthServer:
                 return False
 
             allowed_uris = json.loads(result[0])
-            return redirect_uri in allowed_uris
+
+            # Allow Claude.ai proxy redirects (flexible matching)
+            if redirect_uri.startswith("https://claude.ai/api/organizations/") and (
+                "mcp" in redirect_uri or "oauth" in redirect_uri
+            ):
+                return True
+
+            # Exact match
+            if redirect_uri in allowed_uris:
+                return True
+
+            # Wildcard matching for Claude patterns
+            for allowed_uri in allowed_uris:
+                if "*" in allowed_uri:
+                    # Simple wildcard matching for claude.ai URLs
+                    pattern = allowed_uri.replace("*", ".*")
+                    import re
+
+                    if re.match(pattern, redirect_uri):
+                        return True
+
+            return False
 
     def verify_pkce_challenge(
         self, code_verifier: str, code_challenge: str, method: str = "S256"

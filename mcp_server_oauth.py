@@ -94,7 +94,11 @@ async def register_client(request: Request):
     """Dynamic Client Registration (RFC 7591)."""
     try:
         client_metadata = await request.json()
+        logger.info(f"Client registration request: {client_metadata}")
         result = oauth.register_client(client_metadata)
+        logger.info(
+            f"Client registered: {result['client_id']} - {result['client_name']}"
+        )
         return JSONResponse(content=result, status_code=201)
     except Exception as e:
         logger.error(f"Client registration error: {e}")
@@ -112,16 +116,23 @@ async def authorize(
     code_challenge_method: str = "S256",
 ):
     """Authorization endpoint."""
+    logger.info(
+        f"Authorization request: client_id={client_id}, redirect_uri={redirect_uri}, scope={scope}"
+    )
+
     # Validate client
     if not oauth.validate_client(client_id):
+        logger.error(f"Invalid client_id: {client_id}")
         raise HTTPException(status_code=400, detail="Invalid client_id")
 
     # Validate redirect URI
     if not oauth.validate_redirect_uri(client_id, redirect_uri):
+        logger.error(f"Invalid redirect_uri for client {client_id}: {redirect_uri}")
         raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
     # PKCE is required
     if not code_challenge:
+        logger.error(f"Missing code_challenge for client {client_id}")
         raise HTTPException(status_code=400, detail="code_challenge required")
 
     # Return login form
