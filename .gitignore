@@ -12,5 +12,8 @@ wheels/
 # Sqlite database
 *.db
 
+# Logs
+*.log
+
 # vim or other editors
 *.swp
