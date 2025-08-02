@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app for OAuth endpoints
 app = FastAPI(title="MealMCP OAuth Server", version="1.0.0")
 
+
 # Add middleware to log all requests
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

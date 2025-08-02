@@ -16,6 +16,7 @@ import sqlite3
 from pathlib import Path
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 class OAuthServer:
@@ -251,6 +252,9 @@ class OAuthServer:
         self, username: str, password: str, email: str = None
     ) -> str:
         """Create a new user account in PostgreSQL."""
+        # Hash password using same method as web interface (scrypt)
+        password_hash = generate_password_hash(password, method="scrypt")
+
         with psycopg2.connect(self.postgres_url) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 try:
@@ -259,7 +263,7 @@ class OAuthServer:
                         INSERT INTO users (username, password_hash, email)
                         VALUES (%s, %s, %s) RETURNING id
                     """,
-                        (username, password, email),
+                        (username, password_hash, email),
                     )
                     result = cursor.fetchone()
                     conn.commit()
@@ -298,42 +302,31 @@ class OAuthServer:
 
         with psycopg2.connect(self.postgres_url) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                # First, let's see what users exist
-                cursor.execute("SELECT username, password_hash FROM users LIMIT 5")
-                all_users = cursor.fetchall()
-                print(
-                    f"[DEBUG] Sample users in database: {[(u['username'], u['password_hash'][:10] + '...') for u in all_users]}"
-                )
-
-                # Now try to authenticate
+                # Get user with password hash
                 cursor.execute(
-                    """
-                    SELECT id, username, password_hash FROM users
-                    WHERE username = %s AND password_hash = %s
-                """,
-                    (username, password),
+                    "SELECT id, username, password_hash FROM users WHERE username = %s",
+                    (username,),
                 )
 
-                result = cursor.fetchone()
-                print(f"[DEBUG] Authentication result for {username}: {result}")
+                user = cursor.fetchone()
+                if not user:
+                    print(f"[DEBUG] User {username} does not exist in database")
+                    return None
 
-                if not result:
-                    # Check if user exists with different password
-                    cursor.execute(
-                        "SELECT id, username, password_hash FROM users WHERE username = %s",
-                        (username,),
-                    )
-                    user_check = cursor.fetchone()
-                    if user_check:
-                        print(
-                            f"[DEBUG] User {username} exists but password doesn't match"
-                        )
-                        print(f"[DEBUG] Expected: {password}")
-                        print(f"[DEBUG] In DB: {user_check['password_hash']}")
-                    else:
-                        print(f"[DEBUG] User {username} does not exist in database")
+                print(
+                    f"[DEBUG] Found user {username} with hash type: {user['password_hash'][:10]}..."
+                )
 
-                return str(result["id"]) if result else None
+                # Verify password using werkzeug's check_password_hash (supports scrypt, bcrypt, etc.)
+                password_valid = check_password_hash(user["password_hash"], password)
+                print(f"[DEBUG] Password verification result: {password_valid}")
+
+                if password_valid:
+                    print(f"[DEBUG] Authentication successful for user {username}")
+                    return str(user["id"])
+                else:
+                    print(f"[DEBUG] Password verification failed for user {username}")
+                    return None
 
     def validate_client(self, client_id: str, client_secret: str = None) -> bool:
         """Validate client credentials."""
