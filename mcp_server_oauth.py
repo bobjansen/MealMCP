@@ -282,8 +282,11 @@ async def authorize_post(
         if state:
             params["state"] = state
 
+        # Build URL with parameters (same as GET would use)
+        callback_url_with_params = f"{redirect_uri}?{urlencode(params)}"
+
         logger.info(
-            f"OAuth flow successful! POSTing to Claude auth_callback: {redirect_uri}"
+            f"OAuth flow successful! POSTing to Claude auth_callback: {callback_url_with_params}"
         )
 
         # Create HTML form that auto-submits to auth_callback via POST
@@ -295,7 +298,7 @@ async def authorize_post(
         </head>
         <body>
             <p>Authorization successful! Connecting to Claude Desktop...</p>
-            <form id="auth-callback-form" method="POST" action="{redirect_uri}">
+            <form id="auth-callback-form" method="POST" action="{callback_url_with_params}">
                 <input type="hidden" name="code" value="{auth_code}">
                 {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
             </form>
@@ -311,6 +314,12 @@ async def authorize_post(
     except Exception as e:
         logger.error(f"Authorization error: {e}")
 
+        # Build error URL with parameters (same as GET would use)
+        error_params = {"error": "access_denied", "error_description": str(e)}
+        if state:
+            error_params["state"] = state
+        error_url_with_params = f"{redirect_uri}?{urlencode(error_params)}"
+
         # POST error to auth_callback as well
         error_form_html = f"""
         <!DOCTYPE html>
@@ -320,7 +329,7 @@ async def authorize_post(
         </head>
         <body>
             <p>Authorization failed. Notifying Claude Desktop...</p>
-            <form id="error-callback-form" method="POST" action="{redirect_uri}">
+            <form id="error-callback-form" method="POST" action="{error_url_with_params}">
                 <input type="hidden" name="error" value="access_denied">
                 <input type="hidden" name="error_description" value="{str(e).replace('"', '&quot;')}">
                 {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
@@ -436,9 +445,15 @@ async def register_user_post(
             code_challenge_method=code_challenge_method,
         )
 
+        # Build URL with parameters (same as GET would use)
+        params = {"code": auth_code}
+        if state:
+            params["state"] = state
+        registration_url_with_params = f"{redirect_uri}?{urlencode(params)}"
+
         # POST to Claude's auth_callback endpoint
         logger.info(
-            f"Registration successful! POSTing to Claude auth_callback: {redirect_uri}"
+            f"Registration successful! POSTing to Claude auth_callback: {registration_url_with_params}"
         )
 
         # Create HTML form that auto-submits to auth_callback via POST
@@ -450,7 +465,7 @@ async def register_user_post(
         </head>
         <body>
             <p>Registration successful! Connecting to Claude Desktop...</p>
-            <form id="registration-callback-form" method="POST" action="{redirect_uri}">
+            <form id="registration-callback-form" method="POST" action="{registration_url_with_params}">
                 <input type="hidden" name="code" value="{auth_code}">
                 {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
             </form>
