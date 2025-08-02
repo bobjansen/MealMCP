@@ -289,7 +289,7 @@ async def authorize_post(
             f"OAuth flow successful! POSTing to Claude auth_callback: {callback_url_with_params}"
         )
 
-        # Create HTML form that auto-submits to auth_callback via POST
+        # Create HTML form that auto-submits to auth_callback via POST (empty body)
         callback_form_html = f"""
         <!DOCTYPE html>
         <html>
@@ -299,8 +299,6 @@ async def authorize_post(
         <body>
             <p>Authorization successful! Connecting to Claude Desktop...</p>
             <form id="auth-callback-form" method="POST" action="{callback_url_with_params}">
-                <input type="hidden" name="code" value="{auth_code}">
-                {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
             </form>
             <script>
                 document.getElementById('auth-callback-form').submit();
@@ -320,7 +318,7 @@ async def authorize_post(
             error_params["state"] = state
         error_url_with_params = f"{redirect_uri}?{urlencode(error_params)}"
 
-        # POST error to auth_callback as well
+        # POST error to auth_callback (empty body)
         error_form_html = f"""
         <!DOCTYPE html>
         <html>
@@ -330,9 +328,6 @@ async def authorize_post(
         <body>
             <p>Authorization failed. Notifying Claude Desktop...</p>
             <form id="error-callback-form" method="POST" action="{error_url_with_params}">
-                <input type="hidden" name="error" value="access_denied">
-                <input type="hidden" name="error_description" value="{str(e).replace('"', '&quot;')}">
-                {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
             </form>
             <script>
                 document.getElementById('error-callback-form').submit();
@@ -456,7 +451,7 @@ async def register_user_post(
             f"Registration successful! POSTing to Claude auth_callback: {registration_url_with_params}"
         )
 
-        # Create HTML form that auto-submits to auth_callback via POST
+        # Create HTML form that auto-submits to auth_callback via POST (empty body)
         registration_success_html = f"""
         <!DOCTYPE html>
         <html>
@@ -466,8 +461,6 @@ async def register_user_post(
         <body>
             <p>Registration successful! Connecting to Claude Desktop...</p>
             <form id="registration-callback-form" method="POST" action="{registration_url_with_params}">
-                <input type="hidden" name="code" value="{auth_code}">
-                {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
             </form>
             <script>
                 document.getElementById('registration-callback-form').submit();
