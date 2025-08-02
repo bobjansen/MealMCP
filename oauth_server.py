@@ -167,6 +167,11 @@ class OAuthServer:
         client_name = client_metadata.get("client_name", "Unnamed Client")
         redirect_uris = client_metadata.get("redirect_uris", [])
 
+        print(
+            f"[DEBUG] Registering client: {client_name}, redirect_uris: {redirect_uris}"
+        )
+        print(f"[DEBUG] Generated client_id: {client_id}")
+
         # For Claude.ai, automatically add common proxy redirect patterns
         if "claude" in client_name.lower() or any(
             "claude.ai" in uri for uri in redirect_uris
@@ -176,10 +181,12 @@ class OAuthServer:
                 redirect_uris.append(
                     "https://claude.ai/api/organizations/*/mcp/oauth/callback"
                 )
+                print(f"[DEBUG] Added Claude proxy redirect URI: {redirect_uris}")
 
         redirect_uris_json = json.dumps(redirect_uris)
 
         if self.use_postgresql:
+            print(f"[DEBUG] Using PostgreSQL for client registration")
             with psycopg2.connect(self.postgres_url) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
@@ -190,7 +197,9 @@ class OAuthServer:
                         (client_id, client_secret, redirect_uris_json, client_name),
                     )
                     conn.commit()
+                    print(f"[DEBUG] Client registered successfully in PostgreSQL")
         else:
+            print(f"[DEBUG] Using SQLite for client registration")
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
@@ -199,6 +208,7 @@ class OAuthServer:
                 """,
                     (client_id, client_secret, redirect_uris_json, client_name),
                 )
+                print(f"[DEBUG] Client registered successfully in SQLite")
 
         return {
             "client_id": client_id,
@@ -300,13 +310,17 @@ class OAuthServer:
 
     def validate_client(self, client_id: str, client_secret: str = None) -> bool:
         """Validate client credentials."""
+        print(
+            f"[DEBUG] Validating client_id: {client_id}, use_postgresql: {self.use_postgresql}"
+        )
+
         if self.use_postgresql:
             with psycopg2.connect(self.postgres_url) as conn:
                 with conn.cursor() as cursor:
                     if client_secret:
                         cursor.execute(
                             """
-                            SELECT 1 FROM oauth_clients 
+                            SELECT client_id, client_name FROM oauth_clients 
                             WHERE client_id = %s AND client_secret = %s
                         """,
                             (client_id, client_secret),
@@ -314,17 +328,19 @@ class OAuthServer:
                     else:
                         cursor.execute(
                             """
-                            SELECT 1 FROM oauth_clients WHERE client_id = %s
+                            SELECT client_id, client_name FROM oauth_clients WHERE client_id = %s
                         """,
                             (client_id,),
                         )
-                    return cursor.fetchone() is not None
+                    result = cursor.fetchone()
+                    print(f"[DEBUG] PostgreSQL query result: {result}")
+                    return result is not None
         else:
             with sqlite3.connect(self.db_path) as conn:
                 if client_secret:
                     cursor = conn.execute(
                         """
-                        SELECT 1 FROM oauth_clients 
+                        SELECT client_id, client_name FROM oauth_clients 
                         WHERE client_id = ? AND client_secret = ?
                     """,
                         (client_id, client_secret),
@@ -332,11 +348,13 @@ class OAuthServer:
                 else:
                     cursor = conn.execute(
                         """
-                        SELECT 1 FROM oauth_clients WHERE client_id = ?
+                        SELECT client_id, client_name FROM oauth_clients WHERE client_id = ?
                     """,
                         (client_id,),
                     )
-                return cursor.fetchone() is not None
+                result = cursor.fetchone()
+                print(f"[DEBUG] SQLite query result: {result}")
+                return result is not None
 
     def validate_redirect_uri(self, client_id: str, redirect_uri: str) -> bool:
         """Validate redirect URI for client."""

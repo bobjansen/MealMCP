@@ -30,6 +30,9 @@ from mcp_context import MCPContext
 from i18n import t
 from datetime import date, timedelta
 import os
+import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -521,6 +524,28 @@ def add_pantry_item(
         }
     else:
         return {"status": "error", "message": "Failed to add item to pantry"}
+
+
+# Debug endpoint to list clients
+@app.get("/debug/clients")
+async def debug_clients():
+    """Debug endpoint to list all registered OAuth clients."""
+    if oauth.use_postgresql:
+        with psycopg2.connect(oauth.postgres_url) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    "SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients ORDER BY created_at DESC"
+                )
+                clients = cursor.fetchall()
+                return {"clients": [dict(client) for client in clients]}
+    else:
+        with sqlite3.connect(oauth.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients ORDER BY created_at DESC"
+            )
+            clients = [dict(row) for row in cursor.fetchall()]
+            return {"clients": clients}
 
 
 # Health check endpoint
