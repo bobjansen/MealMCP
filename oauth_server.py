@@ -14,14 +14,28 @@ from urllib.parse import urlencode, parse_qs
 from datetime import datetime, timedelta
 import sqlite3
 from pathlib import Path
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 
 class OAuthServer:
     """OAuth 2.1 Authorization Server with PKCE support."""
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(
+        self, base_url: str = "http://localhost:8000", use_postgresql: bool = None
+    ):
         self.base_url = base_url.rstrip("/")
+
+        # Determine database backend
+        if use_postgresql is None:
+            use_postgresql = (
+                os.getenv("PANTRY_BACKEND", "sqlite").lower() == "postgresql"
+            )
+
+        self.use_postgresql = use_postgresql
         self.db_path = Path("oauth.db")
+        self.postgres_url = os.getenv("PANTRY_DATABASE_URL")
+
         self.init_database()
 
         # OAuth endpoints
@@ -36,6 +50,13 @@ class OAuthServer:
 
     def init_database(self):
         """Initialize OAuth database."""
+        if self.use_postgresql:
+            self._init_postgresql()
+        else:
+            self._init_sqlite()
+
+    def _init_sqlite(self):
+        """Initialize SQLite OAuth database."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """
@@ -72,6 +93,38 @@ class OAuthServer:
                 )
             """
             )
+
+    def _init_postgresql(self):
+        """Initialize PostgreSQL OAuth database."""
+        with psycopg2.connect(self.postgres_url) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS oauth_clients (
+                        client_id TEXT PRIMARY KEY,
+                        client_secret TEXT,
+                        redirect_uris TEXT,
+                        client_name TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+                )
+
+                # Note: We'll use the existing users table from the shared schema
+                # No need to create a separate users table for OAuth
+
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS user_consents (
+                        user_id TEXT,
+                        client_id TEXT,
+                        scopes TEXT,
+                        granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (user_id, client_id)
+                    )
+                """
+                )
+                conn.commit()
 
     def get_discovery_metadata(self) -> Dict:
         """OAuth 2.0 Authorization Server Metadata (RFC 8414)."""
@@ -126,14 +179,26 @@ class OAuthServer:
 
         redirect_uris_json = json.dumps(redirect_uris)
 
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT INTO oauth_clients (client_id, client_secret, redirect_uris, client_name)
-                VALUES (?, ?, ?, ?)
-            """,
-                (client_id, client_secret, redirect_uris_json, client_name),
-            )
+        if self.use_postgresql:
+            with psycopg2.connect(self.postgres_url) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO oauth_clients (client_id, client_secret, redirect_uris, client_name)
+                        VALUES (%s, %s, %s, %s)
+                    """,
+                        (client_id, client_secret, redirect_uris_json, client_name),
+                    )
+                    conn.commit()
+        else:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    """
+                    INSERT INTO oauth_clients (client_id, client_secret, redirect_uris, client_name)
+                    VALUES (?, ?, ?, ?)
+                """,
+                    (client_id, client_secret, redirect_uris_json, client_name),
+                )
 
         return {
             "client_id": client_id,
@@ -147,6 +212,15 @@ class OAuthServer:
 
     def create_user(self, username: str, password: str, email: str = None) -> str:
         """Create a new user account."""
+        if self.use_postgresql:
+            return self._create_user_postgresql(username, password, email)
+        else:
+            return self._create_user_sqlite(username, password, email)
+
+    def _create_user_sqlite(
+        self, username: str, password: str, email: str = None
+    ) -> str:
+        """Create a new user account in SQLite."""
         user_id = secrets.token_urlsafe(16)
         password_hash = hashlib.sha256(password.encode()).hexdigest()
 
@@ -163,8 +237,36 @@ class OAuthServer:
             except sqlite3.IntegrityError:
                 raise ValueError("Username already exists")
 
+    def _create_user_postgresql(
+        self, username: str, password: str, email: str = None
+    ) -> str:
+        """Create a new user account in PostgreSQL."""
+        user_id = secrets.token_urlsafe(16)
+
+        with psycopg2.connect(self.postgres_url) as conn:
+            with conn.cursor() as cursor:
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO users (user_id, username, password_hash, email)
+                        VALUES (%s, %s, %s, %s)
+                    """,
+                        (user_id, username, password, email),
+                    )
+                    conn.commit()
+                    return user_id
+                except psycopg2.IntegrityError:
+                    raise ValueError("Username already exists")
+
     def authenticate_user(self, username: str, password: str) -> Optional[str]:
         """Authenticate user credentials."""
+        if self.use_postgresql:
+            return self._authenticate_user_postgresql(username, password)
+        else:
+            return self._authenticate_user_sqlite(username, password)
+
+    def _authenticate_user_sqlite(self, username: str, password: str) -> Optional[str]:
+        """Authenticate user credentials against SQLite."""
         password_hash = hashlib.sha256(password.encode()).hexdigest()
 
         with sqlite3.connect(self.db_path) as conn:
@@ -179,64 +281,111 @@ class OAuthServer:
             result = cursor.fetchone()
             return result[0] if result else None
 
-    def validate_client(self, client_id: str, client_secret: str = None) -> bool:
-        """Validate client credentials."""
-        with sqlite3.connect(self.db_path) as conn:
-            if client_secret:
-                cursor = conn.execute(
+    def _authenticate_user_postgresql(
+        self, username: str, password: str
+    ) -> Optional[str]:
+        """Authenticate user credentials against PostgreSQL."""
+        with psycopg2.connect(self.postgres_url) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
                     """
-                    SELECT 1 FROM oauth_clients 
-                    WHERE client_id = ? AND client_secret = ?
+                    SELECT user_id FROM users 
+                    WHERE username = %s AND password_hash = %s
                 """,
-                    (client_id, client_secret),
-                )
-            else:
-                cursor = conn.execute(
-                    """
-                    SELECT 1 FROM oauth_clients WHERE client_id = ?
-                """,
-                    (client_id,),
+                    (username, password),
                 )
 
-            return cursor.fetchone() is not None
+                result = cursor.fetchone()
+                return result["user_id"] if result else None
+
+    def validate_client(self, client_id: str, client_secret: str = None) -> bool:
+        """Validate client credentials."""
+        if self.use_postgresql:
+            with psycopg2.connect(self.postgres_url) as conn:
+                with conn.cursor() as cursor:
+                    if client_secret:
+                        cursor.execute(
+                            """
+                            SELECT 1 FROM oauth_clients 
+                            WHERE client_id = %s AND client_secret = %s
+                        """,
+                            (client_id, client_secret),
+                        )
+                    else:
+                        cursor.execute(
+                            """
+                            SELECT 1 FROM oauth_clients WHERE client_id = %s
+                        """,
+                            (client_id,),
+                        )
+                    return cursor.fetchone() is not None
+        else:
+            with sqlite3.connect(self.db_path) as conn:
+                if client_secret:
+                    cursor = conn.execute(
+                        """
+                        SELECT 1 FROM oauth_clients 
+                        WHERE client_id = ? AND client_secret = ?
+                    """,
+                        (client_id, client_secret),
+                    )
+                else:
+                    cursor = conn.execute(
+                        """
+                        SELECT 1 FROM oauth_clients WHERE client_id = ?
+                    """,
+                        (client_id,),
+                    )
+                return cursor.fetchone() is not None
 
     def validate_redirect_uri(self, client_id: str, redirect_uri: str) -> bool:
         """Validate redirect URI for client."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT redirect_uris FROM oauth_clients WHERE client_id = ?
-            """,
-                (client_id,),
-            )
+        if self.use_postgresql:
+            with psycopg2.connect(self.postgres_url) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT redirect_uris FROM oauth_clients WHERE client_id = %s
+                    """,
+                        (client_id,),
+                    )
+                    result = cursor.fetchone()
+        else:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT redirect_uris FROM oauth_clients WHERE client_id = ?
+                """,
+                    (client_id,),
+                )
+                result = cursor.fetchone()
 
-            result = cursor.fetchone()
-            if not result:
-                return False
-
-            allowed_uris = json.loads(result[0])
-
-            # Allow Claude.ai proxy redirects (flexible matching)
-            if redirect_uri.startswith("https://claude.ai/api/organizations/") and (
-                "mcp" in redirect_uri or "oauth" in redirect_uri
-            ):
-                return True
-
-            # Exact match
-            if redirect_uri in allowed_uris:
-                return True
-
-            # Wildcard matching for Claude patterns
-            for allowed_uri in allowed_uris:
-                if "*" in allowed_uri:
-                    # Simple wildcard matching for claude.ai URLs
-                    pattern = allowed_uri.replace("*", ".*")
-                    import re
-
-                    if re.match(pattern, redirect_uri):
-                        return True
-
+        if not result:
             return False
+
+        allowed_uris = json.loads(result[0])
+
+        # Allow Claude.ai proxy redirects (flexible matching)
+        if redirect_uri.startswith("https://claude.ai/api/organizations/") and (
+            "mcp" in redirect_uri or "oauth" in redirect_uri
+        ):
+            return True
+
+        # Exact match
+        if redirect_uri in allowed_uris:
+            return True
+
+        # Wildcard matching for Claude patterns
+        for allowed_uri in allowed_uris:
+            if "*" in allowed_uri:
+                # Simple wildcard matching for claude.ai URLs
+                pattern = allowed_uri.replace("*", ".*")
+                import re
+
+                if re.match(pattern, redirect_uri):
+                    return True
+
+        return False
 
     def verify_pkce_challenge(
         self, code_verifier: str, code_challenge: str, method: str = "S256"

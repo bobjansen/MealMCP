@@ -14,6 +14,11 @@ For production with reverse proxy (like your setup):
 MCP_PUBLIC_URL=https://mcp.bobjansen.net MCP_MODE=oauth MCP_TRANSPORT=http uv run start_server.py
 ```
 
+For production with PostgreSQL authentication:
+```bash
+PANTRY_BACKEND=postgresql PANTRY_DATABASE_URL=postgresql://user:pass@host:port/database MCP_PUBLIC_URL=https://mcp.bobjansen.net MCP_MODE=oauth MCP_TRANSPORT=http uv run start_server.py
+```
+
 The server will start with OAuth endpoints using your public URL:
 - Authorization: `https://mcp.bobjansen.net/authorize`
 - Token: `https://mcp.bobjansen.net/token`
@@ -75,11 +80,23 @@ First-time users can register at the authorization endpoint:
 
 ### 5. Multi-User Support
 
+#### SQLite Mode (Default)
 Each user gets:
 - Separate SQLite database in `user_data/{user_id}/pantry.db`
 - Isolated recipes, pantry contents, and preferences
+- OAuth user accounts stored in `oauth.db`
+
+#### PostgreSQL Mode
+When `PANTRY_BACKEND=postgresql`:
+- All users share a single PostgreSQL database with user_id scoping
+- OAuth authentication uses the existing `users` table
+- Recipes, pantry contents isolated by user_id in shared tables
+- More scalable for production deployments
+
+Both modes provide:
 - Secure token-based authentication
 - OAuth 2.1 with PKCE security
+- Complete user data isolation
 
 ## OAuth Endpoints
 

@@ -47,9 +47,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OAuth server with public URL
+# Initialize OAuth server with public URL and PostgreSQL support
 public_url = os.getenv("MCP_PUBLIC_URL", "http://localhost:8000")
-oauth = OAuthServer(base_url=public_url)
+use_postgresql = os.getenv("PANTRY_BACKEND", "sqlite").lower() == "postgresql"
+oauth = OAuthServer(base_url=public_url, use_postgresql=use_postgresql)
 
 # Create MCP server
 mcp = FastMCP("RecipeManager")
