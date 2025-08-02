@@ -277,66 +277,23 @@ async def authorize_post(
             code_challenge_method=code_challenge_method,
         )
 
-        # Claude Desktop expects POST to auth_callback, not GET redirect
+        # Redirect to client with authorization code (standard OAuth GET redirect)
         params = {"code": auth_code}
         if state:
             params["state"] = state
 
-        # Build URL with parameters (same as GET would use)
-        callback_url_with_params = f"{redirect_uri}?{urlencode(params)}"
-
-        logger.info(
-            f"OAuth flow successful! POSTing to Claude auth_callback: {callback_url_with_params}"
-        )
-
-        # Create HTML form that auto-submits to auth_callback via POST (empty body)
-        callback_form_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Authorization Complete</title>
-        </head>
-        <body>
-            <p>Authorization successful! Connecting to Claude Desktop...</p>
-            <form id="auth-callback-form" method="POST" action="{callback_url_with_params}">
-            </form>
-            <script>
-                document.getElementById('auth-callback-form').submit();
-            </script>
-        </body>
-        </html>
-        """
-
-        return HTMLResponse(content=callback_form_html)
+        redirect_url = f"{redirect_uri}?{urlencode(params)}"
+        logger.info(f"OAuth flow successful! Redirecting to Claude: {redirect_url}")
+        return RedirectResponse(url=redirect_url)
 
     except Exception as e:
         logger.error(f"Authorization error: {e}")
 
-        # Build error URL with parameters (same as GET would use)
         error_params = {"error": "access_denied", "error_description": str(e)}
         if state:
             error_params["state"] = state
-        error_url_with_params = f"{redirect_uri}?{urlencode(error_params)}"
-
-        # POST error to auth_callback (empty body)
-        error_form_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Authorization Error</title>
-        </head>
-        <body>
-            <p>Authorization failed. Notifying Claude Desktop...</p>
-            <form id="error-callback-form" method="POST" action="{error_url_with_params}">
-            </form>
-            <script>
-                document.getElementById('error-callback-form').submit();
-            </script>
-        </body>
-        </html>
-        """
-
-        return HTMLResponse(content=error_form_html)
+        redirect_url = f"{redirect_uri}?{urlencode(error_params)}"
+        return RedirectResponse(url=redirect_url)
 
 
 @app.get("/register_user")
@@ -440,36 +397,13 @@ async def register_user_post(
             code_challenge_method=code_challenge_method,
         )
 
-        # Build URL with parameters (same as GET would use)
+        # Redirect to client with authorization code
         params = {"code": auth_code}
         if state:
             params["state"] = state
-        registration_url_with_params = f"{redirect_uri}?{urlencode(params)}"
 
-        # POST to Claude's auth_callback endpoint
-        logger.info(
-            f"Registration successful! POSTing to Claude auth_callback: {registration_url_with_params}"
-        )
-
-        # Create HTML form that auto-submits to auth_callback via POST (empty body)
-        registration_success_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Registration Complete</title>
-        </head>
-        <body>
-            <p>Registration successful! Connecting to Claude Desktop...</p>
-            <form id="registration-callback-form" method="POST" action="{registration_url_with_params}">
-            </form>
-            <script>
-                document.getElementById('registration-callback-form').submit();
-            </script>
-        </body>
-        </html>
-        """
-
-        return HTMLResponse(content=registration_success_html)
+        redirect_url = f"{redirect_uri}?{urlencode(params)}"
+        return RedirectResponse(url=redirect_url)
 
     except Exception as e:
         logger.error(f"Registration error: {e}")
