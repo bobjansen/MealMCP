@@ -5,6 +5,7 @@ Start script for MealMCP server with mode selection.
 Environment Variables:
 - MCP_MODE: "local", "remote", or "oauth" (default: "local")
 - MCP_TRANSPORT: "stdio" or "http" (default: "stdio")
+- MCP_PUBLIC_URL: Public URL for OAuth endpoints (default: "http://localhost:8000")
 - ADMIN_TOKEN: Admin token for remote mode (auto-generated if not set)
 - ADDITIONAL_USERS: Comma-separated list of "username:token" pairs
 - MCP_HOST: Host to bind to in HTTP mode (default: "localhost")
@@ -35,12 +36,18 @@ def main():
 
         if mode == "oauth":
             print("OAuth mode: Multi-user with OAuth 2.1 authentication")
-            print(f"Authorization endpoint: http://{host}:{port}/authorize")
-            print(f"Token endpoint: http://{host}:{port}/token")
-            print(
-                f"Discovery: http://{host}:{port}/.well-known/oauth-authorization-server"
-            )
+
+            # Get public URL for OAuth endpoints
+            public_url = os.getenv("MCP_PUBLIC_URL", f"http://{host}:{port}")
+            print(f"Public URL: {public_url}")
+            print(f"Authorization endpoint: {public_url}/authorize")
+            print(f"Token endpoint: {public_url}/token")
+            print(f"Discovery: {public_url}/.well-known/oauth-authorization-server")
             print("User databases will be stored in: user_data/")
+
+            if public_url != f"http://{host}:{port}":
+                print(f"Server running locally on: http://{host}:{port}")
+                print(f"Configure Claude Desktop with: {public_url}")
 
             # Use OAuth/SSE server
             from mcp_oauth_sse import app

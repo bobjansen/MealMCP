@@ -52,8 +52,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OAuth server
-oauth = OAuthServer()
+# Initialize OAuth server with public URL
+public_url = os.getenv("MCP_PUBLIC_URL", "http://localhost:8000")
+oauth = OAuthServer(base_url=public_url)
 
 # Create context manager for user handling
 context = MCPContext()

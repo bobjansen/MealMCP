@@ -3,19 +3,39 @@
 ## Quick Start
 
 ### 1. Start OAuth Server
+
+For local testing:
 ```bash
 MCP_MODE=oauth MCP_TRANSPORT=http uv run start_server.py
 ```
 
-The server will start on `http://localhost:8000` with OAuth endpoints:
-- Authorization: `http://localhost:8000/authorize`
-- Token: `http://localhost:8000/token`
-- Discovery: `http://localhost:8000/.well-known/oauth-authorization-server`
+For production with reverse proxy (like your setup):
+```bash
+MCP_PUBLIC_URL=https://mcp.bobjansen.net MCP_MODE=oauth MCP_TRANSPORT=http uv run start_server.py
+```
+
+The server will start with OAuth endpoints using your public URL:
+- Authorization: `https://mcp.bobjansen.net/authorize`
+- Token: `https://mcp.bobjansen.net/token`
+- Discovery: `https://mcp.bobjansen.net/.well-known/oauth-authorization-server`
 
 ### 2. Configure Claude Desktop
 
 Add this to your Claude Desktop MCP settings:
 
+```json
+{
+  "mcpServers": {
+    "meal-planner": {
+      "command": "http",
+      "args": ["https://mcp.bobjansen.net"],
+      "env": {}
+    }
+  }
+}
+```
+
+For local testing, use:
 ```json
 {
   "mcpServers": {
@@ -36,7 +56,7 @@ When Claude Desktop first connects:
 2. **401 Response**: Server responds with `401 Unauthorized` and `WWW-Authenticate: Bearer` header
 3. **OAuth Discovery**: Claude fetches `/.well-known/oauth-authorization-server`
 4. **Authorization Request**: Claude opens authorization URL in browser
-5. **User Login**: You log in or register at `http://localhost:8000/authorize`
+5. **User Login**: You log in or register at `https://mcp.bobjansen.net/authorize`
 6. **Authorization Code**: Server redirects back to Claude with auth code
 7. **Token Exchange**: Claude exchanges code for access token using PKCE
 8. **Authenticated Access**: Claude uses Bearer token for all subsequent requests
