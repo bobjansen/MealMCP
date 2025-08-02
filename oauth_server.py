@@ -251,20 +251,19 @@ class OAuthServer:
         self, username: str, password: str, email: str = None
     ) -> str:
         """Create a new user account in PostgreSQL."""
-        user_id = secrets.token_urlsafe(16)
-
         with psycopg2.connect(self.postgres_url) as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 try:
                     cursor.execute(
                         """
-                        INSERT INTO users (user_id, username, password_hash, email)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO users (username, password_hash, email)
+                        VALUES (%s, %s, %s) RETURNING id
                     """,
-                        (user_id, username, password, email),
+                        (username, password, email),
                     )
+                    result = cursor.fetchone()
                     conn.commit()
-                    return user_id
+                    return str(result["id"])
                 except psycopg2.IntegrityError:
                     raise ValueError("Username already exists")
 
@@ -299,14 +298,14 @@ class OAuthServer:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id FROM users 
+                    SELECT id FROM users
                     WHERE username = %s AND password_hash = %s
                 """,
                     (username, password),
                 )
 
                 result = cursor.fetchone()
-                return result["user_id"] if result else None
+                return str(result["id"]) if result else None
 
     def validate_client(self, client_id: str, client_secret: str = None) -> bool:
         """Validate client credentials."""
