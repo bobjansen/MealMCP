@@ -27,13 +27,10 @@ from mcp.types import (
 from oauth_server import OAuthServer
 from constants import UNITS
 from mcp_context import MCPContext
+from mcp_tools import MCP_TOOLS
 from i18n import t
 from datetime import date, timedelta
 import os
-import time
-import sqlite3
-import psycopg2
-from psycopg2.extras import RealDictCursor
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -44,12 +41,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="MealMCP OAuth Server", version="1.0.0")
 
 
-# Add middleware to log all requests
+# Add middleware to log requests (essential only)
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info(f"Request: {request.method} {request.url}")
     response = await call_next(request)
-    logger.info(f"Response: {response.status_code}")
+    if response.status_code >= 400:
+        logger.warning(f"Request: {request.method} {request.url} -> {response.status_code}")
     return response
 
 
@@ -668,180 +665,9 @@ def add_pantry_item(
         return {"status": "error", "message": "Failed to add item to pantry"}
 
 
-# Debug endpoint to check authorization code
-@app.get("/debug/code/{code}")
-async def debug_auth_code(code: str):
-    """Debug endpoint to check if authorization code exists."""
-    if code in oauth.auth_codes:
-        auth_data = oauth.auth_codes[code].copy()
-        # Don't expose sensitive data
-        if "code_challenge" in auth_data:
-            auth_data["code_challenge"] = auth_data["code_challenge"][:10] + "..."
-        return {"found": True, "data": auth_data}
-    else:
-        return {
-            "found": False,
-            "available_codes": list(oauth.auth_codes.keys()),
-            "total_codes": len(oauth.auth_codes),
-        }
-
-
-# Debug endpoint to test token exchange manually
-@app.get("/debug/test-token-exchange/{code}")
-async def debug_test_token_exchange(code: str, code_verifier: str = "test-verifier"):
-    """Debug endpoint to test token exchange with a specific code."""
-    try:
-        if code not in oauth.auth_codes:
-            return {
-                "error": "Code not found",
-                "available_codes": list(oauth.auth_codes.keys()),
-            }
-
-        auth_data = oauth.auth_codes[code]
-
-        # Note: This will fail PKCE validation since we don't have the real code_verifier
-        # But it will show us what kind of error occurs
-        try:
-            tokens = oauth.exchange_code_for_tokens(
-                code=code,
-                client_id=auth_data["client_id"],
-                redirect_uri=auth_data["redirect_uri"],
-                code_verifier=code_verifier,
-            )
-            return {"success": True, "tokens": tokens}
-        except Exception as inner_e:
-            return {
-                "pkce_test_failed": True,
-                "error": str(inner_e),
-                "auth_data_summary": {
-                    "client_id": auth_data["client_id"],
-                    "user_id": auth_data["user_id"],
-                    "expires_at": auth_data["expires_at"],
-                    "current_time": time.time(),
-                    "expired": time.time() > auth_data["expires_at"],
-                },
-            }
-
-    except Exception as e:
-        return {"error": str(e), "type": type(e).__name__}
-
-
-# Debug endpoint to list clients
-@app.get("/debug/clients")
-async def debug_clients():
-    """Debug endpoint to list all registered OAuth clients."""
-    if oauth.use_postgresql:
-        with psycopg2.connect(oauth.postgres_url) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute(
-                    "SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients ORDER BY created_at DESC"
-                )
-                clients = cursor.fetchall()
-                return {"clients": [dict(client) for client in clients]}
-    else:
-        with sqlite3.connect(oauth.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients ORDER BY created_at DESC"
-            )
-            clients = [dict(row) for row in cursor.fetchall()]
-            return {"clients": clients}
 
 
 # MCP Tool endpoints that require authentication
-async def mcp_list_tools(request: Request, user_id: str):
-    """MCP list tools endpoint."""
-    try:
-        data = await request.json()
-        tools_list = [
-            {
-                "name": "list_units",
-                "description": "List all units of measurement",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-            {
-                "name": "add_recipe",
-                "description": "Add a new recipe to the database",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "Name of the recipe"},
-                        "instructions": {
-                            "type": "string",
-                            "description": "Cooking instructions",
-                        },
-                        "time_minutes": {
-                            "type": "integer",
-                            "description": "Time required to prepare the recipe",
-                        },
-                        "ingredients": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {"type": "string"},
-                                    "quantity": {"type": "number"},
-                                    "unit": {"type": "string"},
-                                },
-                                "required": ["name", "quantity", "unit"],
-                            },
-                        },
-                    },
-                    "required": ["name", "instructions", "time_minutes", "ingredients"],
-                },
-            },
-            {
-                "name": "get_all_recipes",
-                "description": "Get all recipes",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-            {
-                "name": "get_pantry_contents",
-                "description": "Get the current contents of the pantry",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-            {
-                "name": "add_pantry_item",
-                "description": "Add an item to the pantry",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "item_name": {
-                            "type": "string",
-                            "description": "Name of the item to add",
-                        },
-                        "quantity": {"type": "number", "description": "Amount to add"},
-                        "unit": {
-                            "type": "string",
-                            "description": "Unit of measurement",
-                        },
-                        "notes": {
-                            "type": "string",
-                            "description": "Optional notes about the transaction",
-                        },
-                    },
-                    "required": ["item_name", "quantity", "unit"],
-                },
-            },
-        ]
-
-        return {"jsonrpc": "2.0", "id": data.get("id"), "result": {"tools": tools_list}}
-    except Exception as e:
-        logger.error(f"List tools error: {e}")
-        return {
-            "jsonrpc": "2.0",
-            "id": data.get("id", 0),
-            "error": {"code": -32603, "message": str(e)},
-        }
 
 
 async def mcp_call_tool(request: Request, user_id: str):
@@ -952,31 +778,6 @@ async def health_check():
     return {"status": "healthy", "service": "MealMCP OAuth Server"}
 
 
-# Debug endpoint for MCP connectivity testing
-@app.get("/debug/mcp")
-async def debug_mcp():
-    """Debug endpoint to test MCP connectivity."""
-    logger.info("Debug MCP endpoint called")
-    return {
-        "mcp_server": True,
-        "oauth_endpoints": {"authorization": "/authorize", "token": "/token"},
-        "status": "ready",
-        "client_registered": "claude-desktop"
-        in [client for client in ["claude-desktop"]],  # Simple check
-    }
-
-
-@app.post("/debug/mcp")
-async def debug_mcp_post(request: Request):
-    """Debug POST endpoint for MCP testing."""
-    logger.info("Debug MCP POST endpoint called")
-    try:
-        body = await request.json()
-        logger.info(f"Debug POST body: {body}")
-        return {"received": body, "status": "ok"}
-    except Exception as e:
-        logger.error(f"Debug POST error: {e}")
-        return {"error": str(e)}
 
 
 # Root endpoint with API info
@@ -984,17 +785,13 @@ async def debug_mcp_post(request: Request):
 async def root(request: Request):
     """Root endpoint with API information and MCP tool discovery."""
     try:
-        logger.info("Processing GET / request")
-
         # Check if this is an authenticated request from Claude Desktop
         auth_header = request.headers.get("authorization")
         user_id = None
 
-        logger.info(f"Authorization header present: {auth_header is not None}")
 
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]
-            logger.info(f"Validating token: {token[:10]}...")
             token_data = oauth.validate_access_token(token)
             if token_data:
                 user_id = token_data["user_id"]
@@ -1004,127 +801,19 @@ async def root(request: Request):
         else:
             logger.info("Unauthenticated GET request")
 
-        logger.info("Building tool definitions...")
-
         # Return tools in MCP format for Claude Desktop's REST-style discovery
-        tools_list = [
-            {
-                "name": "test_simple",
-                "description": "A simple test tool with no parameters",
-                "inputSchema": {"type": "object", "properties": {}, "required": []},
-            },
-            {
-                "name": "list_units",
-                "description": "List all units of measurement",
-                "inputSchema": {"type": "object", "properties": {}, "required": []},
-            },
-            {
-                "name": "add_recipe",
-                "description": "Add a new recipe to the database",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "Name of the recipe"},
-                        "instructions": {
-                            "type": "string",
-                            "description": "Cooking instructions",
-                        },
-                        "time_minutes": {
-                            "type": "integer",
-                            "description": "Time required to prepare the recipe",
-                        },
-                        "ingredients": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {"type": "string"},
-                                    "quantity": {"type": "number"},
-                                    "unit": {"type": "string"},
-                                },
-                                "required": ["name", "quantity", "unit"],
-                            },
-                        },
-                    },
-                    "required": ["name", "instructions", "time_minutes", "ingredients"],
-                },
-            },
-            {
-                "name": "get_all_recipes",
-                "description": "Get all recipes",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-            {
-                "name": "get_pantry_contents",
-                "description": "Get the current contents of the pantry",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-            {
-                "name": "add_pantry_item",
-                "description": "Add an item to the pantry",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "item_name": {
-                            "type": "string",
-                            "description": "Name of the item to add",
-                        },
-                        "quantity": {"type": "number", "description": "Amount to add"},
-                        "unit": {
-                            "type": "string",
-                            "description": "Unit of measurement",
-                        },
-                        "notes": {
-                            "type": "string",
-                            "description": "Optional notes about the transaction",
-                        },
-                    },
-                    "required": ["item_name", "quantity", "unit"],
-                },
-            },
-        ]
+        tools_list = MCP_TOOLS
 
         logger.info("Building response object...")
 
-        # Check user agent to determine response format
-        user_agent = request.headers.get("user-agent", "")
-        logger.info(f"User agent: {user_agent}")
-
-        # Claude Desktop expects tools via GET requests (non-standard MCP behavior)
+        # Claude Desktop GUI connector expects tools via GET requests
         if auth_header and user_id:
-            logger.info(
-                "Returning tools for Claude Desktop's non-standard GET-based discovery"
-            )
-            # Try different response formats to find what Claude Desktop expects
-            # Format 6: Match initialize response format but with tools
             response = {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {"tools": {"listChanged": True}},
                 "serverInfo": {"name": "MealMCP OAuth Server", "version": "1.0.0"},
-                "tools": tools_list,
+                "tools": MCP_TOOLS,
             }
-
-            # Uncomment other formats to test:
-            # Format 1: Just the tools array
-            # response = tools_list
-
-            # Format 3: Full MCP response with server info
-            # response = {
-            #     "tools": tools_list,
-            #     "serverInfo": {"name": "MealMCP OAuth Server", "version": "1.0.0"},
-            #     "protocolVersion": "2025-06-18"
-            # }
-            logger.info(f"Tools being returned: {len(tools_list)} tools")
-            logger.info(f"Tool names: {[tool['name'] for tool in tools_list]}")
-            logger.info(f"Response type: {type(response)}")
-            if isinstance(response, list) and response:
-                logger.info(f"First tool structure: {list(response[0].keys())}")
         else:
             # Regular API info for non-authenticated clients (browsers, etc.)
             logger.info("Returning standard API info for non-authenticated GET request")
@@ -1177,132 +866,26 @@ async def root_head():
     return JSONResponse(content={})
 
 
-# Dedicated tools endpoint for GUI connector
-@app.get("/tools")
-async def tools_endpoint(request: Request):
-    """Dedicated tools endpoint that might work better for GUI connector."""
-    auth_header = request.headers.get("authorization")
-    user_id = None
-
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        token_data = oauth.validate_access_token(token)
-        if token_data:
-            user_id = token_data["user_id"]
-
-    if not user_id:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Authentication required"},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Define tools same as in other handlers
-    tools_list = [
-        {
-            "name": "test_simple",
-            "description": "A simple test tool with no parameters",
-            "inputSchema": {"type": "object", "properties": {}, "required": []},
-        },
-        {
-            "name": "list_units",
-            "description": "List all units of measurement",
-            "inputSchema": {"type": "object", "properties": {}, "required": []},
-        },
-        {
-            "name": "add_recipe",
-            "description": "Add a new recipe to the database",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Name of the recipe"},
-                    "instructions": {
-                        "type": "string",
-                        "description": "Cooking instructions",
-                    },
-                    "time_minutes": {
-                        "type": "integer",
-                        "description": "Time required to prepare the recipe",
-                    },
-                    "ingredients": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string"},
-                                "quantity": {"type": "number"},
-                                "unit": {"type": "string"},
-                            },
-                            "required": ["name", "quantity", "unit"],
-                        },
-                    },
-                },
-                "required": ["name", "instructions", "time_minutes", "ingredients"],
-            },
-        },
-        {
-            "name": "get_all_recipes",
-            "description": "Get all recipes",
-            "inputSchema": {"type": "object", "properties": {}, "required": []},
-        },
-        {
-            "name": "get_pantry_contents",
-            "description": "Get the current contents of the pantry",
-            "inputSchema": {"type": "object", "properties": {}, "required": []},
-        },
-        {
-            "name": "add_pantry_item",
-            "description": "Add an item to the pantry",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "item_name": {
-                        "type": "string",
-                        "description": "Name of the item to add",
-                    },
-                    "quantity": {"type": "number", "description": "Amount to add"},
-                    "unit": {"type": "string", "description": "Unit of measurement"},
-                    "notes": {
-                        "type": "string",
-                        "description": "Optional notes about the transaction",
-                    },
-                },
-                "required": ["item_name", "quantity", "unit"],
-            },
-        },
-    ]
-
-    logger.info(f"Tools endpoint called - returning {len(tools_list)} tools")
-    return tools_list
 
 
 # Handle POST to root (for any MCP requests that might come here)
 @app.post("/")
 async def root_post(request: Request):
     """Handle POST requests to root endpoint - potential MCP requests."""
-    logger.info(f"POST to root endpoint from {request.client}")
-
-    # Log request headers to debug authentication
-    auth_header = request.headers.get("authorization")
-    logger.info(f"Authorization header: {auth_header}")
-
     # Try to get user ID from token
     user_id = None
+    auth_header = request.headers.get("authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[7:]
         token_data = oauth.validate_access_token(token)
         if token_data:
             user_id = token_data["user_id"]
-            logger.info(f"Valid token for user: {user_id}")
         else:
-            logger.info("Invalid or expired token")
-    else:
-        logger.info("No Bearer token provided")
-
-    # Log the request body for debugging
+            logger.warning("Invalid or expired access token")
+    
+    # Parse request body
     try:
         body = await request.json()
-        logger.info(f"Request body: {body}")
 
         # Check if this looks like an MCP request
         if isinstance(body, dict) and "method" in body:
@@ -1373,124 +956,11 @@ async def root_post(request: Request):
                 # Return empty object for notification (JSON-RPC spec)
                 return JSONResponse(content={}, status_code=202)
             elif method == "tools/list":
-                logger.info("tools/list method called - returning tool definitions")
-                logger.info(f"User ID for tools/list: {user_id}")
-                logger.info(f"Request params: {body.get('params', {})}")
-
-                # Define tools for JSON-RPC response (same as GET endpoint)
-                tools_list = [
-                    {
-                        "name": "test_simple",
-                        "description": "A simple test tool with no parameters",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {},
-                            "required": [],
-                        },
-                    },
-                    {
-                        "name": "list_units",
-                        "description": "List all units of measurement",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {},
-                            "required": [],
-                        },
-                    },
-                    {
-                        "name": "add_recipe",
-                        "description": "Add a new recipe to the database",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "name": {
-                                    "type": "string",
-                                    "description": "Name of the recipe",
-                                },
-                                "instructions": {
-                                    "type": "string",
-                                    "description": "Cooking instructions",
-                                },
-                                "time_minutes": {
-                                    "type": "integer",
-                                    "description": "Time required to prepare the recipe",
-                                },
-                                "ingredients": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                            "quantity": {"type": "number"},
-                                            "unit": {"type": "string"},
-                                        },
-                                        "required": ["name", "quantity", "unit"],
-                                    },
-                                },
-                            },
-                            "required": [
-                                "name",
-                                "instructions",
-                                "time_minutes",
-                                "ingredients",
-                            ],
-                        },
-                    },
-                    {
-                        "name": "get_all_recipes",
-                        "description": "Get all recipes",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {},
-                            "required": [],
-                        },
-                    },
-                    {
-                        "name": "get_pantry_contents",
-                        "description": "Get the current contents of the pantry",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {},
-                            "required": [],
-                        },
-                    },
-                    {
-                        "name": "add_pantry_item",
-                        "description": "Add an item to the pantry",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "item_name": {
-                                    "type": "string",
-                                    "description": "Name of the item to add",
-                                },
-                                "quantity": {
-                                    "type": "number",
-                                    "description": "Amount to add",
-                                },
-                                "unit": {
-                                    "type": "string",
-                                    "description": "Unit of measurement",
-                                },
-                                "notes": {
-                                    "type": "string",
-                                    "description": "Optional notes about the transaction",
-                                },
-                            },
-                            "required": ["item_name", "quantity", "unit"],
-                        },
-                    },
-                ]
-
-                # Return tools directly in proper MCP format
-                tools_response = {
+                return JSONResponse(content={
                     "jsonrpc": "2.0",
                     "id": body.get("id"),
-                    "result": {"tools": tools_list},
-                }
-                logger.info(f"tools/list response: {len(tools_list)} tools")
-                logger.info(f"Tool names: {[tool['name'] for tool in tools_list]}")
-                return tools_response
+                    "result": {"tools": MCP_TOOLS}
+                })
             elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
             else:
