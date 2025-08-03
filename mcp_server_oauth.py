@@ -73,8 +73,8 @@ oauth.register_existing_client(
     client_name="Claude Desktop MCP Client",
     redirect_uris=[
         "https://claude.ai/api/organizations/*/mcp/oauth/callback",
-        "claude://oauth/callback"
-    ]
+        "claude://oauth/callback",
+    ],
 )
 
 # Create MCP server
@@ -1075,14 +1075,8 @@ async def root(request: Request):
                 "Returning tools for Claude Desktop's non-standard GET-based discovery"
             )
             # Try different response formats to find what Claude Desktop expects
-            # Format 4: Full JSON-RPC response (testing this format)
-            response = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {
-                    "tools": tools_list
-                }
-            }
+            # Format 5: Minimal structure (testing this format)
+            response = {"capabilities": {"tools": {}}, "tools": tools_list}
 
             # Uncomment other formats to test:
             # Format 1: Just the tools array
@@ -1149,6 +1143,105 @@ async def root(request: Request):
 async def root_head():
     """Handle HEAD requests to root endpoint."""
     return JSONResponse(content={})
+
+
+# Dedicated tools endpoint for GUI connector
+@app.get("/tools")
+async def tools_endpoint(request: Request):
+    """Dedicated tools endpoint that might work better for GUI connector."""
+    auth_header = request.headers.get("authorization")
+    user_id = None
+
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        token_data = oauth.validate_access_token(token)
+        if token_data:
+            user_id = token_data["user_id"]
+
+    if not user_id:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Authentication required"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Define tools same as in other handlers
+    tools_list = [
+        {
+            "name": "test_simple",
+            "description": "A simple test tool with no parameters",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+        {
+            "name": "list_units",
+            "description": "List all units of measurement",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+        {
+            "name": "add_recipe",
+            "description": "Add a new recipe to the database",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the recipe"},
+                    "instructions": {
+                        "type": "string",
+                        "description": "Cooking instructions",
+                    },
+                    "time_minutes": {
+                        "type": "integer",
+                        "description": "Time required to prepare the recipe",
+                    },
+                    "ingredients": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "quantity": {"type": "number"},
+                                "unit": {"type": "string"},
+                            },
+                            "required": ["name", "quantity", "unit"],
+                        },
+                    },
+                },
+                "required": ["name", "instructions", "time_minutes", "ingredients"],
+            },
+        },
+        {
+            "name": "get_all_recipes",
+            "description": "Get all recipes",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+        {
+            "name": "get_pantry_contents",
+            "description": "Get the current contents of the pantry",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+        {
+            "name": "add_pantry_item",
+            "description": "Add an item to the pantry",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "item_name": {
+                        "type": "string",
+                        "description": "Name of the item to add",
+                    },
+                    "quantity": {"type": "number", "description": "Amount to add"},
+                    "unit": {"type": "string", "description": "Unit of measurement"},
+                    "notes": {
+                        "type": "string",
+                        "description": "Optional notes about the transaction",
+                    },
+                },
+                "required": ["item_name", "quantity", "unit"],
+            },
+        },
+    ]
+
+    logger.info(f"Tools endpoint called - returning {len(tools_list)} tools")
+    return tools_list
 
 
 # Handle POST to root (for any MCP requests that might come here)
