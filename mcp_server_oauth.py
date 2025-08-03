@@ -1107,9 +1107,11 @@ async def root(request: Request):
                 },
             }
 
-        logger.info(
-            f"Returning response from GET /: {response.get('jsonrpc', 'standard')} format"
-        )
+        logger.info(f"Returning response from GET /")
+        if isinstance(response, dict):
+            logger.info(f"Response format: {response.get('jsonrpc', 'standard')}")
+        else:
+            logger.info(f"Response format: direct array with {len(response) if isinstance(response, list) else 'unknown'} items")
         return response
 
     except Exception as e:
