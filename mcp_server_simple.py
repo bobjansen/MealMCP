@@ -97,7 +97,7 @@ async def handle_mcp(request: Request):
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "result": {
-                    "protocolVersion": "2025-06-18",
+                    "protocolVersion": "2025-03-26",
                     "capabilities": {"tools": {"listChanged": True}},
                     "serverInfo": {"name": "Simple MealMCP Server", "version": "1.0.0"},
                 },
