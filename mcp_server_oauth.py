@@ -739,30 +739,183 @@ async def debug_clients():
 
 
 # MCP Tool endpoints that require authentication
-@app.post("/mcp/tools/list")
-async def mcp_list_tools(request: Request, user_id: str = Depends(get_current_user)):
+async def mcp_list_tools(request: Request, user_id: str):
     """MCP list tools endpoint."""
-    if not user_id:
-        return JSONResponse(
-            content={"error": "unauthorized", "message": "Authentication required"},
-            status_code=401,
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    try:
+        data = await request.json()
+        tools_list = [
+            {
+                "name": "list_units",
+                "description": "List all units of measurement",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            {
+                "name": "add_recipe",
+                "description": "Add a new recipe to the database",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name of the recipe"},
+                        "instructions": {
+                            "type": "string",
+                            "description": "Cooking instructions",
+                        },
+                        "time_minutes": {
+                            "type": "integer",
+                            "description": "Time required to prepare the recipe",
+                        },
+                        "ingredients": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "quantity": {"type": "number"},
+                                    "unit": {"type": "string"},
+                                },
+                                "required": ["name", "quantity", "unit"],
+                            },
+                        },
+                    },
+                    "required": ["name", "instructions", "time_minutes", "ingredients"],
+                },
+            },
+            {
+                "name": "get_all_recipes",
+                "description": "Get all recipes",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            {
+                "name": "get_pantry_contents",
+                "description": "Get the current contents of the pantry",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            {
+                "name": "add_pantry_item",
+                "description": "Add an item to the pantry",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "item_name": {
+                            "type": "string",
+                            "description": "Name of the item to add",
+                        },
+                        "quantity": {"type": "number", "description": "Amount to add"},
+                        "unit": {
+                            "type": "string",
+                            "description": "Unit of measurement",
+                        },
+                        "notes": {
+                            "type": "string",
+                            "description": "Optional notes about the transaction",
+                        },
+                    },
+                    "required": ["item_name", "quantity", "unit"],
+                },
+            },
+        ]
 
-    return {"tools": []}
+        return {"jsonrpc": "2.0", "id": data.get("id"), "result": {"tools": tools_list}}
+    except Exception as e:
+        logger.error(f"List tools error: {e}")
+        return {
+            "jsonrpc": "2.0",
+            "id": data.get("id", 0),
+            "error": {"code": -32603, "message": str(e)},
+        }
 
 
-@app.post("/mcp/tools/call")
-async def mcp_call_tool(request: Request, user_id: str = Depends(get_current_user)):
+async def mcp_call_tool(request: Request, user_id: str):
     """MCP call tool endpoint."""
-    if not user_id:
-        return JSONResponse(
-            content={"error": "unauthorized", "message": "Authentication required"},
-            status_code=401,
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    try:
+        data = await request.json()
+        tool_name = data.get("params", {}).get("name")
+        arguments = data.get("params", {}).get("arguments", {})
 
-    return {"result": "success"}
+        logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
+
+        # Route to appropriate tool implementation
+        if tool_name == "list_units":
+            result = {"units": UNITS}
+        elif tool_name == "add_recipe":
+            user_id, pantry = get_user_pantry_oauth(user_id)
+            if not pantry:
+                result = {"status": "error", "message": "Failed to get user pantry"}
+            else:
+                success = pantry.add_recipe(
+                    name=arguments["name"],
+                    instructions=arguments["instructions"],
+                    time_minutes=arguments["time_minutes"],
+                    ingredients=arguments["ingredients"],
+                )
+                result = {
+                    "status": "success" if success else "error",
+                    "message": (
+                        "Recipe added successfully"
+                        if success
+                        else "Failed to add recipe"
+                    ),
+                }
+        elif tool_name == "get_all_recipes":
+            user_id, pantry = get_user_pantry_oauth(user_id)
+            if not pantry:
+                result = {"status": "error", "message": "Failed to get user pantry"}
+            else:
+                recipes = pantry.get_all_recipes()
+                result = {"status": "success", "recipes": recipes}
+        elif tool_name == "get_pantry_contents":
+            user_id, pantry = get_user_pantry_oauth(user_id)
+            if not pantry:
+                result = {"status": "error", "message": "Failed to get user pantry"}
+            else:
+                contents = pantry.get_pantry_contents()
+                result = {"status": "success", "contents": contents}
+        elif tool_name == "add_pantry_item":
+            user_id, pantry = get_user_pantry_oauth(user_id)
+            if not pantry:
+                result = {"status": "error", "message": "Failed to get user pantry"}
+            else:
+                success = pantry.add_item(
+                    arguments["item_name"],
+                    arguments["quantity"],
+                    arguments["unit"],
+                    arguments.get("notes"),
+                )
+                result = {
+                    "status": "success" if success else "error",
+                    "message": (
+                        f"Added {arguments['quantity']} {arguments['unit']} of {arguments['item_name']} to pantry"
+                        if success
+                        else "Failed to add item to pantry"
+                    ),
+                }
+        else:
+            result = {"status": "error", "message": f"Unknown tool: {tool_name}"}
+
+        return {
+            "jsonrpc": "2.0",
+            "id": data.get("id"),
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
+            },
+        }
+
+    except Exception as e:
+        logger.error(f"Call tool error: {e}")
+        return {
+            "jsonrpc": "2.0",
+            "id": data.get("id", 0),
+            "error": {"code": -32603, "message": str(e)},
+        }
 
 
 # Catch-all MCP endpoint for other possible tool calls
@@ -870,13 +1023,17 @@ async def root_post(request: Request):
                     "id": body.get("id"),
                     "result": {
                         "protocolVersion": "2025-06-18",
-                        "capabilities": {"tools": {}},
+                        "capabilities": {"tools": {"listChanged": True}},
                         "serverInfo": {
                             "name": "MealMCP OAuth Server",
                             "version": "1.0.0",
                         },
                     },
                 }
+            elif method == "notifications/initialized":
+                # Notification methods don't require responses in JSON-RPC
+                logger.info("Client initialization complete")
+                return {}
             elif method == "tools/list":
                 return await mcp_list_tools(request, user_id)
             elif method == "tools/call":
