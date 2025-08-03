@@ -6,7 +6,7 @@ Implements OAuth 2.1 with PKCE for secure multi-user authentication
 import json
 import logging
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import urlencode, urlparse, parse_qs, quote
 from fastapi import FastAPI, HTTPException, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -282,12 +282,15 @@ async def authorize_post(
         if state:
             params["state"] = state
 
-        redirect_url = f"{redirect_uri}?{urlencode(params)}"
+        # Use proper URL encoding for OAuth parameters
+        redirect_url = f"{redirect_uri}?{urlencode(params, safe='', quote_via=quote)}"
         logger.info(f"OAuth flow successful! Redirecting to Claude: {redirect_url}")
         logger.info(f"Authorization code: {auth_code}")
+        logger.info(f"Authorization code length: {len(auth_code)}")
         logger.info(f"State parameter: {state}")
         logger.info(f"User ID: {user_id}")
         logger.info(f"Client ID: {client_id}")
+        logger.info(f"Redirect URI: {redirect_uri}")
         return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
