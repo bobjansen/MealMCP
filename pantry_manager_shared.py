@@ -392,7 +392,9 @@ class SharedPantryManager(PantryManager):
                 for item_name, unit, quantity in results:
                     if item_name not in contents:
                         contents[item_name] = {}
-                    contents[item_name][unit] = float(quantity) if quantity is not None else 0.0
+                    contents[item_name][unit] = (
+                        float(quantity) if quantity is not None else 0.0
+                    )
 
                 return contents
         except Exception as e:
@@ -505,7 +507,11 @@ class SharedPantryManager(PantryManager):
                 )
 
                 ingredients = [
-                    {"name": name, "quantity": float(qty) if qty is not None else 0.0, "unit": unit}
+                    {
+                        "name": name,
+                        "quantity": float(qty) if qty is not None else 0.0,
+                        "unit": unit,
+                    }
                     for name, qty, unit in cursor.fetchall()
                 ]
 

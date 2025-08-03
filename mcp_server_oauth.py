@@ -966,10 +966,19 @@ async def root_post(request: Request):
                 )
             elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
+            elif method == "prompts/list":
+                # Return empty prompts list (we don't currently support prompts)
+                return JSONResponse(
+                    content={
+                        "jsonrpc": "2.0",
+                        "id": body.get("id"),
+                        "result": {"prompts": []},
+                    }
+                )
             else:
                 logger.error(f"Unknown MCP method: {method}")
                 logger.error(
-                    f"Available methods: initialize, notifications/initialized, tools/list, tools/call"
+                    f"Available methods: initialize, notifications/initialized, tools/list, tools/call, prompts/list"
                 )
                 return {
                     "jsonrpc": "2.0",
