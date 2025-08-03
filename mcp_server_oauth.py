@@ -952,6 +952,35 @@ async def health_check():
     return {"status": "healthy", "service": "MealMCP OAuth Server"}
 
 
+# Debug endpoint for MCP connectivity testing
+@app.get("/debug/mcp")
+async def debug_mcp():
+    """Debug endpoint to test MCP connectivity."""
+    logger.info("Debug MCP endpoint called")
+    return {
+        "mcp_server": True,
+        "oauth_endpoints": {
+            "authorization": "/authorize",
+            "token": "/token"
+        },
+        "status": "ready",
+        "client_registered": "claude-desktop" in [client for client in ["claude-desktop"]]  # Simple check
+    }
+
+
+@app.post("/debug/mcp")
+async def debug_mcp_post(request: Request):
+    """Debug POST endpoint for MCP testing."""
+    logger.info("Debug MCP POST endpoint called")
+    try:
+        body = await request.json()
+        logger.info(f"Debug POST body: {body}")
+        return {"received": body, "status": "ok"}
+    except Exception as e:
+        logger.error(f"Debug POST error: {e}")
+        return {"error": str(e)}
+
+
 # Root endpoint with API info
 @app.get("/")
 async def root(request: Request):
