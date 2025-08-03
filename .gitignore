@@ -17,3 +17,6 @@ wheels/
 
 # vim or other editors
 *.swp
+
+# PyCharm
+.idea/
