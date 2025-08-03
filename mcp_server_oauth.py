@@ -1052,28 +1052,45 @@ async def root(request: Request):
         ]
 
         logger.info("Building response object...")
-        response = {
-            "service": "MealMCP OAuth Server",
-            "version": "1.0.0",
-            "protocolVersion": "2025-06-18",
-            "capabilities": {"tools": {"listChanged": True}},
-            "tools": tools_list,
-            "oauth_endpoints": {
-                "authorization": "/authorize",
-                "token": "/token",
-                "registration": "/register",
-            },
-            "discovery_endpoints": {
-                "oauth_authorization_server": "/.well-known/oauth-authorization-server",
-                "oauth_protected_resource": "/.well-known/oauth-protected-resource",
-            },
-            "mcp_endpoints": {
-                "list_tools": "/mcp/list_tools",
-                "call_tool": "/mcp/call_tool",
-            },
-        }
 
-        logger.info("Returning response from GET /")
+        # Check user agent to determine response format
+        user_agent = request.headers.get("user-agent", "")
+        logger.info(f"User agent: {user_agent}")
+
+        # Since Claude Desktop is making GET requests for tool discovery instead of tools/list JSON-RPC,
+        # return tools in MCP format when authenticated (indicating Claude Desktop)
+        if auth_header and user_id:
+            logger.info(
+                "Returning MCP tools/list response format for authenticated Claude Desktop GET request"
+            )
+            response = {"jsonrpc": "2.0", "id": 1, "result": {"tools": tools_list}}
+        else:
+            # Regular API info for non-authenticated clients (browsers, etc.)
+            logger.info("Returning standard API info for non-authenticated GET request")
+            response = {
+                "service": "MealMCP OAuth Server",
+                "version": "1.0.0",
+                "protocolVersion": "2025-06-18",
+                "capabilities": {"tools": {"listChanged": True}},
+                "tools": tools_list,
+                "oauth_endpoints": {
+                    "authorization": "/authorize",
+                    "token": "/token",
+                    "registration": "/register",
+                },
+                "discovery_endpoints": {
+                    "oauth_authorization_server": "/.well-known/oauth-authorization-server",
+                    "oauth_protected_resource": "/.well-known/oauth-protected-resource",
+                },
+                "mcp_endpoints": {
+                    "list_tools": "/mcp/list_tools",
+                    "call_tool": "/mcp/call_tool",
+                },
+            }
+
+        logger.info(
+            f"Returning response from GET /: {response.get('jsonrpc', 'standard')} format"
+        )
         return response
 
     except Exception as e:
