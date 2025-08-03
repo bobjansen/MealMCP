@@ -794,6 +794,24 @@ class SharedPantryManager(PantryManager):
             print(f"Error getting meal plan: {e}")
             return []
 
+    def clear_recipe_for_date(self, meal_date: str) -> bool:
+        """Clear/remove a recipe from a specific date in the meal plan for the current user."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                cursor.execute(
+                    f"DELETE FROM meal_plan WHERE user_id = {ph} AND meal_date = {ph}",
+                    (self.user_id, meal_date),
+                )
+
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error clearing meal plan for {meal_date}: {e}")
+            return False
+
     def get_grocery_list(self) -> List[Dict[str, Any]]:
         """Calculate grocery items needed for the coming week's meal plan for the current user."""
         start = date.today()

@@ -686,60 +686,306 @@ async def mcp_call_tool(request: Request, user_id: str):
         logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
 
         # Route to appropriate tool implementation
-        if tool_name == "list_units":
-            result = {"units": UNITS}
+        user_id, pantry = get_user_pantry_oauth(user_id)
+        if not pantry:
+            result = {"status": "error", "message": "Failed to get user pantry"}
+        elif tool_name == "plan_meals":
+            # Execute meal plan assignments
+            meal_assignments = arguments.get("meal_assignments", [])
+            replace_existing = arguments.get("replace_existing", False)
+            success_count = 0
+            errors = []
+
+            for assignment in meal_assignments:
+                try:
+                    success = pantry.set_meal_plan(
+                        assignment["date"], assignment["recipe_name"]
+                    )
+                    if success:
+                        success_count += 1
+                    else:
+                        errors.append(
+                            f"Failed to assign {assignment['recipe_name']} to {assignment['date']}"
+                        )
+                except Exception as e:
+                    errors.append(
+                        f"Error with {assignment['recipe_name']} on {assignment['date']}: {str(e)}"
+                    )
+
+            result = {
+                "status": "success" if success_count > 0 else "error",
+                "message": f"Successfully planned {success_count} meals",
+                "assigned": success_count,
+                "errors": errors,
+            }
+
+        elif tool_name == "get_meal_plan":
+            start_date = arguments.get("start_date")
+            days = arguments.get("days", 7)
+            try:
+                # Calculate end date
+                from datetime import datetime, timedelta
+
+                start = datetime.strptime(start_date, "%Y-%m-%d").date()
+                end = start + timedelta(days=days - 1)
+                meal_plan = pantry.get_meal_plan(start_date, end.strftime("%Y-%m-%d"))
+                result = {"status": "success", "meal_plan": meal_plan}
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to get meal plan: {str(e)}",
+                }
+
+        elif tool_name == "generate_grocery_list":
+            try:
+                # Use the existing get_grocery_list method (uses current week)
+                grocery_list = pantry.get_grocery_list()
+                result = {"status": "success", "grocery_list": grocery_list}
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to generate grocery list: {str(e)}",
+                }
+
+        elif tool_name == "suggest_recipes_from_pantry":
+            max_missing = arguments.get("max_missing_ingredients", 3)
+            max_time = arguments.get("max_prep_time")
+            try:
+                # Get pantry contents and all recipes
+                pantry_items = set(pantry.get_pantry_contents().keys())
+                all_recipes = pantry.get_all_recipes()
+
+                suggestions = []
+                for recipe in all_recipes:
+                    recipe_ingredients = set(
+                        ing["name"] for ing in recipe.get("ingredients", [])
+                    )
+                    missing = recipe_ingredients - pantry_items
+
+                    if len(missing) <= max_missing:
+                        if (
+                            max_time is None
+                            or recipe.get("time_minutes", 0) <= max_time
+                        ):
+                            suggestions.append(
+                                {
+                                    "recipe": recipe,
+                                    "missing_ingredients": list(missing),
+                                    "missing_count": len(missing),
+                                }
+                            )
+
+                # Sort by fewest missing ingredients first
+                suggestions.sort(key=lambda x: x["missing_count"])
+                result = {"status": "success", "suggestions": suggestions}
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to get suggestions: {str(e)}",
+                }
+
+        elif tool_name == "search_recipes":
+            query = arguments.get("query")
+            max_time = arguments.get("max_prep_time")
+            min_rating = arguments.get("min_rating")
+            try:
+                all_recipes = pantry.get_all_recipes()
+                filtered = []
+
+                for recipe in all_recipes:
+                    # Apply filters
+                    if query and query.lower() not in recipe.get("name", "").lower():
+                        continue
+                    if max_time and recipe.get("time_minutes", 0) > max_time:
+                        continue
+                    if min_rating and recipe.get("rating", 0) < min_rating:
+                        continue
+                    filtered.append(recipe)
+
+                result = {"status": "success", "recipes": filtered}
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to search recipes: {str(e)}",
+                }
+
+        elif tool_name == "check_recipe_feasibility":
+            recipe_name = arguments["recipe_name"]
+            servings = arguments.get("servings", 4)
+            try:
+                recipe = pantry.get_recipe(recipe_name)
+                if not recipe:
+                    result = {
+                        "status": "error",
+                        "message": f"Recipe '{recipe_name}' not found",
+                    }
+                else:
+                    pantry_contents = pantry.get_pantry_contents()
+                    missing = []
+                    available = []
+
+                    for ingredient in recipe.get("ingredients", []):
+                        ing_name = ingredient["name"]
+                        needed_qty = ingredient["quantity"] * (
+                            servings / 4
+                        )  # Assume recipe serves 4
+                        needed_unit = ingredient["unit"]
+
+                        if (
+                            ing_name in pantry_contents
+                            and needed_unit in pantry_contents[ing_name]
+                        ):
+                            have_qty = pantry_contents[ing_name][needed_unit]
+                            if have_qty >= needed_qty:
+                                available.append(
+                                    {
+                                        "name": ing_name,
+                                        "needed": needed_qty,
+                                        "have": have_qty,
+                                        "unit": needed_unit,
+                                    }
+                                )
+                            else:
+                                missing.append(
+                                    {
+                                        "name": ing_name,
+                                        "needed": needed_qty,
+                                        "have": have_qty,
+                                        "shortage": needed_qty - have_qty,
+                                        "unit": needed_unit,
+                                    }
+                                )
+                        else:
+                            missing.append(
+                                {
+                                    "name": ing_name,
+                                    "needed": needed_qty,
+                                    "have": 0,
+                                    "shortage": needed_qty,
+                                    "unit": needed_unit,
+                                }
+                            )
+
+                    result = {
+                        "status": "success",
+                        "recipe_name": recipe_name,
+                        "servings": servings,
+                        "feasible": len(missing) == 0,
+                        "available_ingredients": available,
+                        "missing_ingredients": missing,
+                    }
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to check feasibility: {str(e)}",
+                }
+
         elif tool_name == "add_recipe":
-            user_id, pantry = get_user_pantry_oauth(user_id)
-            if not pantry:
-                result = {"status": "error", "message": "Failed to get user pantry"}
-            else:
-                success = pantry.add_recipe(
-                    name=arguments["name"],
-                    instructions=arguments["instructions"],
-                    time_minutes=arguments["time_minutes"],
-                    ingredients=arguments["ingredients"],
-                )
-                result = {
-                    "status": "success" if success else "error",
-                    "message": (
-                        "Recipe added successfully"
-                        if success
-                        else "Failed to add recipe"
-                    ),
-                }
+            success = pantry.add_recipe(
+                name=arguments["name"],
+                instructions=arguments["instructions"],
+                time_minutes=arguments["time_minutes"],
+                ingredients=arguments["ingredients"],
+            )
+            result = {
+                "status": "success" if success else "error",
+                "message": (
+                    "Recipe added successfully" if success else "Failed to add recipe"
+                ),
+            }
+
         elif tool_name == "get_all_recipes":
-            user_id, pantry = get_user_pantry_oauth(user_id)
-            if not pantry:
-                result = {"status": "error", "message": "Failed to get user pantry"}
+            recipes = pantry.get_all_recipes()
+            result = {"status": "success", "recipes": recipes}
+
+        elif tool_name == "get_recipe":
+            recipe_name = arguments["recipe_name"]
+            recipe = pantry.get_recipe(recipe_name)
+            if recipe:
+                result = {"status": "success", "recipe": recipe}
             else:
-                recipes = pantry.get_all_recipes()
-                result = {"status": "success", "recipes": recipes}
-        elif tool_name == "get_pantry_contents":
-            user_id, pantry = get_user_pantry_oauth(user_id)
-            if not pantry:
-                result = {"status": "error", "message": "Failed to get user pantry"}
-            else:
-                contents = pantry.get_pantry_contents()
-                result = {"status": "success", "contents": contents}
-        elif tool_name == "add_pantry_item":
-            user_id, pantry = get_user_pantry_oauth(user_id)
-            if not pantry:
-                result = {"status": "error", "message": "Failed to get user pantry"}
-            else:
-                success = pantry.add_item(
-                    arguments["item_name"],
-                    arguments["quantity"],
-                    arguments["unit"],
-                    arguments.get("notes"),
-                )
                 result = {
-                    "status": "success" if success else "error",
-                    "message": (
-                        f"Added {arguments['quantity']} {arguments['unit']} of {arguments['item_name']} to pantry"
-                        if success
-                        else "Failed to add item to pantry"
-                    ),
+                    "status": "error",
+                    "message": f"Recipe '{recipe_name}' not found",
                 }
+
+        elif tool_name == "get_pantry_contents":
+            contents = pantry.get_pantry_contents()
+            result = {"status": "success", "contents": contents}
+
+        elif tool_name == "add_pantry_item":
+            success = pantry.add_item(
+                arguments["item_name"],
+                arguments["quantity"],
+                arguments["unit"],
+                arguments.get("notes"),
+            )
+            result = {
+                "status": "success" if success else "error",
+                "message": (
+                    f"Added {arguments['quantity']} {arguments['unit']} of {arguments['item_name']} to pantry"
+                    if success
+                    else "Failed to add item to pantry"
+                ),
+            }
+
+        elif tool_name == "remove_pantry_item":
+            success = pantry.remove_item(
+                arguments["item_name"],
+                arguments["quantity"],
+                arguments["unit"],
+                arguments.get("reason", "consumed"),
+            )
+            result = {
+                "status": "success" if success else "error",
+                "message": (
+                    f"Removed {arguments['quantity']} {arguments['unit']} of {arguments['item_name']} from pantry"
+                    if success
+                    else "Failed to remove item from pantry"
+                ),
+            }
+
+        elif tool_name == "get_food_preferences":
+            try:
+                preferences = pantry.get_preferences()
+                pref_type = arguments.get("preference_type")
+                if pref_type:
+                    preferences = [
+                        p for p in preferences if p.get("category") == pref_type
+                    ]
+                result = {"status": "success", "preferences": preferences}
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to get preferences: {str(e)}",
+                }
+
+        elif tool_name == "clear_meal_plan":
+            start_date = arguments["start_date"]
+            days = arguments.get("days", 7)
+            try:
+                # Clear meal plan for the specified range
+                success_count = 0
+                from datetime import datetime, timedelta
+
+                start = datetime.strptime(start_date, "%Y-%m-%d").date()
+
+                for i in range(days):
+                    current_date = start + timedelta(days=i)
+                    if pantry.clear_recipe_for_date(current_date.strftime("%Y-%m-%d")):
+                        success_count += 1
+
+                result = {
+                    "status": "success",
+                    "message": f"Cleared {success_count} days from meal plan",
+                    "cleared_days": success_count,
+                }
+            except Exception as e:
+                result = {
+                    "status": "error",
+                    "message": f"Failed to clear meal plan: {str(e)}",
+                }
+
         else:
             result = {"status": "error", "message": f"Unknown tool: {tool_name}"}
 

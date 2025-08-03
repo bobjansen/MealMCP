@@ -1,12 +1,12 @@
 """
-MCP Tool Definitions - Optimized for Meal Planning
-LLM-centric tool design where LLM does decision-making and tools handle execution
+Optimized MCP Tool Definitions for Meal Planning
+Designed for maximum LLM effectiveness and meal planning focus
 """
 
 from typing import List, Dict, Any
 
 # Optimized MCP tools focused on meal planning workflow
-MCP_TOOLS: List[Dict[str, Any]] = [
+MCP_TOOLS_OPTIMIZED: List[Dict[str, Any]] = [
     # === CORE MEAL PLANNING TOOLS ===
     {
         "name": "plan_meals",
@@ -41,7 +41,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "replace_existing": {
                     "type": "boolean",
-                    "default": False,
+                    "default": false,
                     "description": "Replace existing meal plan for these dates",
                 },
             },
@@ -69,6 +69,31 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         },
     },
     {
+        "name": "set_meal_for_date",
+        "description": "Assign a specific recipe to a date and meal type",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Date for the meal (YYYY-MM-DD)",
+                },
+                "recipe_name": {
+                    "type": "string",
+                    "description": "Name of the recipe to assign",
+                },
+                "meal_type": {
+                    "type": "string",
+                    "enum": ["breakfast", "lunch", "dinner", "snack"],
+                    "default": "dinner",
+                    "description": "Type of meal",
+                },
+            },
+            "required": ["date", "recipe_name"],
+        },
+    },
+    {
         "name": "generate_grocery_list",
         "description": "Generate a smart grocery list based on meal plan and current pantry contents",
         "inputSchema": {
@@ -86,7 +111,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "group_by_section": {
                     "type": "boolean",
-                    "default": True,
+                    "default": true,
                     "description": "Group items by store section",
                 },
             },
@@ -109,6 +134,10 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "type": "integer",
                     "description": "Maximum preparation time in minutes",
                 },
+                "cuisine_type": {
+                    "type": "string",
+                    "description": "Preferred cuisine type",
+                },
             },
             "required": [],
         },
@@ -121,7 +150,17 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Text search in recipe names",
+                    "description": "Text search in recipe names and descriptions",
+                },
+                "ingredients": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Must contain these ingredients",
+                },
+                "exclude_ingredients": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Must NOT contain these ingredients",
                 },
                 "max_prep_time": {
                     "type": "integer",
@@ -130,6 +169,11 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "min_rating": {
                     "type": "number",
                     "description": "Minimum recipe rating (1-5)",
+                },
+                "difficulty": {
+                    "type": "string",
+                    "enum": ["easy", "medium", "hard"],
+                    "description": "Recipe difficulty level",
                 },
             },
             "required": [],
@@ -154,10 +198,10 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "required": ["recipe_name"],
         },
     },
-    # === RECIPE MANAGEMENT ===
+    # === RECIPE MANAGEMENT (Enhanced) ===
     {
         "name": "add_recipe",
-        "description": "Add a new recipe to the database",
+        "description": "Add a new recipe with enhanced metadata for better meal planning",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -169,6 +213,34 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "time_minutes": {
                     "type": "integer",
                     "description": "Total preparation and cooking time",
+                },
+                "servings": {
+                    "type": "integer",
+                    "default": 4,
+                    "description": "Number of servings this recipe makes",
+                },
+                "difficulty": {
+                    "type": "string",
+                    "enum": ["easy", "medium", "hard"],
+                    "default": "medium",
+                    "description": "Recipe difficulty",
+                },
+                "cuisine_type": {
+                    "type": "string",
+                    "description": "Cuisine type (e.g., Italian, Asian, Mexican)",
+                },
+                "meal_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["breakfast", "lunch", "dinner", "snack"],
+                    },
+                    "description": "What meal types this recipe is suitable for",
+                },
+                "dietary_tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Dietary tags (vegetarian, vegan, gluten-free, etc.)",
                 },
                 "ingredients": {
                     "type": "array",
@@ -188,35 +260,77 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "get_all_recipes",
-        "description": "Get all recipes with basic information",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
-    },
-    {
-        "name": "get_recipe",
-        "description": "Get detailed recipe information",
+        "description": "Get all recipes with enhanced filtering options",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "recipe_name": {"type": "string", "description": "Name of the recipe"}
+                "include_metadata": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include difficulty, cuisine, dietary tags",
+                },
+                "cuisine_filter": {
+                    "type": "string",
+                    "description": "Filter by cuisine type",
+                },
+                "dietary_filter": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by dietary requirements",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_recipe",
+        "description": "Get detailed recipe information including metadata",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_name": {"type": "string", "description": "Name of the recipe"},
+                "scale_servings": {
+                    "type": "number",
+                    "description": "Scale ingredients for this many servings",
+                },
             },
             "required": ["recipe_name"],
         },
     },
-    # === PANTRY MANAGEMENT ===
+    # === PANTRY MANAGEMENT (Enhanced) ===
     {
         "name": "get_pantry_contents",
-        "description": "Get current pantry inventory",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "description": "Get current pantry inventory with optional filtering",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Filter by ingredient category",
+                },
+                "low_stock_only": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show only items running low",
+                },
+            },
+            "required": [],
+        },
     },
     {
         "name": "add_pantry_item",
-        "description": "Add items to pantry",
+        "description": "Add items to pantry with optional expiration tracking",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "item_name": {"type": "string", "description": "Name of the item"},
                 "quantity": {"type": "number", "description": "Amount to add"},
                 "unit": {"type": "string", "description": "Unit of measurement"},
+                "expiration_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Expiration date (YYYY-MM-DD)",
+                },
                 "notes": {"type": "string", "description": "Optional notes"},
             },
             "required": ["item_name", "quantity", "unit"],
@@ -243,6 +357,30 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     },
     # === PREFERENCES MANAGEMENT ===
     {
+        "name": "set_food_preference",
+        "description": "Set dietary preferences and restrictions for better meal planning",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "food_item": {
+                    "type": "string",
+                    "description": "Food item or ingredient",
+                },
+                "preference_type": {
+                    "type": "string",
+                    "enum": ["like", "dislike", "allergy", "dietary"],
+                    "description": "Type of preference",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Category (e.g., 'vegetarian', 'gluten-free')",
+                },
+                "notes": {"type": "string", "description": "Additional notes"},
+            },
+            "required": ["food_item", "preference_type"],
+        },
+    },
+    {
         "name": "get_food_preferences",
         "description": "Get current food preferences and dietary restrictions",
         "inputSchema": {
@@ -257,7 +395,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "required": [],
         },
     },
-    # === UTILITY ===
+    # === ADVANCED PLANNING ===
     {
         "name": "clear_meal_plan",
         "description": "Clear meal plan for specified date range to allow LLM to create a fresh plan",
@@ -283,7 +421,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
 
 def get_tool_by_name(tool_name: str) -> Dict[str, Any]:
     """Get a specific tool definition by name."""
-    for tool in MCP_TOOLS:
+    for tool in MCP_TOOLS_OPTIMIZED:
         if tool["name"] == tool_name:
             return tool
     raise ValueError(f"Tool '{tool_name}' not found")
@@ -291,4 +429,4 @@ def get_tool_by_name(tool_name: str) -> Dict[str, Any]:
 
 def get_tool_names() -> List[str]:
     """Get list of all available tool names."""
-    return [tool["name"] for tool in MCP_TOOLS]
+    return [tool["name"] for tool in MCP_TOOLS_OPTIMIZED]
