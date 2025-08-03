@@ -1075,12 +1075,18 @@ async def root(request: Request):
                 "Returning tools for Claude Desktop's non-standard GET-based discovery"
             )
             # Try different response formats to find what Claude Desktop expects
-            # Format 1: Just the tools array
-            response = tools_list
+            # Format 4: Full JSON-RPC response (testing this format)
+            response = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "tools": tools_list
+                }
+            }
 
             # Uncomment other formats to test:
-            # Format 2: MCP tools/list result format
-            # response = {"tools": tools_list}
+            # Format 1: Just the tools array
+            # response = tools_list
 
             # Format 3: Full MCP response with server info
             # response = {
