@@ -972,12 +972,14 @@ async def root(request: Request):
         # Return tools in MCP format for Claude Desktop's REST-style discovery
         tools_list = [
             {
+                "name": "test_simple",
+                "description": "A simple test tool with no parameters",
+                "inputSchema": {"type": "object", "properties": {}, "required": []},
+            },
+            {
                 "name": "list_units",
                 "description": "List all units of measurement",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                },
+                "inputSchema": {"type": "object", "properties": {}, "required": []},
             },
             {
                 "name": "add_recipe",
@@ -1057,13 +1059,23 @@ async def root(request: Request):
         user_agent = request.headers.get("user-agent", "")
         logger.info(f"User agent: {user_agent}")
 
-        # Since Claude Desktop is making GET requests for tool discovery instead of tools/list JSON-RPC,
-        # return tools in MCP format when authenticated (indicating Claude Desktop)
+        # Return proper HTTP error for GET requests to encourage JSON-RPC usage
         if auth_header and user_id:
             logger.info(
-                "Returning MCP tools/list response format for authenticated Claude Desktop GET request"
+                "Authenticated request detected - returning HTTP error to encourage JSON-RPC"
             )
-            response = {"jsonrpc": "2.0", "id": 1, "result": {"tools": tools_list}}
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=405,
+                content={
+                    "error": "Method Not Allowed",
+                    "message": "MCP communication requires JSON-RPC POST requests",
+                    "mcp_methods": ["initialize", "tools/list", "tools/call"],
+                    "hint": "Use POST with Content-Type: application/json",
+                },
+                headers={"Allow": "POST"},
+            )
         else:
             # Regular API info for non-authenticated clients (browsers, etc.)
             logger.info("Returning standard API info for non-authenticated GET request")
