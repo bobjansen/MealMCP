@@ -4,7 +4,9 @@ Implements OAuth 2.1 with PKCE for secure multi-user authentication
 """
 
 import json
+import os
 import logging
+import time
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urlparse, parse_qs, quote
 from fastapi import FastAPI, HTTPException, Request, Form, Depends
@@ -30,7 +32,7 @@ from mcp_context import MCPContext
 from mcp_tools import MCP_TOOLS
 from i18n import t
 from datetime import date, timedelta
-import os
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -498,9 +500,6 @@ async def token_endpoint(
     logger.info(f"Authorization code received: {code}")
     logger.info(f"Code verifier: {code_verifier}")
     logger.info(f"Redirect URI: {redirect_uri}")
-
-    # Import time module for debugging
-    import time
 
     # Check if this code exists in our auth_codes
     if code and code in oauth.auth_codes:
