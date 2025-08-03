@@ -558,7 +558,7 @@ def get_user_pantry_oauth(user_id: str) -> tuple[Optional[str], Optional[Any]]:
         from pantry_manager_factory import create_pantry_manager
 
         context.pantry_managers[user_id] = create_pantry_manager(
-            connection_string=db_path
+            backend="sqlite", connection_string=db_path
         )
 
         # Initialize database if it doesn't exist
