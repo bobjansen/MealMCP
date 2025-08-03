@@ -1075,8 +1075,13 @@ async def root(request: Request):
                 "Returning tools for Claude Desktop's non-standard GET-based discovery"
             )
             # Try different response formats to find what Claude Desktop expects
-            # Format 5: Minimal structure (testing this format)
-            response = {"capabilities": {"tools": {}}, "tools": tools_list}
+            # Format 6: Match initialize response format but with tools
+            response = {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {"tools": {"listChanged": True}},
+                "serverInfo": {"name": "MealMCP OAuth Server", "version": "1.0.0"},
+                "tools": tools_list,
+            }
 
             # Uncomment other formats to test:
             # Format 1: Just the tools array
