@@ -959,12 +959,10 @@ async def debug_mcp():
     logger.info("Debug MCP endpoint called")
     return {
         "mcp_server": True,
-        "oauth_endpoints": {
-            "authorization": "/authorize",
-            "token": "/token"
-        },
+        "oauth_endpoints": {"authorization": "/authorize", "token": "/token"},
         "status": "ready",
-        "client_registered": "claude-desktop" in [client for client in ["claude-desktop"]]  # Simple check
+        "client_registered": "claude-desktop"
+        in [client for client in ["claude-desktop"]],  # Simple check
     }
 
 
@@ -1312,7 +1310,29 @@ async def root_post(request: Request):
             logger.info(f"Full request body: {body}")
             logger.info(f"Request ID: {body.get('id', 'no-id')}")
 
-            # If no auth but it's an MCP request, return proper auth challenge
+            # Handle unauthenticated initialize request (required for MCP handshake)
+            if not user_id and method == "initialize":
+                logger.info(
+                    "Allowing unauthenticated initialize request for MCP handshake"
+                )
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": body.get("id"),
+                    "result": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {"tools": {"listChanged": True}},
+                        "serverInfo": {
+                            "name": "MealMCP OAuth Server",
+                            "version": "1.0.0",
+                        },
+                    },
+                }
+                logger.info(f"Unauthenticated initialize response: {response}")
+                return JSONResponse(
+                    content=response, headers={"Content-Type": "application/json"}
+                )
+
+            # If no auth but it's an MCP request (other than initialize), return proper auth challenge
             if not user_id:
                 return JSONResponse(
                     content={
