@@ -269,6 +269,20 @@ async def authorize_post(
 
         # Create authorization code
         logger.info(f"Creating authorization code for user {user_id}")
+
+        # Clean up any existing codes for this client/user to prevent conflicts
+        codes_to_remove = []
+        for existing_code, existing_data in oauth.auth_codes.items():
+            if (
+                existing_data.get("client_id") == client_id
+                and existing_data.get("user_id") == user_id
+            ):
+                codes_to_remove.append(existing_code)
+                logger.info(f"Removing old authorization code: {existing_code}")
+
+        for old_code in codes_to_remove:
+            del oauth.auth_codes[old_code]
+
         auth_code = oauth.create_authorization_code(
             client_id=client_id,
             user_id=user_id,
@@ -402,6 +416,21 @@ async def register_user_post(
 
         # Create user
         user_id = oauth.create_user(username, password, email or None)
+
+        # Clean up any existing codes for this client/user to prevent conflicts
+        codes_to_remove = []
+        for existing_code, existing_data in oauth.auth_codes.items():
+            if (
+                existing_data.get("client_id") == client_id
+                and existing_data.get("user_id") == user_id
+            ):
+                codes_to_remove.append(existing_code)
+                logger.info(
+                    f"Removing old authorization code for new user: {existing_code}"
+                )
+
+        for old_code in codes_to_remove:
+            del oauth.auth_codes[old_code]
 
         # Create authorization code
         auth_code = oauth.create_authorization_code(
