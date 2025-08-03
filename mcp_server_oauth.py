@@ -447,7 +447,9 @@ async def token_endpoint(
     refresh_token: str = Form(None),
 ):
     """Token endpoint."""
-    logger.info(f"Token endpoint called: grant_type={grant_type}, client_id={client_id}")
+    logger.info(
+        f"Token endpoint called: grant_type={grant_type}, client_id={client_id}"
+    )
     logger.info(f"Authorization code received: {code}")
     logger.info(f"Code verifier: {code_verifier}")
     try:
@@ -689,6 +691,33 @@ async def root():
             "oauth_authorization_server": "/.well-known/oauth-authorization-server",
             "oauth_protected_resource": "/.well-known/oauth-protected-resource",
         },
+        "mcp_endpoints": {
+            "list_tools": "/mcp/list_tools",
+            "call_tool": "/mcp/call_tool",
+        },
+    }
+
+
+# Handle POST to root (for any MCP requests that might come here)
+@app.post("/")
+async def root_post(request: Request, user_id: str = Depends(get_current_user)):
+    """Handle POST requests to root endpoint."""
+    if not user_id:
+        return JSONResponse(
+            content={"error": "unauthorized", "message": "Authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Log the request for debugging
+    try:
+        body = await request.json()
+        logger.info(f"POST to root endpoint from user {user_id}: {body}")
+    except:
+        logger.info(f"POST to root endpoint from user {user_id}: (non-JSON body)")
+
+    return {
+        "message": "MCP requests should be sent to /mcp/list_tools or /mcp/call_tool"
     }
 
 
