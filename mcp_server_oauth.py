@@ -67,6 +67,16 @@ public_url = os.getenv("MCP_PUBLIC_URL", "http://localhost:8000")
 use_postgresql = os.getenv("PANTRY_BACKEND", "sqlite").lower() == "postgresql"
 oauth = OAuthServer(base_url=public_url, use_postgresql=use_postgresql)
 
+# Pre-register claude-desktop client for MCP server config
+oauth.register_existing_client(
+    client_id="claude-desktop",
+    client_name="Claude Desktop MCP Client",
+    redirect_uris=[
+        "https://claude.ai/api/organizations/*/mcp/oauth/callback",
+        "claude://oauth/callback"
+    ]
+)
+
 # Create MCP server
 mcp = FastMCP("RecipeManager")
 
