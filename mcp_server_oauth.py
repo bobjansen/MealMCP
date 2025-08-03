@@ -944,107 +944,148 @@ async def health_check():
 
 # Root endpoint with API info
 @app.get("/")
-async def root():
+async def root(request: Request):
     """Root endpoint with API information and MCP tool discovery."""
-    # Return tools in MCP format for Claude Desktop's REST-style discovery
-    tools_list = [
-        {
-            "name": "list_units",
-            "description": "List all units of measurement",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
+    try:
+        logger.info("Processing GET / request")
+
+        # Check if this is an authenticated request from Claude Desktop
+        auth_header = request.headers.get("authorization")
+        user_id = None
+
+        logger.info(f"Authorization header present: {auth_header is not None}")
+
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            logger.info(f"Validating token: {token[:10]}...")
+            token_data = oauth.validate_access_token(token)
+            if token_data:
+                user_id = token_data["user_id"]
+                logger.info(f"Authenticated GET request from user: {user_id}")
+            else:
+                logger.info("GET request with invalid/expired token")
+        else:
+            logger.info("Unauthenticated GET request")
+
+        logger.info("Building tool definitions...")
+
+        # Return tools in MCP format for Claude Desktop's REST-style discovery
+        tools_list = [
+            {
+                "name": "list_units",
+                "description": "List all units of measurement",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                },
             },
-        },
-        {
-            "name": "add_recipe",
-            "description": "Add a new recipe to the database",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Name of the recipe"},
-                    "instructions": {
-                        "type": "string",
-                        "description": "Cooking instructions",
-                    },
-                    "time_minutes": {
-                        "type": "integer",
-                        "description": "Time required to prepare the recipe",
-                    },
-                    "ingredients": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string"},
-                                "quantity": {"type": "number"},
-                                "unit": {"type": "string"},
+            {
+                "name": "add_recipe",
+                "description": "Add a new recipe to the database",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name of the recipe"},
+                        "instructions": {
+                            "type": "string",
+                            "description": "Cooking instructions",
+                        },
+                        "time_minutes": {
+                            "type": "integer",
+                            "description": "Time required to prepare the recipe",
+                        },
+                        "ingredients": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "quantity": {"type": "number"},
+                                    "unit": {"type": "string"},
+                                },
+                                "required": ["name", "quantity", "unit"],
                             },
-                            "required": ["name", "quantity", "unit"],
                         },
                     },
+                    "required": ["name", "instructions", "time_minutes", "ingredients"],
                 },
-                "required": ["name", "instructions", "time_minutes", "ingredients"],
             },
-        },
-        {
-            "name": "get_all_recipes",
-            "description": "Get all recipes",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
-            },
-        },
-        {
-            "name": "get_pantry_contents",
-            "description": "Get the current contents of the pantry",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
-            },
-        },
-        {
-            "name": "add_pantry_item",
-            "description": "Add an item to the pantry",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "item_name": {
-                        "type": "string",
-                        "description": "Name of the item to add",
-                    },
-                    "quantity": {"type": "number", "description": "Amount to add"},
-                    "unit": {"type": "string", "description": "Unit of measurement"},
-                    "notes": {
-                        "type": "string",
-                        "description": "Optional notes about the transaction",
-                    },
+            {
+                "name": "get_all_recipes",
+                "description": "Get all recipes",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
                 },
-                "required": ["item_name", "quantity", "unit"],
             },
-        },
-    ]
+            {
+                "name": "get_pantry_contents",
+                "description": "Get the current contents of the pantry",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            {
+                "name": "add_pantry_item",
+                "description": "Add an item to the pantry",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "item_name": {
+                            "type": "string",
+                            "description": "Name of the item to add",
+                        },
+                        "quantity": {"type": "number", "description": "Amount to add"},
+                        "unit": {
+                            "type": "string",
+                            "description": "Unit of measurement",
+                        },
+                        "notes": {
+                            "type": "string",
+                            "description": "Optional notes about the transaction",
+                        },
+                    },
+                    "required": ["item_name", "quantity", "unit"],
+                },
+            },
+        ]
 
-    return {
-        "service": "MealMCP OAuth Server",
-        "version": "1.0.0",
-        "protocolVersion": "2025-06-18",
-        "capabilities": {"tools": {"listChanged": True}},
-        "tools": tools_list,
-        "oauth_endpoints": {
-            "authorization": "/authorize",
-            "token": "/token",
-            "registration": "/register",
-        },
-        "discovery_endpoints": {
-            "oauth_authorization_server": "/.well-known/oauth-authorization-server",
-            "oauth_protected_resource": "/.well-known/oauth-protected-resource",
-        },
-        "mcp_endpoints": {
-            "list_tools": "/mcp/list_tools",
-            "call_tool": "/mcp/call_tool",
-        },
-    }
+        logger.info("Building response object...")
+        response = {
+            "service": "MealMCP OAuth Server",
+            "version": "1.0.0",
+            "protocolVersion": "2025-06-18",
+            "capabilities": {"tools": {"listChanged": True}},
+            "tools": tools_list,
+            "oauth_endpoints": {
+                "authorization": "/authorize",
+                "token": "/token",
+                "registration": "/register",
+            },
+            "discovery_endpoints": {
+                "oauth_authorization_server": "/.well-known/oauth-authorization-server",
+                "oauth_protected_resource": "/.well-known/oauth-protected-resource",
+            },
+            "mcp_endpoints": {
+                "list_tools": "/mcp/list_tools",
+                "call_tool": "/mcp/call_tool",
+            },
+        }
+
+        logger.info("Returning response from GET /")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error in GET / endpoint: {e}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return {
+            "error": "Internal server error",
+            "message": str(e),
+            "service": "MealMCP OAuth Server",
+        }
 
 
 # Handle HEAD requests to root
