@@ -284,7 +284,11 @@ async def authorize_post(
 
         redirect_url = f"{redirect_uri}?{urlencode(params)}"
         logger.info(f"OAuth flow successful! Redirecting to Claude: {redirect_url}")
-        return RedirectResponse(url=redirect_url)
+        logger.info(f"Authorization code: {auth_code}")
+        logger.info(f"State parameter: {state}")
+        logger.info(f"User ID: {user_id}")
+        logger.info(f"Client ID: {client_id}")
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
         logger.error(f"Authorization error: {e}")
@@ -293,7 +297,7 @@ async def authorize_post(
         if state:
             error_params["state"] = state
         redirect_url = f"{redirect_uri}?{urlencode(error_params)}"
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=redirect_url, status_code=302)
 
 
 @app.get("/register_user")
@@ -403,7 +407,7 @@ async def register_user_post(
             params["state"] = state
 
         redirect_url = f"{redirect_uri}?{urlencode(params)}"
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
         logger.error(f"Registration error: {e}")
@@ -440,6 +444,9 @@ async def token_endpoint(
     refresh_token: str = Form(None),
 ):
     """Token endpoint."""
+    logger.info(f"Token endpoint called: grant_type={grant_type}, client_id={client_id}")
+    logger.info(f"Authorization code received: {code}")
+    logger.info(f"Code verifier: {code_verifier}")
     try:
         if grant_type == "authorization_code":
             if not all([code, redirect_uri, code_verifier]):
