@@ -30,6 +30,7 @@ from mcp_context import MCPContext
 from i18n import t
 from datetime import date, timedelta
 import os
+import time
 import sqlite3
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -288,9 +289,17 @@ async def authorize_post(
         logger.info(f"Authorization code: {auth_code}")
         logger.info(f"Authorization code length: {len(auth_code)}")
         logger.info(f"State parameter: {state}")
+        logger.info(f"State parameter length: {len(state) if state else 0}")
         logger.info(f"User ID: {user_id}")
         logger.info(f"Client ID: {client_id}")
         logger.info(f"Redirect URI: {redirect_uri}")
+
+        # Store additional debug info for this code
+        if auth_code in oauth.auth_codes:
+            oauth.auth_codes[auth_code]["debug_redirect_url"] = redirect_url
+            oauth.auth_codes[auth_code]["debug_timestamp"] = time.time()
+            logger.info(f"Stored debug info for code: {auth_code}")
+
         return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
@@ -452,6 +461,24 @@ async def token_endpoint(
     )
     logger.info(f"Authorization code received: {code}")
     logger.info(f"Code verifier: {code_verifier}")
+    logger.info(f"Redirect URI: {redirect_uri}")
+
+    # Import time module for debugging
+    import time
+
+    # Check if this code exists in our auth_codes
+    if code and code in oauth.auth_codes:
+        auth_data = oauth.auth_codes[code]
+        logger.info(
+            f"Found auth code data: client_id={auth_data.get('client_id')}, user_id={auth_data.get('user_id')}"
+        )
+        logger.info(
+            f"Code expires at: {auth_data.get('expires_at')}, current time: {time.time()}"
+        )
+    else:
+        logger.error(f"Authorization code not found in server cache: {code}")
+        if code:
+            logger.error(f"Available codes: {list(oauth.auth_codes.keys())}")
     try:
         if grant_type == "authorization_code":
             if not all([code, redirect_uri, code_verifier]):
@@ -600,6 +627,24 @@ def add_pantry_item(
         }
     else:
         return {"status": "error", "message": "Failed to add item to pantry"}
+
+
+# Debug endpoint to check authorization code
+@app.get("/debug/code/{code}")
+async def debug_auth_code(code: str):
+    """Debug endpoint to check if authorization code exists."""
+    if code in oauth.auth_codes:
+        auth_data = oauth.auth_codes[code].copy()
+        # Don't expose sensitive data
+        if "code_challenge" in auth_data:
+            auth_data["code_challenge"] = auth_data["code_challenge"][:10] + "..."
+        return {"found": True, "data": auth_data}
+    else:
+        return {
+            "found": False,
+            "available_codes": list(oauth.auth_codes.keys()),
+            "total_codes": len(oauth.auth_codes),
+        }
 
 
 # Debug endpoint to list clients
