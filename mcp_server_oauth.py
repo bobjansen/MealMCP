@@ -1371,7 +1371,7 @@ async def root_post(request: Request):
                     "Note: If tools don't appear, the client may not be calling tools/list"
                 )
                 # Return empty object for notification (JSON-RPC spec)
-                return {}
+                return JSONResponse(content={}, status_code=202)
             elif method == "tools/list":
                 logger.info("tools/list method called - returning tool definitions")
                 logger.info(f"User ID for tools/list: {user_id}")

@@ -97,9 +97,9 @@ async def handle_mcp(request: Request):
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "result": {
-                    "protocolVersion": "2025-03-26",
-                    "capabilities": {"tools": {"listChanged": True}},
-                    "serverInfo": {"name": "Simple MealMCP Server", "version": "1.0.0"},
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {"tools": {"listChanged": True}, "resources": {}},
+                    "serverInfo": {"name": "Simple MealMCP Server", "version": "1.0.0"}
                 },
             }
             logger.info(f"Initialize response: {response}")
@@ -108,7 +108,7 @@ async def handle_mcp(request: Request):
         elif method == "notifications/initialized":
             logger.info("Handling notifications/initialized")
             # Notifications don't need responses
-            return JSONResponse(content={})
+            return JSONResponse(content={}, status_code=202)
 
         elif method == "tools/list":
             logger.info("Handling tools/list request")
