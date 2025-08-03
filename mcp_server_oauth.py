@@ -676,6 +676,46 @@ async def debug_auth_code(code: str):
         }
 
 
+# Debug endpoint to test token exchange manually
+@app.get("/debug/test-token-exchange/{code}")
+async def debug_test_token_exchange(code: str, code_verifier: str = "test-verifier"):
+    """Debug endpoint to test token exchange with a specific code."""
+    try:
+        if code not in oauth.auth_codes:
+            return {
+                "error": "Code not found",
+                "available_codes": list(oauth.auth_codes.keys()),
+            }
+
+        auth_data = oauth.auth_codes[code]
+
+        # Note: This will fail PKCE validation since we don't have the real code_verifier
+        # But it will show us what kind of error occurs
+        try:
+            tokens = oauth.exchange_code_for_tokens(
+                code=code,
+                client_id=auth_data["client_id"],
+                redirect_uri=auth_data["redirect_uri"],
+                code_verifier=code_verifier,
+            )
+            return {"success": True, "tokens": tokens}
+        except Exception as inner_e:
+            return {
+                "pkce_test_failed": True,
+                "error": str(inner_e),
+                "auth_data_summary": {
+                    "client_id": auth_data["client_id"],
+                    "user_id": auth_data["user_id"],
+                    "expires_at": auth_data["expires_at"],
+                    "current_time": time.time(),
+                    "expired": time.time() > auth_data["expires_at"],
+                },
+            }
+
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__}
+
+
 # Debug endpoint to list clients
 @app.get("/debug/clients")
 async def debug_clients():
@@ -823,12 +863,30 @@ async def root_post(request: Request):
                 )
 
             # Route MCP requests to appropriate handlers
-            if body.get("method") == "tools/list":
+            method = body.get("method")
+            if method == "initialize":
+                return {
+                    "jsonrpc": "2.0",
+                    "id": body.get("id"),
+                    "result": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {"tools": {}},
+                        "serverInfo": {
+                            "name": "MealMCP OAuth Server",
+                            "version": "1.0.0",
+                        },
+                    },
+                }
+            elif method == "tools/list":
                 return await mcp_list_tools(request, user_id)
-            elif body.get("method") == "tools/call":
+            elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
             else:
-                return {"error": "unknown_method", "method": body.get("method")}
+                return {
+                    "jsonrpc": "2.0",
+                    "id": body.get("id"),
+                    "error": {"code": -32601, "message": f"Method not found: {method}"},
+                }
 
     except Exception as e:
         logger.error(f"Error processing request body: {e}")
