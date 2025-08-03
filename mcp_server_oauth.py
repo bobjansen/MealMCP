@@ -1126,6 +1126,8 @@ async def root_post(request: Request):
         # Check if this looks like an MCP request
         if isinstance(body, dict) and "method" in body:
             logger.info(f"Detected MCP method: {body['method']}")
+            logger.info(f"Full request body: {body}")
+            logger.info(f"Request ID: {body.get('id', 'no-id')}")
 
             # If no auth but it's an MCP request, return proper auth challenge
             if not user_id:
@@ -1165,10 +1167,14 @@ async def root_post(request: Request):
                 logger.info(
                     "Note: If tools don't appear, the client may not be calling tools/list"
                 )
+                # Return empty object for notification (JSON-RPC spec)
                 return {}
             elif method == "tools/list":
                 logger.info("tools/list method called - returning tool definitions")
-                return await mcp_list_tools(request, user_id)
+                logger.info(f"User ID for tools/list: {user_id}")
+                result = await mcp_list_tools(request, user_id)
+                logger.info(f"tools/list result: {result}")
+                return result
             elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
             else:
