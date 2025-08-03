@@ -1059,23 +1059,30 @@ async def root(request: Request):
         user_agent = request.headers.get("user-agent", "")
         logger.info(f"User agent: {user_agent}")
 
-        # Return proper HTTP error for GET requests to encourage JSON-RPC usage
+        # Claude Desktop expects tools via GET requests (non-standard MCP behavior)
         if auth_header and user_id:
             logger.info(
-                "Authenticated request detected - returning HTTP error to encourage JSON-RPC"
+                "Returning tools for Claude Desktop's non-standard GET-based discovery"
             )
-            from fastapi.responses import JSONResponse
+            # Try different response formats to find what Claude Desktop expects
+            # Format 1: Just the tools array
+            response = tools_list
 
-            return JSONResponse(
-                status_code=405,
-                content={
-                    "error": "Method Not Allowed",
-                    "message": "MCP communication requires JSON-RPC POST requests",
-                    "mcp_methods": ["initialize", "tools/list", "tools/call"],
-                    "hint": "Use POST with Content-Type: application/json",
-                },
-                headers={"Allow": "POST"},
-            )
+            # Uncomment other formats to test:
+            # Format 2: MCP tools/list result format
+            # response = {"tools": tools_list}
+
+            # Format 3: Full MCP response with server info
+            # response = {
+            #     "tools": tools_list,
+            #     "serverInfo": {"name": "MealMCP OAuth Server", "version": "1.0.0"},
+            #     "protocolVersion": "2025-06-18"
+            # }
+            logger.info(f"Tools being returned: {len(tools_list)} tools")
+            logger.info(f"Tool names: {[tool['name'] for tool in tools_list]}")
+            logger.info(f"Response type: {type(response)}")
+            if isinstance(response, list) and response:
+                logger.info(f"First tool structure: {list(response[0].keys())}")
         else:
             # Regular API info for non-authenticated clients (browsers, etc.)
             logger.info("Returning standard API info for non-authenticated GET request")
