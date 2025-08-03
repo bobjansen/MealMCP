@@ -704,26 +704,65 @@ async def root_head():
     """Handle HEAD requests to root endpoint."""
     return JSONResponse(content={})
 
+
 # Handle POST to root (for any MCP requests that might come here)
 @app.post("/")
-async def root_post(request: Request, user_id: str = Depends(get_current_user)):
-    """Handle POST requests to root endpoint."""
-    if not user_id:
-        return JSONResponse(
-            content={"error": "unauthorized", "message": "Authentication required"},
-            status_code=401,
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+async def root_post(request: Request):
+    """Handle POST requests to root endpoint - potential MCP requests."""
+    logger.info(f"POST to root endpoint from {request.client}")
 
-    # Log the request for debugging
+    # Log request headers to debug authentication
+    auth_header = request.headers.get("authorization")
+    logger.info(f"Authorization header: {auth_header}")
+
+    # Try to get user ID from token
+    user_id = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        token_data = oauth.validate_access_token(token)
+        if token_data:
+            user_id = token_data["user_id"]
+            logger.info(f"Valid token for user: {user_id}")
+        else:
+            logger.info("Invalid or expired token")
+    else:
+        logger.info("No Bearer token provided")
+
+    # Log the request body for debugging
     try:
         body = await request.json()
-        logger.info(f"POST to root endpoint from user {user_id}: {body}")
-    except:
-        logger.info(f"POST to root endpoint from user {user_id}: (non-JSON body)")
+        logger.info(f"Request body: {body}")
+
+        # Check if this looks like an MCP request
+        if isinstance(body, dict) and "method" in body:
+            logger.info(f"Detected MCP method: {body['method']}")
+
+            # If no auth but it's an MCP request, return proper auth challenge
+            if not user_id:
+                return JSONResponse(
+                    content={
+                        "error": "unauthorized",
+                        "message": "Authentication required",
+                    },
+                    status_code=401,
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            # Route MCP requests to appropriate handlers
+            if body.get("method") == "tools/list":
+                return await mcp_list_tools(request, user_id)
+            elif body.get("method") == "tools/call":
+                return await mcp_call_tool(request, user_id)
+            else:
+                return {"error": "unknown_method", "method": body.get("method")}
+
+    except Exception as e:
+        logger.error(f"Error processing request body: {e}")
 
     return {
-        "message": "MCP requests should be sent to /mcp/list_tools or /mcp/call_tool"
+        "message": "MCP requests should be sent to /mcp/list_tools or /mcp/call_tool",
+        "authenticated": user_id is not None,
+        "user_id": user_id,
     }
 
 
