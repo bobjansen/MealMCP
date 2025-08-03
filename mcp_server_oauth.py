@@ -888,7 +888,8 @@ async def root_post(request: Request):
 
         # Check if this looks like an MCP request
         if isinstance(body, dict) and "method" in body:
-            logger.info(f"Detected MCP method: {body['method']}")
+            method = body.get("method")
+            logger.info(f"Detected MCP method: {method}")
             logger.info(f"Full request body: {body}")
             logger.info(f"Request ID: {body.get('id', 'no-id')}")
 
@@ -926,7 +927,6 @@ async def root_post(request: Request):
                 )
 
             # Route MCP requests to appropriate handlers
-            method = body.get("method")
             if method == "initialize":
                 logger.info("Sending initialize response with tool capabilities")
                 response = {
