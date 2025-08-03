@@ -698,6 +698,12 @@ async def root():
     }
 
 
+# Handle HEAD requests to root
+@app.head("/")
+async def root_head():
+    """Handle HEAD requests to root endpoint."""
+    return JSONResponse(content={})
+
 # Handle POST to root (for any MCP requests that might come here)
 @app.post("/")
 async def root_post(request: Request, user_id: str = Depends(get_current_user)):
