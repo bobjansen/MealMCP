@@ -962,6 +962,16 @@ async def root():
             "list_tools": "/mcp/list_tools",
             "call_tool": "/mcp/call_tool",
         },
+        "tools": [
+            {"name": "list_units", "description": "List all units of measurement"},
+            {"name": "add_recipe", "description": "Add a new recipe to the database"},
+            {"name": "get_all_recipes", "description": "Get all recipes"},
+            {
+                "name": "get_pantry_contents",
+                "description": "Get the current contents of the pantry",
+            },
+            {"name": "add_pantry_item", "description": "Add an item to the pantry"},
+        ],
     }
 
 
@@ -1018,7 +1028,8 @@ async def root_post(request: Request):
             # Route MCP requests to appropriate handlers
             method = body.get("method")
             if method == "initialize":
-                return {
+                logger.info("Sending initialize response with tool capabilities")
+                response = {
                     "jsonrpc": "2.0",
                     "id": body.get("id"),
                     "result": {
@@ -1030,15 +1041,28 @@ async def root_post(request: Request):
                         },
                     },
                 }
+                logger.info(f"Initialize response: {response}")
+                return response
             elif method == "notifications/initialized":
                 # Notification methods don't require responses in JSON-RPC
-                logger.info("Client initialization complete")
+                logger.info(
+                    "Client initialization complete - Claude should call tools/list next"
+                )
+                # Some MCP clients need an explicit tools list notification
+                logger.info(
+                    "Note: If tools don't appear, the client may not be calling tools/list"
+                )
                 return {}
             elif method == "tools/list":
+                logger.info("tools/list method called - returning tool definitions")
                 return await mcp_list_tools(request, user_id)
             elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
             else:
+                logger.error(f"Unknown MCP method: {method}")
+                logger.error(
+                    f"Available methods: initialize, notifications/initialized, tools/list, tools/call"
+                )
                 return {
                     "jsonrpc": "2.0",
                     "id": body.get("id"),
