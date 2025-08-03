@@ -48,7 +48,9 @@ app = FastAPI(title="MealMCP OAuth Server", version="1.0.0")
 async def log_requests(request: Request, call_next):
     response = await call_next(request)
     if response.status_code >= 400:
-        logger.warning(f"Request: {request.method} {request.url} -> {response.status_code}")
+        logger.warning(
+            f"Request: {request.method} {request.url} -> {response.status_code}"
+        )
     return response
 
 
@@ -544,17 +546,34 @@ def get_user_pantry_oauth(user_id: str) -> tuple[Optional[str], Optional[Any]]:
 
     # In multi-user mode, create user-specific pantry manager
     if user_id not in context.pantry_managers:
-        db_path = context.user_manager.get_user_db_path(user_id)
-        from pantry_manager_factory import create_pantry_manager
+        backend = os.getenv("PANTRY_BACKEND", "sqlite").lower()
 
-        context.pantry_managers[user_id] = create_pantry_manager(
-            backend="sqlite", connection_string=db_path
-        )
+        if backend == "postgresql":
+            # Use shared PostgreSQL database with user_id isolation
+            from pantry_manager_shared import SharedPantryManager
 
-        # Initialize database if it doesn't exist
-        from db_setup import setup_database
+            connection_string = os.getenv(
+                "PANTRY_DATABASE_URL", "postgresql://localhost/mealmcp"
+            )
 
-        setup_database(db_path)
+            context.pantry_managers[user_id] = SharedPantryManager(
+                connection_string=connection_string,
+                user_id=int(user_id),
+                backend="postgresql",
+            )
+        else:
+            # Use individual SQLite databases per user
+            db_path = context.user_manager.get_user_db_path(user_id)
+            from pantry_manager_factory import create_pantry_manager
+
+            context.pantry_managers[user_id] = create_pantry_manager(
+                backend="sqlite", connection_string=db_path
+            )
+
+            # Initialize database if it doesn't exist
+            from db_setup import setup_database
+
+            setup_database(db_path)
 
     context.set_current_user(user_id)
     return user_id, context.pantry_managers[user_id]
@@ -652,8 +671,6 @@ def add_pantry_item(
         }
     else:
         return {"status": "error", "message": "Failed to add item to pantry"}
-
-
 
 
 # MCP Tool endpoints that require authentication
@@ -767,8 +784,6 @@ async def health_check():
     return {"status": "healthy", "service": "MealMCP OAuth Server"}
 
 
-
-
 # Root endpoint with API info
 @app.get("/")
 async def root(request: Request):
@@ -777,7 +792,6 @@ async def root(request: Request):
         # Check if this is an authenticated request from Claude Desktop
         auth_header = request.headers.get("authorization")
         user_id = None
-
 
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]
@@ -855,8 +869,6 @@ async def root_head():
     return JSONResponse(content={})
 
 
-
-
 # Handle POST to root (for any MCP requests that might come here)
 @app.post("/")
 async def root_post(request: Request):
@@ -871,7 +883,7 @@ async def root_post(request: Request):
             user_id = token_data["user_id"]
         else:
             logger.warning("Invalid or expired access token")
-    
+
     # Parse request body
     try:
         body = await request.json()
@@ -945,11 +957,13 @@ async def root_post(request: Request):
                 # Return empty object for notification (JSON-RPC spec)
                 return JSONResponse(content={}, status_code=202)
             elif method == "tools/list":
-                return JSONResponse(content={
-                    "jsonrpc": "2.0",
-                    "id": body.get("id"),
-                    "result": {"tools": MCP_TOOLS}
-                })
+                return JSONResponse(
+                    content={
+                        "jsonrpc": "2.0",
+                        "id": body.get("id"),
+                        "result": {"tools": MCP_TOOLS},
+                    }
+                )
             elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
             else:

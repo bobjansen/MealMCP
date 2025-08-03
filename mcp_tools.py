@@ -10,11 +10,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     {
         "name": "list_units",
         "description": "List all units of measurement",
-        "inputSchema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "add_recipe",
@@ -23,8 +19,14 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "Name of the recipe"},
-                "instructions": {"type": "string", "description": "Cooking instructions"},
-                "time_minutes": {"type": "integer", "description": "Time required to prepare the recipe"},
+                "instructions": {
+                    "type": "string",
+                    "description": "Cooking instructions",
+                },
+                "time_minutes": {
+                    "type": "integer",
+                    "description": "Time required to prepare the recipe",
+                },
                 "ingredients": {
                     "type": "array",
                     "items": {
@@ -39,16 +41,12 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
             },
             "required": ["name", "instructions", "time_minutes", "ingredients"],
-        }
+        },
     },
     {
         "name": "get_all_recipes",
         "description": "Get all recipes",
-        "inputSchema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "get_recipe",
@@ -58,20 +56,16 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "recipe_name": {
                     "type": "string",
-                    "description": "Name of the recipe to retrieve"
+                    "description": "Name of the recipe to retrieve",
                 }
             },
-            "required": ["recipe_name"]
-        }
+            "required": ["recipe_name"],
+        },
     },
     {
         "name": "get_pantry_contents",
         "description": "Get the current contents of the pantry",
-        "inputSchema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "add_pantry_item",
@@ -79,14 +73,20 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "item_name": {"type": "string", "description": "Name of the item to add"},
+                "item_name": {
+                    "type": "string",
+                    "description": "Name of the item to add",
+                },
                 "quantity": {"type": "number", "description": "Amount to add"},
                 "unit": {"type": "string", "description": "Unit of measurement"},
-                "notes": {"type": "string", "description": "Optional notes about the transaction"},
+                "notes": {
+                    "type": "string",
+                    "description": "Optional notes about the transaction",
+                },
             },
             "required": ["item_name", "quantity", "unit"],
-        }
-    }
+        },
+    },
 ]
 
 
