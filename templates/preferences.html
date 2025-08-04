@@ -11,6 +11,45 @@
     </div>
 </div>
 
+<!-- Household Size Section -->
+{% if requires_auth %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users"></i> {{ t('Household Size') }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('update_household_size') }}" class="row align-items-end">
+                    <div class="col-md-4">
+                        <label for="adults" class="form-label">{{ t('Number of Adults') }}</label>
+                        <input type="number" class="form-control" id="adults" name="adults" 
+                               min="1" max="20" value="{{ current_user_info.household_adults or 2 }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="children" class="form-label">{{ t('Number of Children') }}</label>
+                        <input type="number" class="form-control" id="children" name="children" 
+                               min="0" max="20" value="{{ current_user_info.household_children or 0 }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> {{ t('Update Household Size') }}
+                        </button>
+                    </div>
+                </form>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        {{ t('Current household:') }} {{ current_user_info.household_adults or 2 }} {{ t('adults') }}, {{ current_user_info.household_children or 0 }} {{ t('children') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row">
     <div class="col-lg-4">
         <div class="card">

@@ -147,7 +147,8 @@ class WebUserManager:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT id, username, email, created_at, is_active, preferred_language
+                        SELECT id, username, email, created_at, is_active, preferred_language,
+                               household_adults, household_children
                         FROM users WHERE id = %s AND is_active = TRUE
                     """,
                         (user_id,),
@@ -162,6 +163,8 @@ class WebUserManager:
                             "created_at": user[3],
                             "is_active": user[4],
                             "preferred_language": user[5] or "en",
+                            "household_adults": user[6] or 2,
+                            "household_children": user[7] or 0,
                         }
         except Exception as e:
             print(f"Error getting user: {e}")
@@ -243,3 +246,52 @@ class WebUserManager:
 
         except Exception as e:
             return False, f"Error updating language preference: {str(e)}"
+
+    def set_household_size(
+        self, user_id: int, adults: int, children: int
+    ) -> Tuple[bool, str]:
+        """Set user's household size."""
+        if self.backend == "sqlite":
+            return False, "Household size preference not available in SQLite mode"
+
+        if adults < 1:
+            return False, "Number of adults must be at least 1"
+        if children < 0:
+            return False, "Number of children cannot be negative"
+
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE users SET household_adults = %s, household_children = %s WHERE id = %s",
+                        (adults, children, user_id),
+                    )
+
+                    if cursor.rowcount > 0:
+                        return True, "Household size updated successfully"
+                    else:
+                        return False, "User not found"
+
+        except Exception as e:
+            return False, f"Error updating household size: {str(e)}"
+
+    def get_household_size(self, user_id: int) -> Tuple[int, int]:
+        """Get user's household size (adults, children)."""
+        if self.backend == "sqlite":
+            return 2, 0  # Default values for SQLite mode
+
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT household_adults, household_children FROM users WHERE id = %s",
+                        (user_id,),
+                    )
+                    result = cursor.fetchone()
+                    if result:
+                        return result[0] or 2, result[1] or 0
+                    else:
+                        return 2, 0
+        except Exception as e:
+            print(f"Error getting household size: {e}")
+            return 2, 0

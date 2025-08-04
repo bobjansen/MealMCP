@@ -46,10 +46,31 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
                     password_hash VARCHAR(255) NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE,
-                    preferred_language VARCHAR(10) DEFAULT 'en'
+                    preferred_language VARCHAR(10) DEFAULT 'en',
+                    household_adults INTEGER DEFAULT 2,
+                    household_children INTEGER DEFAULT 0
                 )
             """
             )
+
+            # Add household columns to existing users table if they don't exist
+            try:
+                cursor.execute(
+                    "ALTER TABLE users ADD COLUMN household_adults INTEGER DEFAULT 2"
+                )
+            except psycopg2.errors.DuplicateColumn:
+                pass
+            except Exception:
+                pass
+
+            try:
+                cursor.execute(
+                    "ALTER TABLE users ADD COLUMN household_children INTEGER DEFAULT 0"
+                )
+            except psycopg2.errors.DuplicateColumn:
+                pass
+            except Exception:
+                pass
 
             # Ingredients table (shared, but could be user-specific)
             cursor.execute(
@@ -186,10 +207,27 @@ def _setup_sqlite_shared(db_path: str) -> bool:
                 password_hash TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT 1,
-                preferred_language TEXT DEFAULT 'en'
+                preferred_language TEXT DEFAULT 'en',
+                household_adults INTEGER DEFAULT 2,
+                household_children INTEGER DEFAULT 0
             )
         """
         )
+
+        # Add household columns to existing users table if they don't exist
+        try:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN household_adults INTEGER DEFAULT 2"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN household_children INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Ingredients table
         cursor.execute(

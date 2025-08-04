@@ -302,7 +302,15 @@ def preferences():
         return redirect(url_for("logout"))
 
     prefs = user_pantry.get_preferences()
-    return render_template("preferences.html", preferences=prefs)
+
+    # Get current user info for household size
+    current_user_info = None
+    if backend == "postgresql" and "user_id" in session:
+        current_user_info = auth_manager.get_user_by_id(session["user_id"])
+
+    return render_template(
+        "preferences.html", preferences=prefs, current_user_info=current_user_info
+    )
 
 
 @app.route("/preferences/add", methods=["POST"])
@@ -611,6 +619,44 @@ def set_meal_plan():
         flash("Error updating meal plan.", "error")
 
     return redirect(url_for("meal_plan"))
+
+
+@app.route("/preferences/household-size", methods=["POST"])
+@requires_auth
+def update_household_size():
+    """Update user's household size."""
+    if backend == "sqlite":
+        flash("Household size preference not available in SQLite mode.", "error")
+        return redirect(url_for("preferences"))
+
+    adults = request.form.get("adults")
+    children = request.form.get("children")
+
+    try:
+        adults = int(adults) if adults else 2
+        children = int(children) if children else 0
+    except ValueError:
+        flash("Please enter valid numbers for household size.", "error")
+        return redirect(url_for("preferences"))
+
+    if adults < 1:
+        flash("Number of adults must be at least 1.", "error")
+        return redirect(url_for("preferences"))
+
+    if children < 0:
+        flash("Number of children cannot be negative.", "error")
+        return redirect(url_for("preferences"))
+
+    success, message = auth_manager.set_household_size(
+        session["user_id"], adults, children
+    )
+
+    if success:
+        flash("Household size updated successfully!", "success")
+    else:
+        flash("Error updating household size.", "error")
+
+    return redirect(url_for("preferences"))
 
 
 @app.context_processor
