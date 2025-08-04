@@ -30,7 +30,7 @@ class WebUserManager:
         except Exception as e:
             print(f"Error initializing shared database: {e}")
 
-    def create_user(self, username: str, email: str, password: str) -> Tuple[bool, str]:
+    def create_user(self, username: str, email: str, password: str, language: str = "en") -> Tuple[bool, str]:
         """Create a new user account."""
         if self.backend == "sqlite":
             return False, "User registration not available in SQLite mode"
@@ -44,6 +44,10 @@ class WebUserManager:
         if self.email_exists(email):
             return False, "Email already registered"
 
+        # Validate language
+        if language not in ["en", "nl"]:
+            language = "en"
+
         try:
             password_hash = generate_password_hash(password)
 
@@ -51,10 +55,10 @@ class WebUserManager:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO users (username, email, password_hash)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO users (username, email, password_hash, preferred_language)
+                        VALUES (%s, %s, %s, %s)
                     """,
-                        (username, email, password_hash),
+                        (username, email, password_hash, language),
                     )
 
             return True, "User created successfully"

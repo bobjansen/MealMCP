@@ -157,6 +157,7 @@ def register():
         email = request.form.get("email")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
+        language = request.form.get("language", "en")
 
         if not all([username, email, password, confirm_password]):
             flash("Please fill in all fields.", "error")
@@ -166,7 +167,10 @@ def register():
             flash("Passwords do not match.", "error")
             return render_template("auth/register.html")
 
-        success, message = auth_manager.create_user(username, email, password)
+        if language not in ["en", "nl"]:
+            language = "en"  # Default to English if invalid language
+
+        success, message = auth_manager.create_user(username, email, password, language)
 
         if success:
             flash("Account created successfully! Please log in.", "success")

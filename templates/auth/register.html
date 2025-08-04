@@ -16,7 +16,7 @@
                         <h4 class="mb-0">
                             <i class="fas fa-utensils"></i> Meal Manager
                         </h4>
-                        <p class="mb-0 mt-2">Create your account</p>
+                        <p class="mb-0 mt-2">{{ t('Create your account') }}</p>
                     </div>
                     <div class="card-body">
                         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -33,54 +33,65 @@
                         <form method="POST">
                             <div class="mb-3">
                                 <label for="username" class="form-label">
-                                    <i class="fas fa-user"></i> Username
+                                    <i class="fas fa-user"></i> {{ t('Username') }}
                                 </label>
-                                <input type="text" class="form-control" id="username" name="username" required 
-                                       placeholder="Choose a username" minlength="3" maxlength="20">
-                                <small class="form-text text-muted">3-20 characters, letters and numbers only</small>
+                                <input type="text" class="form-control" id="username" name="username" required
+                                       placeholder="{{ t('Choose a username') }}" minlength="3" maxlength="20">
+                                <small class="form-text text-muted">{{ t('3-20 characters, letters and numbers only') }}</small>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="email" class="form-label">
-                                    <i class="fas fa-envelope"></i> Email Address
+                                    <i class="fas fa-envelope"></i> {{ t('Email Address') }}
                                 </label>
-                                <input type="email" class="form-control" id="email" name="email" required 
-                                       placeholder="Enter your email address">
-                                <small class="form-text text-muted">We'll never share your email with anyone</small>
+                                <input type="email" class="form-control" id="email" name="email" required
+                                       placeholder="{{ t('Enter your email address') }}">
+                                <small class="form-text text-muted">{{ t("We'll never share your email with anyone") }}</small>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="password" class="form-label">
-                                    <i class="fas fa-lock"></i> Password
+                                    <i class="fas fa-lock"></i> {{ t('Password') }}
                                 </label>
-                                <input type="password" class="form-control" id="password" name="password" required 
-                                       placeholder="Create a strong password" minlength="8">
-                                <small class="form-text text-muted">At least 8 characters long</small>
+                                <input type="password" class="form-control" id="password" name="password" required
+                                       placeholder="{{ t('Create a strong password') }}" minlength="8">
+                                <small class="form-text text-muted">{{ t('At least 8 characters long') }}</small>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="confirm_password" class="form-label">
-                                    <i class="fas fa-lock"></i> Confirm Password
+                                    <i class="fas fa-lock"></i> {{ t('Confirm Password') }}
                                 </label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required 
-                                       placeholder="Confirm your password">
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required
+                                       placeholder="{{ t('Confirm your password') }}">
                             </div>
-                            
+
+                            <div class="mb-3">
+                                <label for="language" class="form-label">
+                                    <i class="fas fa-language"></i> {{ t('Preferred Language') }}
+                                </label>
+                                <select name="language" id="language" class="form-select" required>
+                                    <option value="en" selected>English</option>
+                                    <option value="nl">Nederlands (Dutch)</option>
+                                </select>
+                                <small class="form-text text-muted">{{ t('Choose your preferred language for the interface') }}</small>
+                            </div>
+
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-user-plus"></i> Create Account
+                                    <i class="fas fa-user-plus"></i> {{ t('Create Account') }}
                                 </button>
                             </div>
                         </form>
                     </div>
                     <div class="card-footer text-center">
                         <small class="text-muted">
-                            Already have an account? 
-                            <a href="{{ url_for('login') }}" class="text-decoration-none">Sign in here</a>
+                            {{ t('Already have an account?') }}
+                            <a href="{{ url_for('login') }}" class="text-decoration-none">{{ t('Sign in here') }}</a>
                         </small>
                     </div>
                 </div>
-                
+
             </div>
         </div>
     </div>
@@ -91,7 +102,7 @@
         document.getElementById('confirm_password').addEventListener('input', function() {
             const password = document.getElementById('password').value;
             const confirmPassword = this.value;
-            
+
             if (password !== confirmPassword) {
                 this.setCustomValidity('Passwords do not match');
             } else {
