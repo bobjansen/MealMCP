@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('Welcome to Meal Manager') }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-primary text-white py-5 mb-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-3">{{ t('Welcome to Meal Manager') }}</h1>
+                <h2 class="h4 mb-4">{{ t('Your Complete Meal Planning Solution') }}</h2>
+                <p class="lead mb-4">{{ t('Organize your pantry, create recipes, and plan meals with ease') }}</p>
+                <div class="d-flex gap-3">
+                    {% if requires_auth %}
+                    <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+                        <i class="fas fa-user-plus"></i> {{ t('Get Started') }}
+                    </a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> {{ t('Login') }}
+                    </a>
+                    {% else %}
+                    <button class="btn btn-light btn-lg" onclick="showLoginPrompt()">
+                        <i class="fas fa-rocket"></i> {{ t('Get Started') }}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="fas fa-utensils fa-10x opacity-75"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="container mb-5">
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-warning mb-3">
+                        <i class="fas fa-box fa-3x"></i>
+                    </div>
+                    <h5 class="card-title">{{ t('Smart Pantry Management') }}</h5>
+                    <p class="card-text">{{ t('Track ingredients, quantities, and expiration dates') }}</p>
+                    <button class="btn btn-outline-warning" onclick="showLoginPrompt('pantry')">
+                        {{ t('Try It Now') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-success mb-3">
+                        <i class="fas fa-book fa-3x"></i>
+                    </div>
+                    <h5 class="card-title">{{ t('Recipe Collection') }}</h5>
+                    <p class="card-text">{{ t('Store and organize your favorite recipes') }}</p>
+                    <button class="btn btn-outline-success" onclick="showLoginPrompt('recipes')">
+                        {{ t('Try It Now') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-info mb-3">
+                        <i class="fas fa-calendar fa-3x"></i>
+                    </div>
+                    <h5 class="card-title">{{ t('Meal Planning') }}</h5>
+                    <p class="card-text">{{ t('Plan weekly meals and generate shopping lists') }}</p>
+                    <button class="btn btn-outline-info" onclick="showLoginPrompt('meal-plan')">
+                        {{ t('Try It Now') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 text-center border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-primary mb-3">
+                        <i class="fas fa-heart fa-3x"></i>
+                    </div>
+                    <h5 class="card-title">{{ t('Food Preferences') }}</h5>
+                    <p class="card-text">{{ t('Manage dietary restrictions and preferences') }}</p>
+                    <button class="btn btn-outline-primary" onclick="showLoginPrompt('preferences')">
+                        {{ t('Try It Now') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Demo Dashboard Section -->
+<div class="container mb-5">
+    <div class="row">
+        <div class="col-12">
+            <h3 class="text-center mb-4">{{ t('Getting Started') }}</h3>
+            
+            <!-- Quick Actions Cards (Demo) -->
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">{{ t('Meal Plan') }}</h5>
+                                    <p class="card-text">{{ t('Plan your meals and generate grocery lists') }}</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-calendar fa-2x"></i>
+                                </div>
+                            </div>
+                            <button class="btn btn-light mt-2" onclick="showLoginPrompt('meal-plan')">
+                                <i class="fas fa-arrow-right"></i> {{ t('Plan') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">{{ t('Pantry') }}</h5>
+                                    <p class="card-text">{{ t('Track your ingredients and pantry inventory') }}</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-box fa-2x"></i>
+                                </div>
+                            </div>
+                            <button class="btn btn-light mt-2" onclick="showLoginPrompt('pantry')">
+                                <i class="fas fa-arrow-right"></i> {{ t('View') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">{{ t('Recipes') }}</h5>
+                                    <p class="card-text">{{ t('Create and manage your recipe collection') }}</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-book fa-2x"></i>
+                                </div>
+                            </div>
+                            <button class="btn btn-light mt-2" onclick="showLoginPrompt('recipes')">
+                                <i class="fas fa-arrow-right"></i> {{ t('Browse') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">{{ t('Preferences') }}</h5>
+                                    <p class="card-text">{{ t('Manage your food preferences and dietary restrictions') }}</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-cog fa-2x"></i>
+                                </div>
+                            </div>
+                            <button class="btn btn-light mt-2" onclick="showLoginPrompt('preferences')">
+                                <i class="fas fa-arrow-right"></i> {{ t('Manage') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action -->
+{% if requires_auth %}
+<div class="bg-light py-5">
+    <div class="container text-center">
+        <h3 class="mb-3">{{ t('Try It Now') }}</h3>
+        <p class="lead mb-4">{{ t('Sign up for free to start organizing your meals') }}</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('register') }}" class="btn btn-success btn-lg">
+                <i class="fas fa-user-plus"></i> {{ t('Sign Up Free') }}
+            </a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-sign-in-alt"></i> {{ t('Login') }}
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Login Prompt Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ t('Login Required') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>{{ t('Please log in to access this feature') }}</p>
+                <p class="text-muted">{{ t('Sign up for free to start organizing your meals') }}</p>
+            </div>
+            <div class="modal-footer">
+                {% if requires_auth %}
+                <a href="{{ url_for('register') }}" class="btn btn-success">
+                    <i class="fas fa-user-plus"></i> {{ t('Sign Up Free') }}
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> {{ t('Login') }}
+                </a>
+                {% else %}
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showLoginPrompt(feature) {
+    {% if requires_auth %}
+    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+    modal.show();
+    {% else %}
+    // For SQLite mode, just redirect to index
+    window.location.href = "{{ url_for('index') }}";
+    {% endif %}
+}
+</script>
+{% endblock %}

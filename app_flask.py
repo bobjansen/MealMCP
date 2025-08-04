@@ -264,9 +264,28 @@ def change_language():
 
 
 @app.route("/")
-@requires_auth
 def index():
-    """Main dashboard page."""
+    """Main dashboard or landing page."""
+    if backend == "sqlite":
+        # For SQLite mode, go directly to dashboard
+        context = {"backend": backend}
+        return render_template("index.html", **context)
+
+    if "user_id" in session:
+        # User is logged in, show dashboard
+        context = {"backend": backend}
+        if "username" in session:
+            context["username"] = session["username"]
+        return render_template("index.html", **context)
+    else:
+        # User is not logged in, show landing page
+        return render_template("landing.html")
+
+
+@app.route("/dashboard")
+@requires_auth
+def dashboard():
+    """Main dashboard page (protected)."""
     context = {"backend": backend}
     if backend == "postgresql" and "username" in session:
         context["username"] = session["username"]
