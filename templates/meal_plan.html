@@ -6,7 +6,7 @@
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">
-            <i class="fas fa-calendar"></i> Meal Planning
+            <i class="fas fa-calendar"></i> {{ t('Meal Planning') }}
         </h1>
     </div>
 </div>
@@ -17,7 +17,7 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-calendar-week"></i> This Week's Meal Plan
+                    <i class="fas fa-calendar-week"></i> {{ t("This Week's Meal Plan") }}
                     <small class="text-muted">({{ start_date.strftime('%b %d') }} - {{ end_date.strftime('%b %d, %Y') }})</small>
                 </h5>
             </div>
@@ -27,10 +27,10 @@
                     <table class="table table-hover">
                         <thead class="table-dark">
                             <tr>
-                                <th>Date</th>
-                                <th>Day</th>
-                                <th>Recipe</th>
-                                <th>Actions</th>
+                                <th>{{ t('Date') }}</th>
+                                <th>{{ t('Day') }}</th>
+                                <th>{{ t('Recipe Name') }}</th>
+                                <th>{{ t('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -50,7 +50,7 @@
                                 <td>
                                     <a href="{{ url_for('view_recipe', recipe_name=meal.recipe) }}" 
                                        class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i> View
+                                        <i class="fas fa-eye"></i> {{ t('View') }}
                                     </a>
                                 </td>
                             </tr>
@@ -61,8 +61,8 @@
                 {% else %}
                 <div class="text-center py-4">
                     <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No meals planned for this week</h5>
-                    <p class="text-muted">Use the form below to plan your meals!</p>
+                    <h5 class="text-muted">{{ t('No meals planned for this week') }}</h5>
+                    <p class="text-muted">{{ t('Use the form below to plan your meals!') }}</p>
                 </div>
                 {% endif %}
             </div>
@@ -72,21 +72,21 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-plus"></i> Plan a Meal
+                    <i class="fas fa-plus"></i> {{ t('Plan a Meal') }}
                 </h5>
             </div>
             <form method="POST" action="{{ url_for('set_meal_plan') }}">
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="meal_date" class="form-label">Date</label>
+                            <label for="meal_date" class="form-label">{{ t('Date') }}</label>
                             <input type="date" class="form-control" id="meal_date" name="meal_date" 
                                    required min="{{ start_date.isoformat() }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="recipe_name" class="form-label">Recipe</label>
+                            <label for="recipe_name" class="form-label">{{ t('Recipe Name') }}</label>
                             <select name="recipe_name" id="recipe_name" class="form-select" required>
-                                <option value="">Select recipe...</option>
+                                <option value="">{{ t('Select recipe...') }}</option>
                                 {% for recipe in recipes %}
                                 <option value="{{ recipe.name }}">
                                     {{ recipe.name }} ({{ recipe.time_minutes }} min)
@@ -98,7 +98,7 @@
                 </div>
                 <div class="card-footer">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-calendar-plus"></i> Add to Meal Plan
+                        <i class="fas fa-calendar-plus"></i> {{ t('Add to Meal Plan') }}
                     </button>
                 </div>
             </form>
@@ -110,15 +110,15 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-shopping-cart"></i> Grocery List
-                    <small class="text-muted">(for this week)</small>
+                    <i class="fas fa-shopping-cart"></i> {{ t('Grocery List') }}
+                    <small class="text-muted">({{ t('for this week') }})</small>
                 </h5>
             </div>
             <div class="card-body">
                 {% if grocery_list %}
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>
-                    <small>Based on your meal plan and current pantry inventory</small>
+                    <small>{{ t('Based on your meal plan and current pantry inventory') }}</small>
                 </div>
                 <ul class="list-group list-group-flush">
                     {% for item in grocery_list %}
@@ -132,15 +132,15 @@
                 </ul>
                 <div class="mt-3">
                     <button class="btn btn-success w-100" onclick="printGroceryList()">
-                        <i class="fas fa-print"></i> Print List
+                        <i class="fas fa-print"></i> {{ t('Print List') }}
                     </button>
                 </div>
                 {% else %}
                 <div class="text-center py-4">
                     <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                    <h6 class="text-success">All set!</h6>
+                    <h6 class="text-success">{{ t('All set!') }}</h6>
                     <p class="text-muted small">
-                        You have all ingredients needed for your planned meals.
+                        {{ t('You have all ingredients needed for your planned meals.') }}
                     </p>
                 </div>
                 {% endif %}
@@ -160,8 +160,8 @@ function printGroceryList() {
     ];
     
     const printContent = `
-        <h2>Grocery List</h2>
-        <p><strong>Week of:</strong> {{ start_date.strftime('%B %d, %Y') }}</p>
+        <h2>{{ t('Grocery List') }}</h2>
+        <p><strong>{{ t('Week of:') }}</strong> {{ start_date.strftime('%B %d, %Y') }}</p>
         <ul>
             ${groceryItems.map(item => `<li>${item}</li>`).join('')}
         </ul>
