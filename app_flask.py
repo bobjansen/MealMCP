@@ -47,6 +47,9 @@ else:
 def get_current_user_pantry():
     """Get the current user's pantry manager."""
     if backend == "sqlite":
+        # For SQLite mode, check for session language preference
+        session_lang = session.get("language", "en")
+        set_lang(session_lang)
         return pantry
 
     if "user_id" not in session:
@@ -65,6 +68,24 @@ def get_current_user_pantry():
         user_id=user_info["id"],
         backend="postgresql",
     )
+
+
+@app.before_request
+def set_language():
+    """Set language before each request."""
+    if backend == "sqlite":
+        # For SQLite mode, use session language
+        session_lang = session.get("language", "en")
+        set_lang(session_lang)
+    elif "user_id" in session:
+        # For PostgreSQL mode, use user's preferred language
+        user_info = auth_manager.get_user_by_id(session["user_id"])
+        if user_info:
+            set_lang(user_info.get("preferred_language", "en"))
+        else:
+            set_lang("en")
+    else:
+        set_lang("en")
 
 
 def requires_auth(f):
@@ -215,6 +236,7 @@ def change_language():
         # In SQLite mode, just set the session language
         language = request.form.get("language", "en")
         if language in ["en", "nl"]:
+            session["language"] = language
             set_lang(language)
             flash("Language preference updated!", "success")
         else:

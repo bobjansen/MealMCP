@@ -20,27 +20,27 @@
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-home"></i> Dashboard
+                            <i class="fas fa-home"></i> {{ t('Dashboard') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('meal_plan') }}">
-                            <i class="fas fa-calendar"></i> Meal Plan
+                            <i class="fas fa-calendar"></i> {{ t('Meal Planner') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('pantry_view') }}">
-                            <i class="fas fa-box"></i> Pantry
+                            <i class="fas fa-box"></i> {{ t('Pantry Management') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('recipes') }}">
-                            <i class="fas fa-book"></i> Recipes
+                            <i class="fas fa-book"></i> {{ t('Recipes') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('preferences') }}">
-                            <i class="fas fa-cog"></i> Preferences
+                            <i class="fas fa-cog"></i> {{ t('Preferences') }}
                         </a>
                     </li>
                 </ul>
@@ -55,18 +55,18 @@
                                 </a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="{{ url_for('profile') }}">
-                                        <i class="fas fa-user"></i> Profile
+                                        <i class="fas fa-user"></i> {{ t('My Profile') }}
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                        <i class="fas fa-sign-out-alt"></i> Logout
+                                        <i class="fas fa-sign-out-alt"></i> {{ t('Logout') }}
                                     </a></li>
                                 </ul>
                             </li>
                         {% else %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ url_for('login') }}">
-                                    <i class="fas fa-sign-in-alt"></i> Login
+                                    <i class="fas fa-sign-in-alt"></i> {{ t('Login') }}
                                 </a>
                             </li>
                         {% endif %}

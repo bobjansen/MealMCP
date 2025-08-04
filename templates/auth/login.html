@@ -17,7 +17,7 @@
                         <h4 class="mb-0">
                             <i class="fas fa-utensils"></i> Meal Manager
                         </h4>
-                        <p class="mb-0 mt-2">Sign in to your account</p>
+                        <p class="mb-0 mt-2">{{ t('Sign in to your account') }}</p>
                     </div>
                     <div class="card-body">
                         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -34,31 +34,31 @@
                         <form method="POST">
                             <div class="mb-3">
                                 <label for="username" class="form-label">
-                                    <i class="fas fa-user"></i> Username
+                                    <i class="fas fa-user"></i> {{ t('Username') }}
                                 </label>
                                 <input type="text" class="form-control" id="username" name="username" required 
-                                       placeholder="Enter your username">
+                                       placeholder="{{ t('Enter your username') }}">
                             </div>
                             
                             <div class="mb-3">
                                 <label for="password" class="form-label">
-                                    <i class="fas fa-lock"></i> Password
+                                    <i class="fas fa-lock"></i> {{ t('Password') }}
                                 </label>
                                 <input type="password" class="form-control" id="password" name="password" required 
-                                       placeholder="Enter your password">
+                                       placeholder="{{ t('Enter your password') }}">
                             </div>
                             
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-sign-in-alt"></i> Sign In
+                                    <i class="fas fa-sign-in-alt"></i> {{ t('Login') }}
                                 </button>
                             </div>
                         </form>
                     </div>
                     <div class="card-footer text-center">
                         <small class="text-muted">
-                            Don't have an account? 
-                            <a href="{{ url_for('register') }}" class="text-decoration-none">Sign up here</a>
+                            {{ t("Don't have an account?") }} 
+                            <a href="{{ url_for('register') }}" class="text-decoration-none">{{ t('Register here') }}</a>
                         </small>
                     </div>
                 </div>
