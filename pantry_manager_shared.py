@@ -359,6 +359,78 @@ class SharedPantryManager(PantryManager):
             print(f"Error getting item quantity: {e}")
             return 0.0
 
+    def get_multiple_item_quantities(
+        self, items: List[tuple[str, str]]
+    ) -> Dict[tuple[str, str], float]:
+        """Get quantities for multiple (item_name, unit) pairs in one optimized query."""
+        if not items:
+            return {}
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                # Get ingredient IDs for all items at once
+                item_names = list(set(item[0] for item in items))
+                if not item_names:
+                    return {}
+
+                placeholders = ", ".join([ph] * len(item_names))
+                cursor.execute(
+                    f"""
+                    SELECT name, id FROM ingredients 
+                    WHERE user_id = {ph} AND name IN ({placeholders})
+                """,
+                    (self.user_id, *item_names),
+                )
+
+                name_to_id = dict(cursor.fetchall())
+
+                # Build conditions for each (ingredient_id, unit) pair
+                conditions = []
+                params = [self.user_id]
+                valid_items = []
+
+                for item_name, unit in items:
+                    if item_name in name_to_id:
+                        conditions.append(f"(ingredient_id = {ph} AND unit = {ph})")
+                        params.extend([name_to_id[item_name], unit])
+                        valid_items.append((item_name, unit))
+
+                if not conditions:
+                    return {}
+
+                cursor.execute(
+                    f"""
+                    SELECT ingredient_id, unit,
+                           SUM(CASE WHEN transaction_type = 'addition' THEN quantity ELSE -quantity END) as net_quantity
+                    FROM pantry_transactions
+                    WHERE user_id = {ph} AND ({' OR '.join(conditions)})
+                    GROUP BY ingredient_id, unit
+                """,
+                    params,
+                )
+
+                # Map back to (item_name, unit) tuples
+                id_to_name = {v: k for k, v in name_to_id.items()}
+                result = {}
+
+                # Initialize all requested items to 0
+                for item in items:
+                    result[item] = 0.0
+
+                # Fill in actual quantities
+                for ingredient_id, unit, quantity in cursor.fetchall():
+                    item_name = id_to_name.get(ingredient_id)
+                    if item_name:
+                        result[(item_name, unit)] = float(quantity) if quantity else 0.0
+
+                return result
+        except Exception as e:
+            print(f"Error getting multiple item quantities: {e}")
+            return {}
+
     def get_pantry_contents(self) -> Dict[str, Dict[str, float]]:
         """Get the current contents of the pantry for the current user."""
         try:
@@ -543,22 +615,57 @@ class SharedPantryManager(PantryManager):
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
+                # Single query with JOIN to get all recipe data and ingredients
                 cursor.execute(
                     f"""
-                    SELECT name FROM recipes 
-                    WHERE user_id = {ph} 
-                    ORDER BY name
+                    SELECT 
+                        r.name, r.instructions, r.time_minutes, r.rating,
+                        r.created_date, r.last_modified,
+                        i.name as ingredient_name, ri.quantity, ri.unit
+                    FROM recipes r
+                    LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+                    LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+                    WHERE r.user_id = {ph}
+                    ORDER BY r.name, i.name
                 """,
                     (self.user_id,),
                 )
 
-                recipes = []
-                for (name,) in cursor.fetchall():
-                    recipe = self.get_recipe(name)
-                    if recipe:
-                        recipes.append(recipe)
+                # Group results by recipe
+                recipes = {}
+                for row in cursor.fetchall():
+                    recipe_name = row[0]
+                    if recipe_name not in recipes:
+                        recipes[recipe_name] = {
+                            "name": recipe_name,
+                            "instructions": row[1],
+                            "time_minutes": row[2],
+                            "rating": float(row[3]) if row[3] is not None else None,
+                            "created_date": (
+                                row[4].isoformat()
+                                if isinstance(row[4], datetime)
+                                else row[4]
+                            ),
+                            "last_modified": (
+                                row[5].isoformat()
+                                if isinstance(row[5], datetime)
+                                else row[5]
+                            ),
+                            "ingredients": [],
+                        }
 
-                return recipes
+                    if row[6]:  # Has ingredients
+                        recipes[recipe_name]["ingredients"].append(
+                            {
+                                "name": row[6],
+                                "quantity": (
+                                    float(row[7]) if row[7] is not None else 0.0
+                                ),
+                                "unit": row[8],
+                            }
+                        )
+
+                return list(recipes.values())
         except Exception as e:
             print(f"Error getting all recipes: {e}")
             return []
@@ -813,29 +920,54 @@ class SharedPantryManager(PantryManager):
             return False
 
     def get_grocery_list(self) -> List[Dict[str, Any]]:
-        """Calculate grocery items needed for the coming week's meal plan for the current user."""
+        """Calculate grocery items needed for the coming week's meal plan."""
         start = date.today()
         end = start + timedelta(days=6)
-        plan = self.get_meal_plan(start.isoformat(), end.isoformat())
 
-        required: Dict[tuple[str, str], float] = {}
-        for entry in plan:
-            recipe = self.get_recipe(entry["recipe"])
-            if not recipe:
-                continue
-            for ing in recipe["ingredients"]:
-                key = (ing["name"], ing["unit"])
-                required[key] = required.get(key, 0) + ing["quantity"]
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
 
-        grocery_list = []
-        for (name, unit), qty in required.items():
-            have = self.get_item_quantity(name, unit)
-            if have < qty:
-                grocery_list.append(
-                    {"name": name, "quantity": qty - have, "unit": unit}
+                # Single query to get all meal plan recipes and their ingredients
+                cursor.execute(
+                    f"""
+                    SELECT r.name as recipe_name, i.name as ingredient_name,
+                           ri.quantity, ri.unit
+                    FROM meal_plan m
+                    JOIN recipes r ON m.recipe_id = r.id
+                    JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+                    JOIN ingredients i ON ri.ingredient_id = i.id
+                    WHERE m.user_id = {ph} AND meal_date BETWEEN {ph} AND {ph}
+                """,
+                    (self.user_id, start.isoformat(), end.isoformat()),
                 )
 
-        return grocery_list
+                # Calculate required ingredients
+                required: Dict[tuple[str, str], float] = {}
+                for recipe_name, ingredient_name, quantity, unit in cursor.fetchall():
+                    key = (ingredient_name, unit)
+                    required[key] = required.get(key, 0) + float(quantity)
+
+            if not required:
+                return []
+
+            # Get current pantry quantities in batch
+            quantities = self.get_multiple_item_quantities(list(required.keys()))
+
+            # Calculate grocery list
+            grocery_list = []
+            for (name, unit), needed in required.items():
+                have = quantities.get((name, unit), 0.0)
+                if have < needed:
+                    grocery_list.append(
+                        {"name": name, "quantity": float(needed - have), "unit": unit}
+                    )
+
+            return grocery_list
+        except Exception as e:
+            print(f"Error getting optimized grocery list: {e}")
+            return []
 
     def get_transaction_history(
         self, item_name: Optional[str] = None

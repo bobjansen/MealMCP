@@ -156,6 +156,17 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
                 "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_id ON meal_plan(user_id)"
             )
 
+            # Performance optimization indexes
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_pantry_transactions_ingredient_unit ON pantry_transactions(user_id, ingredient_id, unit)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_date ON meal_plan(user_id, meal_date)"
+            )
+
     return True
 
 
@@ -282,6 +293,17 @@ def _setup_sqlite_shared(db_path: str) -> bool:
         )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_id ON meal_plan(user_id)"
+        )
+
+        # Performance optimization indexes
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pantry_transactions_ingredient_unit ON pantry_transactions(user_id, ingredient_id, unit)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_date ON meal_plan(user_id, meal_date)"
         )
 
     return True
