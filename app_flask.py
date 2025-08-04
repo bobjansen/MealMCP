@@ -13,10 +13,11 @@ from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
 from web_auth_simple import WebUserManager
 from constants import UNITS
-from i18n import t
+from i18n import t, set_lang
 from datetime import date, timedelta, datetime
 import json
 import os
+import secrets
 
 # Generate secret key if not provided
 secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -54,6 +55,9 @@ def get_current_user_pantry():
     user_info = auth_manager.get_user_by_id(session["user_id"])
     if not user_info:
         return None
+
+    # Set language based on user preference
+    set_lang(user_info.get("preferred_language", "en"))
 
     # Use SharedPantryManager with user_id scoping for PostgreSQL
     return SharedPantryManager(
@@ -196,6 +200,36 @@ def change_password():
     )
 
     if success:
+        flash(message, "success")
+    else:
+        flash(message, "error")
+
+    return redirect(url_for("profile"))
+
+
+@app.route("/change-language", methods=["POST"])
+@requires_auth
+def change_language():
+    """Change user's preferred language."""
+    if backend == "sqlite":
+        # In SQLite mode, just set the session language
+        language = request.form.get("language", "en")
+        if language in ["en", "nl"]:
+            set_lang(language)
+            flash("Language preference updated!", "success")
+        else:
+            flash("Unsupported language.", "error")
+        return redirect(url_for("profile"))
+
+    language = request.form.get("language")
+    if not language:
+        flash("Please select a language.", "error")
+        return redirect(url_for("profile"))
+
+    success, message = auth_manager.set_user_language(session["user_id"], language)
+
+    if success:
+        set_lang(language)  # Update current session language immediately
         flash(message, "success")
     else:
         flash(message, "error")
@@ -541,6 +575,7 @@ def inject_globals():
         "backend": backend,
         "requires_auth": backend == "postgresql",
         "current_user": session.get("username") if backend == "postgresql" else None,
+        "t": t,  # Translation function for templates
     }
 
 

@@ -45,7 +45,8 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
                     email VARCHAR(120) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT TRUE
+                    is_active BOOLEAN DEFAULT TRUE,
+                    preferred_language VARCHAR(10) DEFAULT 'en'
                 )
             """
             )
@@ -184,7 +185,8 @@ def _setup_sqlite_shared(db_path: str) -> bool:
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT 1
+                is_active BOOLEAN DEFAULT 1,
+                preferred_language TEXT DEFAULT 'en'
             )
         """
         )

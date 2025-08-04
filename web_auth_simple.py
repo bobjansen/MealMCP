@@ -141,7 +141,7 @@ class WebUserManager:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT id, username, email, created_at, is_active
+                        SELECT id, username, email, created_at, is_active, preferred_language
                         FROM users WHERE id = %s AND is_active = TRUE
                     """,
                         (user_id,),
@@ -155,6 +155,7 @@ class WebUserManager:
                             "email": user[2],
                             "created_at": user[3],
                             "is_active": user[4],
+                            "preferred_language": user[5] or "en",
                         }
         except Exception as e:
             print(f"Error getting user: {e}")
@@ -195,3 +196,44 @@ class WebUserManager:
 
         except Exception as e:
             return False, f"Error changing password: {str(e)}"
+
+    def get_user_language(self, user_id: int) -> str:
+        """Get user's preferred language."""
+        if self.backend == "sqlite":
+            return "en"  # Default language for SQLite mode
+
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT preferred_language FROM users WHERE id = %s", (user_id,)
+                    )
+                    result = cursor.fetchone()
+                    return result[0] if result and result[0] else "en"
+        except Exception as e:
+            print(f"Error getting user language: {e}")
+            return "en"
+
+    def set_user_language(self, user_id: int, language: str) -> Tuple[bool, str]:
+        """Set user's preferred language."""
+        if self.backend == "sqlite":
+            return False, "Language preference not available in SQLite mode"
+
+        if language not in ["en", "nl"]:
+            return False, "Unsupported language. Available: en, nl"
+
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE users SET preferred_language = %s WHERE id = %s",
+                        (language, user_id),
+                    )
+
+                    if cursor.rowcount > 0:
+                        return True, "Language preference updated successfully"
+                    else:
+                        return False, "User not found"
+
+        except Exception as e:
+            return False, f"Error updating language preference: {str(e)}"

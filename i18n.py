@@ -73,6 +73,10 @@ TRANSLATIONS = {
         "Recipe '{name}' not found": "Recipe '{name}' not found",
         "Meal Calendar": "Meal Calendar",
         "Generate Plan": "Generate Plan",
+        "Language Preference": "Language Preference",
+        "Choose your preferred language for the interface": "Choose your preferred language for the interface",
+        "Language": "Language",
+        "Update Language": "Update Language",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -141,6 +145,10 @@ TRANSLATIONS = {
         "Recipe '{name}' not found": "Recept '{name}' niet gevonden",
         "Meal Calendar": "Maaltijdkalender",
         "Generate Plan": "Plan genereren",
+        "Language Preference": "Taalvoorkeur",
+        "Choose your preferred language for the interface": "Kies uw gewenste taal voor de interface",
+        "Language": "Taal",
+        "Update Language": "Taal bijwerken",
     },
 }
 

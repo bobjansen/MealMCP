@@ -43,6 +43,32 @@
             </div>
         </div>
 
+        <!-- Language Preference Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-language"></i> {{ t('Language Preference') }}</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">{{ t('Choose your preferred language for the interface') }}</p>
+                <form method="POST" action="{{ url_for('change_language') }}">
+                    <div class="row align-items-end">
+                        <div class="col-md-6 mb-3">
+                            <label for="language" class="form-label">{{ t('Language') }}</label>
+                            <select class="form-select" id="language" name="language" required>
+                                <option value="en" {% if user.preferred_language == 'en' %}selected{% endif %}>English</option>
+                                <option value="nl" {% if user.preferred_language == 'nl' %}selected{% endif %}>Nederlands (Dutch)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ t('Update Language') }}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Change Password Card -->
         <div class="card">
             <div class="card-header">
