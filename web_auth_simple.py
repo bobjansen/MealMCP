@@ -30,7 +30,9 @@ class WebUserManager:
         except Exception as e:
             print(f"Error initializing shared database: {e}")
 
-    def create_user(self, username: str, email: str, password: str, language: str = "en") -> Tuple[bool, str]:
+    def create_user(
+        self, username: str, email: str, password: str, language: str = "en"
+    ) -> Tuple[bool, str]:
         """Create a new user account."""
         if self.backend == "sqlite":
             return False, "User registration not available in SQLite mode"
