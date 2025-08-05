@@ -89,7 +89,7 @@ def main():
         os.environ["PANTRY_DATABASE_URL"] = args.db_url
 
     # Import after environment is set
-    from mcp_server_unified import UnifiedMCPServer
+    from mcp_server import UnifiedMCPServer
 
     # Create and run server
     print(f"Starting MealMCP server:")
