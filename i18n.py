@@ -301,6 +301,7 @@ TRANSLATIONS = {
         "Household size updated successfully!": "Household size updated successfully!",
         "Error updating household size.": "Error updating household size.",
         "Current household:": "Current household:",
+        "Comprehensive user profiles for personalized meal planning": "Comprehensive user profiles for personalized meal planning",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -597,6 +598,7 @@ TRANSLATIONS = {
         "Household size updated successfully!": "Huishoudgrootte succesvol bijgewerkt!",
         "Error updating household size.": "Fout bij bijwerken huishoudgrootte.",
         "Current household:": "Huidig huishouden:",
+        "Comprehensive user profiles for personalized meal planning": "Uitgebreide gebruikersprofielen voor gepersonaliseerde maaltijdplanning",
     },
 }
 
