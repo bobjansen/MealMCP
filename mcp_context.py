@@ -5,6 +5,8 @@ from pantry_manager_abc import PantryManager
 from user_manager import UserManager
 import os
 
+from db_setup import setup_database
+
 # Context variable to store current user
 current_user: ContextVar[Optional[str]] = ContextVar("current_user", default=None)
 
@@ -24,9 +26,6 @@ class MCPContext:
             self.pantry_managers[local_user] = create_pantry_manager(
                 connection_string=db_path
             )
-
-            # Initialize database if it doesn't exist
-            from db_setup import setup_database
 
             setup_database(db_path)
 
@@ -56,9 +55,6 @@ class MCPContext:
             self.pantry_managers[user_id] = create_pantry_manager(
                 connection_string=db_path
             )
-
-            # Initialize database if it doesn't exist
-            from db_setup import setup_database
 
             setup_database(db_path)
 
