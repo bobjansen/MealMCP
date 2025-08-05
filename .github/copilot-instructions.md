@@ -21,3 +21,7 @@ Internationalization is done using the Python i18n module. Currently English and
 The project is written in Python and be managed using uv.
 
 It includes a dash app and a MCP server. The data is stored in a sqlite database.
+
+# Running Python
+
+This project runs using uv, therefore don't call Python directly but use something like `uv run` instead.
