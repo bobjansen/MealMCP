@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Common Development Commands
 
 ### Running the Application
-- **Flask Web Interface (Recommended)**: `python run_web.py` - Smart launcher with backend detection and validation
-- **Flask Web Interface (Direct)**: `python app_flask.py` - Direct Flask app startup on http://localhost:5000
+- **Flask Web Interface (Recommended)**: `uv run run_web.py` - Smart launcher with backend detection and validation
+- **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000
 - **MCP Server (Local)**: `uv run mcp_server.py` - Starts the MCP server in single-user local mode
 - **MCP Server (Remote)**: `MCP_MODE=remote uv run mcp_server.py` - Starts the MCP server in multi-user remote mode
 - **MCP Server (Start Script)**: `uv run start_server.py` - Starts server with mode selection and configuration
