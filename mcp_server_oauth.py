@@ -1,5 +1,5 @@
 """
-MCP Server with OAuth 2.1 Authentication
+MCP Server with OAuth 2.1 Authentication - Refactored for DRY principles
 Implements OAuth 2.1 with PKCE for secure multi-user authentication
 """
 
@@ -8,36 +8,25 @@ import os
 import logging
 import time
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode, urlparse, parse_qs, quote
 from fastapi import FastAPI, HTTPException, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from mcp.server.fastmcp import FastMCP
-from mcp.server.session import ServerSession
-from mcp.server import NotificationOptions, Server
-from mcp.types import (
-    CallToolRequest,
-    CallToolResult,
-    ListToolsRequest,
-    TextContent,
-    Tool,
-    INVALID_REQUEST,
-    INTERNAL_ERROR,
-)
 
 from oauth_server import OAuthServer
-from constants import UNITS
 from mcp_context import MCPContext
-from mcp_tools import MCP_TOOLS
-from i18n import t
-from datetime import date, timedelta
-
+from mcp_oauth_templates import (
+    generate_login_form,
+    generate_register_form,
+    generate_error_page,
+)
+from mcp_oauth_handlers import OAuthFlowHandler
+from mcp_tool_router import MCPToolRouter
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # Create FastAPI app for OAuth endpoints
 app = FastAPI(title="MealMCP OAuth Server", version="1.0.0")
@@ -63,15 +52,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OAuth server with public URL and PostgreSQL support
+# Initialize components
 public_url = os.getenv("MCP_PUBLIC_URL", "http://localhost:8000")
 use_postgresql = os.getenv("PANTRY_BACKEND", "sqlite").lower() == "postgresql"
 oauth = OAuthServer(base_url=public_url, use_postgresql=use_postgresql)
+oauth_handler = OAuthFlowHandler(oauth)
+tool_router = MCPToolRouter()
 
-# Create MCP server
+# Create MCP server and context
 mcp = FastMCP("RecipeManager")
-
-# Create context manager for user handling
 context = MCPContext()
 
 # HTTP Bearer token security
@@ -90,6 +79,45 @@ def get_current_user(
         return None
 
     return token_data["user_id"]
+
+
+def get_user_pantry_oauth(user_id: str) -> tuple[Optional[str], Optional[Any]]:
+    """Get authenticated user and their PantryManager instance using OAuth user_id."""
+    if not user_id:
+        return None, None
+
+    # In multi-user mode, create user-specific pantry manager
+    if user_id not in context.pantry_managers:
+        backend = os.getenv("PANTRY_BACKEND", "sqlite").lower()
+
+        if backend == "postgresql":
+            # Use shared PostgreSQL database with user_id isolation
+            from pantry_manager_shared import SharedPantryManager
+
+            connection_string = os.getenv(
+                "PANTRY_DATABASE_URL", "postgresql://localhost/mealmcp"
+            )
+            context.pantry_managers[user_id] = SharedPantryManager(
+                connection_string=connection_string,
+                user_id=int(user_id),
+                backend="postgresql",
+            )
+        else:
+            # Use individual SQLite databases per user
+            db_path = context.user_manager.get_user_db_path(user_id)
+            from pantry_manager_factory import create_pantry_manager
+
+            context.pantry_managers[user_id] = create_pantry_manager(
+                backend="sqlite", connection_string=db_path
+            )
+
+            # Initialize database if it doesn't exist
+            from db_setup import setup_database
+
+            setup_database(db_path)
+
+    context.set_current_user(user_id)
+    return user_id, context.pantry_managers[user_id]
 
 
 # OAuth Discovery Endpoints
@@ -149,96 +177,21 @@ async def authorize(
         f"Authorization request: client_id={client_id}, redirect_uri={redirect_uri}, scope={scope}"
     )
 
-    # Validate client
-    if not oauth.validate_client(client_id):
-        logger.error(f"Invalid client_id: {client_id}")
-        logger.error(
-            f"Client not found. This usually means Claude Desktop didn't register the client first."
-        )
-        logger.error(f"Expected flow: 1) POST /register 2) GET /authorize")
+    try:
+        oauth_handler.validate_oauth_request(client_id, redirect_uri, code_challenge)
+    except HTTPException as e:
+        raise e
 
-        # Auto-register Claude client if it looks like a Claude request
-        if redirect_uri.startswith("https://claude.ai/api/"):
-            logger.info(f"Auto-registering Claude client with existing client_id...")
-
-            # Register the client with Claude's specific client_id
-            redirect_uris = [redirect_uri, "https://claude.ai/api/mcp/auth_callback"]
-            success = oauth.register_existing_client(
-                client_id=client_id,
-                client_name="Claude.ai (Auto-registered)",
-                redirect_uris=redirect_uris,
-            )
-
-            if success:
-                logger.info(
-                    f"Successfully auto-registered Claude client with ID: {client_id}"
-                )
-            else:
-                logger.error(f"Failed to auto-register Claude client")
-                raise HTTPException(status_code=400, detail="Invalid client_id")
-        else:
-            raise HTTPException(status_code=400, detail="Invalid client_id")
-
-    # Validate redirect URI
-    if not oauth.validate_redirect_uri(client_id, redirect_uri):
-        logger.error(f"Invalid redirect_uri for client {client_id}: {redirect_uri}")
-        raise HTTPException(status_code=400, detail="Invalid redirect_uri")
-
-    # PKCE is required
-    if not code_challenge:
-        logger.error(f"Missing code_challenge for client {client_id}")
-        raise HTTPException(status_code=400, detail="code_challenge required")
-
-    # Return login form
-    login_form = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>MealMCP Authorization</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }}
-            .form-group {{ margin: 15px 0; }}
-            label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
-            input {{ width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }}
-            button {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }}
-            button:hover {{ background: #0056b3; }}
-            .register {{ margin-top: 20px; text-align: center; }}
-            .register a {{ color: #007bff; text-decoration: none; }}
-        </style>
-    </head>
-    <body>
-        <h2>Authorize MealMCP Access</h2>
-        <p>The application <strong>{client_id}</strong> wants to access your MealMCP data.</p>
-
-        <form method="post" action="/authorize">
-            <input type="hidden" name="response_type" value="{response_type}">
-            <input type="hidden" name="client_id" value="{client_id}">
-            <input type="hidden" name="redirect_uri" value="{redirect_uri}">
-            <input type="hidden" name="scope" value="{scope}">
-            <input type="hidden" name="state" value="{state or ''}">
-            <input type="hidden" name="code_challenge" value="{code_challenge}">
-            <input type="hidden" name="code_challenge_method" value="{code_challenge_method}">
-
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-
-            <button type="submit">Authorize</button>
-        </form>
-
-        <div class="register">
-            <p>Don't have an account? <a href="/register_user?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}&state={state or ''}&code_challenge={code_challenge}&code_challenge_method={code_challenge_method}">Register here</a></p>
-        </div>
-    </body>
-    </html>
-    """
-
+    # Return login form using template
+    login_form = generate_login_form(
+        client_id,
+        redirect_uri,
+        scope,
+        state or "",
+        code_challenge,
+        code_challenge_method,
+        response_type,
+    )
     return HTMLResponse(content=login_form)
 
 
@@ -260,71 +213,30 @@ async def authorize_post(
             f"Authorization form submitted: username={username}, client_id={client_id}"
         )
 
-        # Authenticate user
-        user_id = oauth.authenticate_user(username, password)
-        logger.info(f"Authentication result for {username}: {user_id}")
-
-        if not user_id:
-            logger.error(f"Authentication failed for username: {username}")
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-
-        # Create authorization code
-        logger.info(f"Creating authorization code for user {user_id}")
-
-        # Clean up any existing codes for this client/user to prevent conflicts
-        codes_to_remove = []
-        for existing_code, existing_data in oauth.auth_codes.items():
-            if (
-                existing_data.get("client_id") == client_id
-                and existing_data.get("user_id") == user_id
-            ):
-                codes_to_remove.append(existing_code)
-                logger.info(f"Removing old authorization code: {existing_code}")
-
-        for old_code in codes_to_remove:
-            del oauth.auth_codes[old_code]
-
-        auth_code = oauth.create_authorization_code(
-            client_id=client_id,
-            user_id=user_id,
-            redirect_uri=redirect_uri,
-            scope=scope,
-            code_challenge=code_challenge,
-            code_challenge_method=code_challenge_method,
+        # Authenticate user and create auth code
+        user_id, auth_code = oauth_handler.authenticate_and_create_code(
+            username,
+            password,
+            client_id,
+            redirect_uri,
+            scope,
+            code_challenge,
+            code_challenge_method,
         )
 
-        # Redirect to client with authorization code (standard OAuth GET redirect)
-        params = {"code": auth_code}
-        if state:
-            params["state"] = state
+        # Return success redirect
+        return oauth_handler.create_success_redirect(redirect_uri, auth_code, state)
 
-        # Use proper URL encoding for OAuth parameters
-        redirect_url = f"{redirect_uri}?{urlencode(params, safe='', quote_via=quote)}"
-        logger.info(f"OAuth flow successful! Redirecting to Claude: {redirect_url}")
-        logger.info(f"Authorization code: {auth_code}")
-        logger.info(f"Authorization code length: {len(auth_code)}")
-        logger.info(f"State parameter: {state}")
-        logger.info(f"State parameter length: {len(state) if state else 0}")
-        logger.info(f"User ID: {user_id}")
-        logger.info(f"Client ID: {client_id}")
-        logger.info(f"Redirect URI: {redirect_uri}")
-
-        # Store additional debug info for this code
-        if auth_code in oauth.auth_codes:
-            oauth.auth_codes[auth_code]["debug_redirect_url"] = redirect_url
-            oauth.auth_codes[auth_code]["debug_timestamp"] = time.time()
-            logger.info(f"Stored debug info for code: {auth_code}")
-
-        return RedirectResponse(url=redirect_url, status_code=302)
-
+    except HTTPException as e:
+        logger.error(f"Authorization error: {e.detail}")
+        return oauth_handler.create_error_redirect(
+            redirect_uri, "access_denied", str(e.detail), state
+        )
     except Exception as e:
         logger.error(f"Authorization error: {e}")
-
-        error_params = {"error": "access_denied", "error_description": str(e)}
-        if state:
-            error_params["state"] = state
-        redirect_url = f"{redirect_uri}?{urlencode(error_params)}"
-        return RedirectResponse(url=redirect_url, status_code=302)
+        return oauth_handler.create_error_redirect(
+            redirect_uri, "access_denied", str(e), state
+        )
 
 
 @app.get("/register_user")
@@ -337,63 +249,9 @@ async def register_user_form(
     code_challenge_method: str = "S256",
 ):
     """User registration form."""
-    register_form = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Register for MealMCP</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }}
-            .form-group {{ margin: 15px 0; }}
-            label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
-            input {{ width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }}
-            button {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }}
-            button:hover {{ background: #1e7e34; }}
-            .login {{ margin-top: 20px; text-align: center; }}
-            .login a {{ color: #007bff; text-decoration: none; }}
-        </style>
-    </head>
-    <body>
-        <h2>Create MealMCP Account</h2>
-
-        <form method="post" action="/register_user">
-            <input type="hidden" name="client_id" value="{client_id}">
-            <input type="hidden" name="redirect_uri" value="{redirect_uri}">
-            <input type="hidden" name="scope" value="{scope}">
-            <input type="hidden" name="state" value="{state}">
-            <input type="hidden" name="code_challenge" value="{code_challenge}">
-            <input type="hidden" name="code_challenge_method" value="{code_challenge_method}">
-
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">Email (optional):</label>
-                <input type="email" id="email" name="email">
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-            </div>
-
-            <button type="submit">Register</button>
-        </form>
-
-        <div class="login">
-            <p>Already have an account? <a href="/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}&state={state}&code_challenge={code_challenge}&code_challenge_method={code_challenge_method}">Login here</a></p>
-        </div>
-    </body>
-    </html>
-    """
-
+    register_form = generate_register_form(
+        client_id, redirect_uri, scope, state, code_challenge, code_challenge_method
+    )
     return HTMLResponse(content=register_form)
 
 
@@ -415,58 +273,33 @@ async def register_user_post(
         if password != confirm_password:
             raise ValueError("Passwords do not match")
 
-        # Create user
-        user_id = oauth.create_user(username, password, email or None)
-
-        # Clean up any existing codes for this client/user to prevent conflicts
-        codes_to_remove = []
-        for existing_code, existing_data in oauth.auth_codes.items():
-            if (
-                existing_data.get("client_id") == client_id
-                and existing_data.get("user_id") == user_id
-            ):
-                codes_to_remove.append(existing_code)
-                logger.info(
-                    f"Removing old authorization code for new user: {existing_code}"
-                )
-
-        for old_code in codes_to_remove:
-            del oauth.auth_codes[old_code]
-
-        # Create authorization code
-        auth_code = oauth.create_authorization_code(
-            client_id=client_id,
-            user_id=user_id,
-            redirect_uri=redirect_uri,
-            scope=scope,
-            code_challenge=code_challenge,
-            code_challenge_method=code_challenge_method,
+        # Register user and create auth code
+        user_id, auth_code = oauth_handler.register_and_create_code(
+            username,
+            password,
+            email or None,
+            client_id,
+            redirect_uri,
+            scope,
+            code_challenge,
+            code_challenge_method,
         )
 
-        # Redirect to client with authorization code
-        params = {"code": auth_code}
-        if state:
-            params["state"] = state
-
-        redirect_url = f"{redirect_uri}?{urlencode(params)}"
-        return RedirectResponse(url=redirect_url, status_code=302)
+        # Return success redirect
+        return oauth_handler.create_success_redirect(redirect_uri, auth_code, state)
 
     except Exception as e:
         logger.error(f"Registration error: {e}")
-        # Redirect back to registration form with error
-        error_message = str(e).replace('"', "&quot;")
-        register_form_with_error = f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Registration Error</title></head>
-        <body>
-            <h2>Registration Failed</h2>
-            <p style="color: red;">{error_message}</p>
-            <a href="/register_user?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}&state={state}&code_challenge={code_challenge}&code_challenge_method={code_challenge_method}">Try Again</a>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=register_form_with_error, status_code=400)
+        error_page = generate_error_page(
+            str(e),
+            client_id,
+            redirect_uri,
+            scope,
+            state,
+            code_challenge,
+            code_challenge_method,
+        )
+        return HTMLResponse(content=error_page, status_code=400)
 
 
 @app.options("/token")
@@ -490,22 +323,18 @@ async def token_endpoint(
         f"Token endpoint called: grant_type={grant_type}, client_id={client_id}"
     )
     logger.info(f"Authorization code received: {code}")
-    logger.info(f"Code verifier: {code_verifier}")
-    logger.info(f"Redirect URI: {redirect_uri}")
 
-    # Check if this code exists in our auth_codes
+    # Debug log for existing codes
     if code and code in oauth.auth_codes:
         auth_data = oauth.auth_codes[code]
         logger.info(
             f"Found auth code data: client_id={auth_data.get('client_id')}, user_id={auth_data.get('user_id')}"
         )
-        logger.info(
-            f"Code expires at: {auth_data.get('expires_at')}, current time: {time.time()}"
-        )
     else:
         logger.error(f"Authorization code not found in server cache: {code}")
         if code:
             logger.error(f"Available codes: {list(oauth.auth_codes.keys())}")
+
     try:
         if grant_type == "authorization_code":
             if not all([code, redirect_uri, code_verifier]):
@@ -538,51 +367,47 @@ async def token_endpoint(
         )
 
 
-# Helper function to get user pantry with OAuth
-def get_user_pantry_oauth(user_id: str) -> tuple[Optional[str], Optional[Any]]:
-    """Get authenticated user and their PantryManager instance using OAuth user_id."""
-    if not user_id:
-        return None, None
+# MCP Tool Implementation with Authentication
+async def mcp_call_tool(request: Request, user_id: str):
+    """MCP call tool endpoint using the tool router."""
+    try:
+        data = await request.json()
+        tool_name = data.get("params", {}).get("name")
+        arguments = data.get("params", {}).get("arguments", {})
 
-    # In multi-user mode, create user-specific pantry manager
-    if user_id not in context.pantry_managers:
-        backend = os.getenv("PANTRY_BACKEND", "sqlite").lower()
+        logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
 
-        if backend == "postgresql":
-            # Use shared PostgreSQL database with user_id isolation
-            from pantry_manager_shared import SharedPantryManager
-
-            connection_string = os.getenv(
-                "PANTRY_DATABASE_URL", "postgresql://localhost/mealmcp"
-            )
-
-            context.pantry_managers[user_id] = SharedPantryManager(
-                connection_string=connection_string,
-                user_id=int(user_id),
-                backend="postgresql",
-            )
+        # Get user's pantry manager
+        user_id, pantry = get_user_pantry_oauth(user_id)
+        if not pantry:
+            result = {"status": "error", "message": "Failed to get user pantry"}
         else:
-            # Use individual SQLite databases per user
-            db_path = context.user_manager.get_user_db_path(user_id)
-            from pantry_manager_factory import create_pantry_manager
+            # Route to tool implementation
+            result = tool_router.call_tool(tool_name, arguments, pantry)
 
-            context.pantry_managers[user_id] = create_pantry_manager(
-                backend="sqlite", connection_string=db_path
-            )
+        return {
+            "jsonrpc": "2.0",
+            "id": data.get("id"),
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
+            },
+        }
 
-            # Initialize database if it doesn't exist
-            from db_setup import setup_database
+    except Exception as e:
+        logger.error(f"Call tool error: {e}")
+        return {
+            "jsonrpc": "2.0",
+            "id": data.get("id", 0),
+            "error": {"code": -32603, "message": str(e)},
+        }
 
-            setup_database(db_path)
 
-    context.set_current_user(user_id)
-    return user_id, context.pantry_managers[user_id]
-
-
-# MCP Tools with OAuth Authentication
+# Standard MCP tools for FastMCP (with OAuth authentication)
 @mcp.tool()
 def list_units() -> List[Dict[str, Any]]:
     """List all units of measurement (no auth required)."""
+    from constants import UNITS
+
     return UNITS
 
 
@@ -602,17 +427,16 @@ def add_recipe(
     if not pantry:
         return {"status": "error", "message": "Failed to get user pantry"}
 
-    success = pantry.add_recipe(
-        name=name,
-        instructions=instructions,
-        time_minutes=time_minutes,
-        ingredients=ingredients,
+    return tool_router.call_tool(
+        "add_recipe",
+        {
+            "name": name,
+            "instructions": instructions,
+            "time_minutes": time_minutes,
+            "ingredients": ingredients,
+        },
+        pantry,
     )
-
-    if success:
-        return {"status": "success", "message": t("Recipe added successfully")}
-    else:
-        return {"status": "error", "message": t("Failed to add recipe")}
 
 
 @mcp.tool()
@@ -625,12 +449,7 @@ def get_all_recipes(user_id: str = Depends(get_current_user)) -> Dict[str, Any]:
     if not pantry:
         return {"status": "error", "message": "Failed to get user pantry"}
 
-    recipes = pantry.get_all_recipes()
-    return {"status": "success", "recipes": recipes}
-
-
-# Add all other MCP tools with OAuth authentication...
-# (I'll add a few more key ones for demonstration)
+    return tool_router.call_tool("get_all_recipes", {}, pantry)
 
 
 @mcp.tool()
@@ -643,8 +462,7 @@ def get_pantry_contents(user_id: str = Depends(get_current_user)) -> Dict[str, A
     if not pantry:
         return {"status": "error", "message": "Failed to get user pantry"}
 
-    contents = pantry.get_pantry_contents()
-    return {"status": "success", "contents": contents}
+    return tool_router.call_tool("get_pantry_contents", {}, pantry)
 
 
 @mcp.tool()
@@ -663,23 +481,16 @@ def add_pantry_item(
     if not pantry:
         return {"status": "error", "message": "Failed to get user pantry"}
 
-    success = pantry.add_item(item_name, quantity, unit, notes)
-    if success:
-        return {
-            "status": "success",
-            "message": f"Added {quantity} {unit} of {item_name} to pantry",
-        }
-    else:
-        return {"status": "error", "message": "Failed to add item to pantry"}
+    return tool_router.call_tool(
+        "add_pantry_item",
+        {"item_name": item_name, "quantity": quantity, "unit": unit, "notes": notes},
+        pantry,
+    )
 
 
 @mcp.tool()
 def get_user_profile(user_id: str = Depends(get_current_user)) -> Dict[str, Any]:
-    """Get comprehensive user profile including preferences, household size, and constraints.
-
-    This is the primary tool for LLMs to understand user context for personalized meal planning
-    and recipe recommendations. It provides all necessary information in a single call.
-    """
+    """Get comprehensive user profile including preferences, household size, and constraints."""
     if not user_id:
         return {"status": "error", "message": "Authentication required"}
 
@@ -687,405 +498,7 @@ def get_user_profile(user_id: str = Depends(get_current_user)) -> Dict[str, Any]
     if not pantry:
         return {"status": "error", "message": "Failed to get user pantry"}
 
-    try:
-        # Get household characteristics
-        household = pantry.get_household_characteristics()
-
-        # Get preferences
-        preferences = pantry.get_preferences()
-
-        # Convert any datetime objects to ISO strings for JSON serialization
-        def serialize_datetime_objects(obj):
-            if isinstance(obj, dict):
-                return {k: serialize_datetime_objects(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [serialize_datetime_objects(item) for item in obj]
-            elif hasattr(obj, "isoformat"):  # datetime object
-                return obj.isoformat()
-            else:
-                return obj
-
-        preferences = serialize_datetime_objects(preferences)
-        household = serialize_datetime_objects(household)
-
-        # Organize preferences by category for easier LLM consumption
-        preferences_summary = {
-            "required_dietary": [],
-            "preferred_dietary": [],
-            "allergies": [],
-            "dislikes": [],
-            "likes": [],
-        }
-
-        for pref in preferences:
-            category = pref.get("category", "")
-            item = pref.get("item", "")
-            level = pref.get("level", "")
-
-            if category == "dietary":
-                if level == "required":
-                    preferences_summary["required_dietary"].append(item)
-                elif level == "preferred":
-                    preferences_summary["preferred_dietary"].append(item)
-            elif category == "allergy":
-                preferences_summary["allergies"].append(item)
-            elif category == "dislike":
-                preferences_summary["dislikes"].append(item)
-            elif category == "like":
-                preferences_summary["likes"].append(item)
-
-        # Add total people count for easy reference
-        household["total_people"] = household.get("adults", 2) + household.get(
-            "children", 0
-        )
-
-        profile_data = {
-            "household": household,
-            "dietary_preferences": preferences,
-            "preferences_summary": preferences_summary,
-        }
-
-        return {"status": "success", "data": profile_data}
-
-    except Exception as e:
-        return {"status": "error", "message": f"Error getting user profile: {str(e)}"}
-
-
-# MCP Tool endpoints that require authentication
-
-
-async def mcp_call_tool(request: Request, user_id: str):
-    """MCP call tool endpoint."""
-    try:
-        data = await request.json()
-        tool_name = data.get("params", {}).get("name")
-        arguments = data.get("params", {}).get("arguments", {})
-
-        logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
-
-        # Route to appropriate tool implementation
-        user_id, pantry = get_user_pantry_oauth(user_id)
-        if not pantry:
-            result = {"status": "error", "message": "Failed to get user pantry"}
-        elif tool_name == "plan_meals":
-            # Execute meal plan assignments
-            meal_assignments = arguments.get("meal_assignments", [])
-            replace_existing = arguments.get("replace_existing", False)
-            success_count = 0
-            errors = []
-
-            for assignment in meal_assignments:
-                try:
-                    success = pantry.set_meal_plan(
-                        assignment["date"], assignment["recipe_name"]
-                    )
-                    if success:
-                        success_count += 1
-                    else:
-                        errors.append(
-                            f"Failed to assign {assignment['recipe_name']} to {assignment['date']}"
-                        )
-                except Exception as e:
-                    errors.append(
-                        f"Error with {assignment['recipe_name']} on {assignment['date']}: {str(e)}"
-                    )
-
-            result = {
-                "status": "success" if success_count > 0 else "error",
-                "message": f"Successfully planned {success_count} meals",
-                "assigned": success_count,
-                "errors": errors,
-            }
-
-        elif tool_name == "get_meal_plan":
-            start_date = arguments.get("start_date")
-            days = arguments.get("days", 7)
-            try:
-                # Calculate end date
-                from datetime import datetime, timedelta
-
-                start = datetime.strptime(start_date, "%Y-%m-%d").date()
-                end = start + timedelta(days=days - 1)
-                meal_plan = pantry.get_meal_plan(start_date, end.strftime("%Y-%m-%d"))
-                result = {"status": "success", "meal_plan": meal_plan}
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to get meal plan: {str(e)}",
-                }
-
-        elif tool_name == "generate_grocery_list":
-            try:
-                # Use the existing get_grocery_list method (uses current week)
-                grocery_list = pantry.get_grocery_list()
-                result = {"status": "success", "grocery_list": grocery_list}
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to generate grocery list: {str(e)}",
-                }
-
-        elif tool_name == "suggest_recipes_from_pantry":
-            max_missing = arguments.get("max_missing_ingredients", 3)
-            max_time = arguments.get("max_prep_time")
-            try:
-                # Get pantry contents and all recipes
-                pantry_items = set(pantry.get_pantry_contents().keys())
-                all_recipes = pantry.get_all_recipes()
-
-                suggestions = []
-                for recipe in all_recipes:
-                    recipe_ingredients = set(
-                        ing["name"] for ing in recipe.get("ingredients", [])
-                    )
-                    missing = recipe_ingredients - pantry_items
-
-                    if len(missing) <= max_missing:
-                        if (
-                            max_time is None
-                            or recipe.get("time_minutes", 0) <= max_time
-                        ):
-                            suggestions.append(
-                                {
-                                    "recipe": recipe,
-                                    "missing_ingredients": list(missing),
-                                    "missing_count": len(missing),
-                                }
-                            )
-
-                # Sort by fewest missing ingredients first
-                suggestions.sort(key=lambda x: x["missing_count"])
-                result = {"status": "success", "suggestions": suggestions}
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to get suggestions: {str(e)}",
-                }
-
-        elif tool_name == "search_recipes":
-            query = arguments.get("query")
-            max_time = arguments.get("max_prep_time")
-            min_rating = arguments.get("min_rating")
-            try:
-                all_recipes = pantry.get_all_recipes()
-                filtered = []
-
-                for recipe in all_recipes:
-                    # Apply filters
-                    if query and query.lower() not in recipe.get("name", "").lower():
-                        continue
-                    if max_time and recipe.get("time_minutes", 0) > max_time:
-                        continue
-                    if min_rating and recipe.get("rating", 0) < min_rating:
-                        continue
-                    filtered.append(recipe)
-
-                result = {"status": "success", "recipes": filtered}
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to search recipes: {str(e)}",
-                }
-
-        elif tool_name == "check_recipe_feasibility":
-            recipe_name = arguments["recipe_name"]
-            servings = arguments.get("servings", 4)
-            try:
-                recipe = pantry.get_recipe(recipe_name)
-                if not recipe:
-                    result = {
-                        "status": "error",
-                        "message": f"Recipe '{recipe_name}' not found",
-                    }
-                else:
-                    pantry_contents = pantry.get_pantry_contents()
-                    missing = []
-                    available = []
-
-                    for ingredient in recipe.get("ingredients", []):
-                        ing_name = ingredient["name"]
-                        needed_qty = ingredient["quantity"] * (
-                            servings / 4
-                        )  # Assume recipe serves 4
-                        needed_unit = ingredient["unit"]
-
-                        if (
-                            ing_name in pantry_contents
-                            and needed_unit in pantry_contents[ing_name]
-                        ):
-                            have_qty = pantry_contents[ing_name][needed_unit]
-                            if have_qty >= needed_qty:
-                                available.append(
-                                    {
-                                        "name": ing_name,
-                                        "needed": needed_qty,
-                                        "have": have_qty,
-                                        "unit": needed_unit,
-                                    }
-                                )
-                            else:
-                                missing.append(
-                                    {
-                                        "name": ing_name,
-                                        "needed": needed_qty,
-                                        "have": have_qty,
-                                        "shortage": needed_qty - have_qty,
-                                        "unit": needed_unit,
-                                    }
-                                )
-                        else:
-                            missing.append(
-                                {
-                                    "name": ing_name,
-                                    "needed": needed_qty,
-                                    "have": 0,
-                                    "shortage": needed_qty,
-                                    "unit": needed_unit,
-                                }
-                            )
-
-                    result = {
-                        "status": "success",
-                        "recipe_name": recipe_name,
-                        "servings": servings,
-                        "feasible": len(missing) == 0,
-                        "available_ingredients": available,
-                        "missing_ingredients": missing,
-                    }
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to check feasibility: {str(e)}",
-                }
-
-        elif tool_name == "add_recipe":
-            success = pantry.add_recipe(
-                name=arguments["name"],
-                instructions=arguments["instructions"],
-                time_minutes=arguments["time_minutes"],
-                ingredients=arguments["ingredients"],
-            )
-            result = {
-                "status": "success" if success else "error",
-                "message": (
-                    "Recipe added successfully" if success else "Failed to add recipe"
-                ),
-            }
-
-        elif tool_name == "get_all_recipes":
-            recipes = pantry.get_all_recipes()
-            result = {"status": "success", "recipes": recipes}
-
-        elif tool_name == "get_recipe":
-            recipe_name = arguments["recipe_name"]
-            recipe = pantry.get_recipe(recipe_name)
-            if recipe:
-                result = {"status": "success", "recipe": recipe}
-            else:
-                result = {
-                    "status": "error",
-                    "message": f"Recipe '{recipe_name}' not found",
-                }
-
-        elif tool_name == "get_pantry_contents":
-            contents = pantry.get_pantry_contents()
-            result = {"status": "success", "contents": contents}
-
-        elif tool_name == "add_pantry_item":
-            success = pantry.add_item(
-                arguments["item_name"],
-                arguments["quantity"],
-                arguments["unit"],
-                arguments.get("notes"),
-            )
-            result = {
-                "status": "success" if success else "error",
-                "message": (
-                    f"Added {arguments['quantity']} {arguments['unit']} of {arguments['item_name']} to pantry"
-                    if success
-                    else "Failed to add item to pantry"
-                ),
-            }
-
-        elif tool_name == "remove_pantry_item":
-            success = pantry.remove_item(
-                arguments["item_name"],
-                arguments["quantity"],
-                arguments["unit"],
-                arguments.get("reason", "consumed"),
-            )
-            result = {
-                "status": "success" if success else "error",
-                "message": (
-                    f"Removed {arguments['quantity']} {arguments['unit']} of {arguments['item_name']} from pantry"
-                    if success
-                    else "Failed to remove item from pantry"
-                ),
-            }
-
-        elif tool_name == "get_food_preferences":
-            try:
-                preferences = pantry.get_preferences()
-                pref_type = arguments.get("preference_type")
-                if pref_type:
-                    preferences = [
-                        p for p in preferences if p.get("category") == pref_type
-                    ]
-                result = {"status": "success", "preferences": preferences}
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to get preferences: {str(e)}",
-                }
-
-        elif tool_name == "clear_meal_plan":
-            start_date = arguments["start_date"]
-            days = arguments.get("days", 7)
-            try:
-                # Clear meal plan for the specified range
-                success_count = 0
-                from datetime import datetime, timedelta
-
-                start = datetime.strptime(start_date, "%Y-%m-%d").date()
-
-                for i in range(days):
-                    current_date = start + timedelta(days=i)
-                    if pantry.clear_recipe_for_date(current_date.strftime("%Y-%m-%d")):
-                        success_count += 1
-
-                result = {
-                    "status": "success",
-                    "message": f"Cleared {success_count} days from meal plan",
-                    "cleared_days": success_count,
-                }
-            except Exception as e:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to clear meal plan: {str(e)}",
-                }
-
-        elif tool_name == "get_user_profile":
-            # Call the get_user_profile function directly
-            result = get_user_profile(user_id)
-
-        else:
-            result = {"status": "error", "message": f"Unknown tool: {tool_name}"}
-
-        return {
-            "jsonrpc": "2.0",
-            "id": data.get("id"),
-            "result": {
-                "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-            },
-        }
-
-    except Exception as e:
-        logger.error(f"Call tool error: {e}")
-        return {
-            "jsonrpc": "2.0",
-            "id": data.get("id", 0),
-            "error": {"code": -32603, "message": str(e)},
-        }
+    return tool_router.call_tool("get_user_profile", {}, pantry)
 
 
 # Catch-all MCP endpoint for other possible tool calls
@@ -1133,7 +546,7 @@ async def root(request: Request):
             logger.info("Unauthenticated GET request")
 
         # Return tools in MCP format for Claude Desktop's REST-style discovery
-        tools_list = MCP_TOOLS
+        tools_list = tool_router.get_available_tools()
 
         logger.info("Building response object...")
 
@@ -1143,7 +556,7 @@ async def root(request: Request):
                 "protocolVersion": "2025-06-18",
                 "capabilities": {"tools": {"listChanged": True}},
                 "serverInfo": {"name": "MealMCP OAuth Server", "version": "1.0.0"},
-                "tools": MCP_TOOLS,
+                "tools": tools_list,
             }
         else:
             # Regular API info for non-authenticated clients (browsers, etc.)
@@ -1170,12 +583,6 @@ async def root(request: Request):
             }
 
         logger.info(f"Returning response from GET /")
-        if isinstance(response, dict):
-            logger.info(f"Response format: {response.get('jsonrpc', 'standard')}")
-        else:
-            logger.info(
-                f"Response format: direct array with {len(response) if isinstance(response, list) else 'unknown'} items"
-            )
         return response
 
     except Exception as e:
@@ -1220,8 +627,6 @@ async def root_post(request: Request):
         if isinstance(body, dict) and "method" in body:
             method = body.get("method")
             logger.info(f"Detected MCP method: {method}")
-            logger.info(f"Full request body: {body}")
-            logger.info(f"Request ID: {body.get('id', 'no-id')}")
 
             # Handle unauthenticated initialize request (required for MCP handshake)
             if not user_id and method == "initialize":
@@ -1240,7 +645,6 @@ async def root_post(request: Request):
                         },
                     },
                 }
-                logger.info(f"Unauthenticated initialize response: {response}")
                 return JSONResponse(
                     content=response, headers={"Content-Type": "application/json"}
                 )
@@ -1258,8 +662,7 @@ async def root_post(request: Request):
 
             # Route MCP requests to appropriate handlers
             if method == "initialize":
-                logger.info("Sending initialize response with tool capabilities")
-                response = {
+                return {
                     "jsonrpc": "2.0",
                     "id": body.get("id"),
                     "result": {
@@ -1271,31 +674,19 @@ async def root_post(request: Request):
                         },
                     },
                 }
-                logger.info(f"Initialize response: {response}")
-                return response
             elif method == "notifications/initialized":
-                # Notification methods don't require responses in JSON-RPC
-                logger.info(
-                    "Client initialization complete - Claude should call tools/list next"
-                )
-                # Some MCP clients need an explicit tools list notification
-                logger.info(
-                    "Note: If tools don't appear, the client may not be calling tools/list"
-                )
-                # Return empty object for notification (JSON-RPC spec)
                 return JSONResponse(content={}, status_code=202)
             elif method == "tools/list":
                 return JSONResponse(
                     content={
                         "jsonrpc": "2.0",
                         "id": body.get("id"),
-                        "result": {"tools": MCP_TOOLS},
+                        "result": {"tools": tool_router.get_available_tools()},
                     }
                 )
             elif method == "tools/call":
                 return await mcp_call_tool(request, user_id)
             elif method == "prompts/list":
-                # Return empty prompts list (we don't currently support prompts)
                 return JSONResponse(
                     content={
                         "jsonrpc": "2.0",
@@ -1305,9 +696,6 @@ async def root_post(request: Request):
                 )
             else:
                 logger.error(f"Unknown MCP method: {method}")
-                logger.error(
-                    f"Available methods: initialize, notifications/initialized, tools/list, tools/call, prompts/list"
-                )
                 return {
                     "jsonrpc": "2.0",
                     "id": body.get("id"),
