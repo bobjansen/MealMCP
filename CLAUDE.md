@@ -12,10 +12,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `uv run run_mcp.py http --port 8080` - HTTP REST API server
   - `uv run run_mcp.py oauth --multiuser` - OAuth 2.1 multi-user server
   - `uv run run_mcp.py sse --remote` - Server-Sent Events with token auth
-- **Legacy MCP Servers**: Individual servers (deprecated, use unified server instead)
-  - `uv run mcp_server.py` - Basic FastMCP server
-  - `uv run mcp_server_oauth.py` - OAuth server
-- **Legacy Dash Interface**: `uv run app.py` - Original Dash web interface on http://localhost:8050
 
 ### Testing
 - **Run Tests**: `pytest` or `uv run pytest` - Runs the test suite located in the `tests/` directory
