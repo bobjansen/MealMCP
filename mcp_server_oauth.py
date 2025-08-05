@@ -1064,6 +1064,10 @@ async def mcp_call_tool(request: Request, user_id: str):
                     "message": f"Failed to clear meal plan: {str(e)}",
                 }
 
+        elif tool_name == "get_user_profile":
+            # Call the get_user_profile function directly
+            result = get_user_profile(user_id)
+
         else:
             result = {"status": "error", "message": f"Unknown tool: {tool_name}"}
 
