@@ -1,4 +1,4 @@
-from app_flask import app  # Replace 'your_app' with your Flask file name
+from app_flask import app
 
 if __name__ == "__main__":
     app.run()
