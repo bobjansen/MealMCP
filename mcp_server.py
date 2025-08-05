@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from constants import UNITS
 from mcp_context import MCPContext
 from i18n import t
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import os
 
 # Create an MCP server
@@ -485,6 +485,20 @@ def get_user_profile(token: Optional[str] = None) -> Dict[str, Any]:
 
         # Get preferences
         preferences = pantry.get_preferences()
+
+        # Convert any datetime objects to ISO strings for JSON serialization
+        def serialize_datetime_objects(obj):
+            if isinstance(obj, dict):
+                return {k: serialize_datetime_objects(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [serialize_datetime_objects(item) for item in obj]
+            elif hasattr(obj, "isoformat"):  # datetime object
+                return obj.isoformat()
+            else:
+                return obj
+
+        preferences = serialize_datetime_objects(preferences)
+        household = serialize_datetime_objects(household)
 
         # Organize preferences by category for easier LLM consumption
         preferences_summary = {
