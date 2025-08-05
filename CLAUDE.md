@@ -21,6 +21,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run Tests**: `pytest` or `uv run pytest` - Runs the test suite located in the `tests/` directory
 - **Single Test**: `pytest tests/test_pantry_manager.py` - Run a specific test file
 
+### OAuth Token Persistence
+To prevent Claude Desktop from needing to re-authenticate after server restarts:
+
+1. **Database Persistence** (Automatic): Tokens are now stored in the database and restored on startup
+2. **Extended Token Expiry**: Set `OAUTH_TOKEN_EXPIRY=86400` (24 hours) or longer
+3. **Token Cleanup**: Run `uv run python cleanup_tokens.py` to remove expired tokens
+
 ### Environment Setup
 - **Install Dependencies**: `uv sync` - Installs all project dependencies
 - **Database Setup**: Database is automatically initialized when PantryManager instances are created through the factory

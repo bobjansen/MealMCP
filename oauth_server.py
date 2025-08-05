@@ -44,10 +44,13 @@ class OAuthServer:
         self.token_endpoint = f"{self.base_url}/token"
         self.registration_endpoint = f"{self.base_url}/register"
 
-        # Cache for authorization codes and tokens
+        # Cache for authorization codes and tokens (with database persistence)
         self.auth_codes: Dict[str, Dict] = {}
         self.access_tokens: Dict[str, Dict] = {}
         self.refresh_tokens: Dict[str, Dict] = {}
+
+        # Load existing tokens from database on startup
+        self._load_tokens_from_db()
 
     def init_database(self):
         """Initialize OAuth database."""
@@ -95,6 +98,22 @@ class OAuthServer:
             """
             )
 
+            # Add token persistence tables
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS oauth_tokens (
+                    token TEXT PRIMARY KEY,
+                    token_type TEXT,
+                    user_id TEXT,
+                    client_id TEXT,
+                    scopes TEXT,
+                    expires_at INTEGER,
+                    token_data TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
     def _init_postgresql(self):
         """Initialize PostgreSQL OAuth database."""
         with psycopg2.connect(self.postgres_url) as conn:
@@ -122,6 +141,22 @@ class OAuthServer:
                         scopes TEXT,
                         granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         PRIMARY KEY (user_id, client_id)
+                    )
+                """
+                )
+
+                # Add token persistence table for PostgreSQL
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS oauth_tokens (
+                        token TEXT PRIMARY KEY,
+                        token_type TEXT,
+                        user_id TEXT,
+                        client_id TEXT,
+                        scopes TEXT,
+                        expires_at BIGINT,
+                        token_data TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """
                 )
@@ -537,22 +572,31 @@ class OAuthServer:
         # Generate tokens
         access_token = secrets.token_urlsafe(32)
         refresh_token = secrets.token_urlsafe(32)
-        expires_in = 3600  # 1 hour
+        expires_in = int(
+            os.getenv("OAUTH_TOKEN_EXPIRY", "86400")
+        )  # Default 24 hours, configurable
 
-        # Store tokens
-        self.access_tokens[access_token] = {
+        # Store tokens in memory and database
+        access_token_data = {
             "user_id": auth_data["user_id"],
             "client_id": client_id,
             "scope": auth_data["scope"],
             "expires_at": time.time() + expires_in,
         }
 
-        self.refresh_tokens[refresh_token] = {
+        refresh_token_data = {
             "user_id": auth_data["user_id"],
             "client_id": client_id,
             "scope": auth_data["scope"],
             "access_token": access_token,
         }
+
+        self.access_tokens[access_token] = access_token_data
+        self.refresh_tokens[refresh_token] = refresh_token_data
+
+        # Persist tokens to database
+        self._save_token_to_db(access_token, "access", access_token_data)
+        self._save_token_to_db(refresh_token, "refresh", refresh_token_data)
 
         # Clean up authorization code
         del self.auth_codes[code]
@@ -574,6 +618,7 @@ class OAuthServer:
 
         if time.time() > token_data["expires_at"]:
             del self.access_tokens[access_token]
+            self._remove_token_from_db(access_token)
             return None
 
         return token_data
@@ -596,25 +641,35 @@ class OAuthServer:
         # Generate new tokens
         new_access_token = secrets.token_urlsafe(32)
         new_refresh_token = secrets.token_urlsafe(32)
-        expires_in = 3600  # 1 hour
+        expires_in = int(
+            os.getenv("OAUTH_TOKEN_EXPIRY", "86400")
+        )  # Default 24 hours, configurable
 
-        # Store new tokens
-        self.access_tokens[new_access_token] = {
+        # Store new tokens in memory and database
+        new_access_token_data = {
             "user_id": refresh_data["user_id"],
             "client_id": client_id,
             "scope": refresh_data["scope"],
             "expires_at": time.time() + expires_in,
         }
 
-        self.refresh_tokens[new_refresh_token] = {
+        new_refresh_token_data = {
             "user_id": refresh_data["user_id"],
             "client_id": client_id,
             "scope": refresh_data["scope"],
             "access_token": new_access_token,
         }
 
-        # Clean up old refresh token
+        self.access_tokens[new_access_token] = new_access_token_data
+        self.refresh_tokens[new_refresh_token] = new_refresh_token_data
+
+        # Persist new tokens to database
+        self._save_token_to_db(new_access_token, "access", new_access_token_data)
+        self._save_token_to_db(new_refresh_token, "refresh", new_refresh_token_data)
+
+        # Clean up old refresh token from memory and database
         del self.refresh_tokens[refresh_token]
+        self._remove_token_from_db(refresh_token)
 
         return {
             "access_token": new_access_token,
@@ -623,3 +678,135 @@ class OAuthServer:
             "refresh_token": new_refresh_token,
             "scope": refresh_data["scope"],
         }
+
+    def _load_tokens_from_db(self):
+        """Load existing tokens from database on startup."""
+        try:
+            if self.use_postgresql:
+                self._load_tokens_postgresql()
+            else:
+                self._load_tokens_sqlite()
+        except Exception as e:
+            print(f"Warning: Could not load tokens from database: {e}")
+
+    def _load_tokens_sqlite(self):
+        """Load tokens from SQLite database."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT token, token_type, user_id, client_id, scopes, expires_at, token_data FROM oauth_tokens WHERE expires_at > ?",
+                (int(time.time()),),
+            )
+
+            for row in cursor.fetchall():
+                (
+                    token,
+                    token_type,
+                    user_id,
+                    client_id,
+                    scopes,
+                    expires_at,
+                    token_data_json,
+                ) = row
+                token_data = json.loads(token_data_json)
+
+                if token_type == "access":
+                    self.access_tokens[token] = token_data
+                elif token_type == "refresh":
+                    self.refresh_tokens[token] = token_data
+
+    def _load_tokens_postgresql(self):
+        """Load tokens from PostgreSQL database."""
+        with psycopg2.connect(self.postgres_url) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT token, token_type, user_id, client_id, scopes, expires_at, token_data FROM oauth_tokens WHERE expires_at > %s",
+                    (int(time.time()),),
+                )
+
+                for row in cursor.fetchall():
+                    (
+                        token,
+                        token_type,
+                        user_id,
+                        client_id,
+                        scopes,
+                        expires_at,
+                        token_data_json,
+                    ) = row
+                    token_data = json.loads(token_data_json)
+
+                    if token_type == "access":
+                        self.access_tokens[token] = token_data
+                    elif token_type == "refresh":
+                        self.refresh_tokens[token] = token_data
+
+    def _save_token_to_db(self, token: str, token_type: str, token_data: Dict):
+        """Save token to database."""
+        try:
+            if self.use_postgresql:
+                self._save_token_postgresql(token, token_type, token_data)
+            else:
+                self._save_token_sqlite(token, token_type, token_data)
+        except Exception as e:
+            print(f"Warning: Could not save token to database: {e}")
+
+    def _save_token_sqlite(self, token: str, token_type: str, token_data: Dict):
+        """Save token to SQLite database."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO oauth_tokens 
+                (token, token_type, user_id, client_id, scopes, expires_at, token_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    token,
+                    token_type,
+                    token_data["user_id"],
+                    token_data["client_id"],
+                    token_data.get("scope", ""),
+                    token_data.get("expires_at", 0),
+                    json.dumps(token_data),
+                ),
+            )
+
+    def _save_token_postgresql(self, token: str, token_type: str, token_data: Dict):
+        """Save token to PostgreSQL database."""
+        with psycopg2.connect(self.postgres_url) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO oauth_tokens 
+                    (token, token_type, user_id, client_id, scopes, expires_at, token_data)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (token) DO UPDATE SET
+                    token_data = EXCLUDED.token_data, expires_at = EXCLUDED.expires_at
+                    """,
+                    (
+                        token,
+                        token_type,
+                        token_data["user_id"],
+                        token_data["client_id"],
+                        token_data.get("scope", ""),
+                        token_data.get("expires_at", 0),
+                        json.dumps(token_data),
+                    ),
+                )
+                conn.commit()
+
+    def _remove_token_from_db(self, token: str):
+        """Remove token from database."""
+        try:
+            if self.use_postgresql:
+                with psycopg2.connect(self.postgres_url) as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            "DELETE FROM oauth_tokens WHERE token = %s", (token,)
+                        )
+                        conn.commit()
+            else:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute("DELETE FROM oauth_tokens WHERE token = ?", (token,))
+        except Exception as e:
+            print(f"Warning: Could not remove token from database: {e}")
