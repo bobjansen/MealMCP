@@ -26,6 +26,7 @@ class MCPToolRouter:
             "list_units": self._list_units,
             "get_user_profile": self._get_user_profile,
             "add_recipe": self._add_recipe,
+            "edit_recipe": self._edit_recipe,
             "get_all_recipes": self._get_all_recipes,
             "get_recipe": self._get_recipe,
             "get_pantry_contents": self._get_pantry_contents,
@@ -39,6 +40,10 @@ class MCPToolRouter:
             "check_recipe_feasibility": self._check_recipe_feasibility,
             "get_food_preferences": self._get_food_preferences,
             "clear_meal_plan": self._clear_meal_plan,
+            "add_preference": self._add_preference,
+            "execute_recipe": self._execute_recipe,
+            "get_week_plan": self._get_week_plan,
+            "set_recipe_for_date": self._set_recipe_for_date,
         }
 
     def call_tool(
@@ -142,6 +147,34 @@ class MCPToolRouter:
             return {"status": "success", "message": t("Recipe added successfully")}
         else:
             return {"status": "error", "message": t("Failed to add recipe")}
+
+    def _edit_recipe(self, arguments: Dict[str, Any], pantry_manager) -> Dict[str, Any]:
+        """Edit an existing recipe."""
+        recipe_name = arguments["recipe_name"]
+
+        # Check if recipe exists
+        existing_recipe = pantry_manager.get_recipe(recipe_name)
+        if not existing_recipe:
+            return {"status": "error", "message": f"Recipe '{recipe_name}' not found"}
+
+        # Update the recipe
+        success = pantry_manager.update_recipe(
+            recipe_name=recipe_name,
+            instructions=arguments["instructions"],
+            time_minutes=arguments["time_minutes"],
+            ingredients=arguments["ingredients"],
+        )
+
+        if success:
+            return {
+                "status": "success",
+                "message": f"Recipe '{recipe_name}' updated successfully",
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Failed to update recipe '{recipe_name}'",
+            }
 
     def _get_all_recipes(
         self, arguments: Dict[str, Any], pantry_manager
@@ -445,4 +478,117 @@ class MCPToolRouter:
             return {
                 "status": "error",
                 "message": f"Failed to clear meal plan: {str(e)}",
+            }
+
+    def _add_preference(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Add a food preference."""
+        try:
+            success = pantry_manager.add_preference(
+                category=arguments["category"],
+                item=arguments["item"],
+                level=arguments["level"],
+                notes=arguments.get("notes"),
+            )
+
+            if success:
+                return {
+                    "status": "success",
+                    "message": f"Added {arguments['category']} preference for {arguments['item']}",
+                }
+            else:
+                return {"status": "error", "message": "Failed to add preference"}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to add preference: {str(e)}"}
+
+    def _execute_recipe(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Execute a recipe by removing ingredients from pantry."""
+        recipe_name = arguments["recipe_name"]
+
+        try:
+            # Get recipe details
+            recipe = pantry_manager.get_recipe(recipe_name)
+            if not recipe:
+                return {
+                    "status": "error",
+                    "message": f"Recipe '{recipe_name}' not found",
+                }
+
+            # Remove ingredients from pantry
+            success_count = 0
+            errors = []
+
+            for ingredient in recipe.get("ingredients", []):
+                try:
+                    success = pantry_manager.remove_item(
+                        ingredient["name"],
+                        ingredient["quantity"],
+                        ingredient["unit"],
+                        f"Used for {recipe_name}",
+                    )
+                    if success:
+                        success_count += 1
+                    else:
+                        errors.append(f"Could not remove {ingredient['name']}")
+                except Exception as e:
+                    errors.append(f"Error removing {ingredient['name']}: {str(e)}")
+
+            if success_count > 0:
+                return {
+                    "status": "success",
+                    "message": f"Recipe '{recipe_name}' executed, removed {success_count} ingredients",
+                    "removed_ingredients": success_count,
+                    "errors": errors,
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to remove any ingredients",
+                    "errors": errors,
+                }
+
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to execute recipe: {str(e)}"}
+
+    def _get_week_plan(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Get the meal plan for the next 7 days."""
+        try:
+            from datetime import date, timedelta
+
+            start_date = date.today()
+            end_date = start_date + timedelta(days=6)
+
+            meal_plan = pantry_manager.get_meal_plan(
+                start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+            )
+
+            return {"status": "success", "meal_plan": meal_plan}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to get week plan: {str(e)}"}
+
+    def _set_recipe_for_date(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Set a recipe for a specific date."""
+        try:
+            success = pantry_manager.set_meal_plan(
+                arguments["meal_date"], arguments["recipe_name"]
+            )
+
+            if success:
+                return {
+                    "status": "success",
+                    "message": f"Set '{arguments['recipe_name']}' for {arguments['meal_date']}",
+                }
+            else:
+                return {"status": "error", "message": "Failed to set recipe for date"}
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to set recipe for date: {str(e)}",
             }
