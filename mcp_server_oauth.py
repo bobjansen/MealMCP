@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from mcp.server.fastmcp import FastMCP
 
 from oauth_server import OAuthServer
@@ -30,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app for OAuth endpoints
 app = FastAPI(title="MealMCP OAuth Server", version="1.0.0")
+
+# Mount static files for CSS
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Add middleware to log requests (essential only)

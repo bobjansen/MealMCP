@@ -1,0 +1,62 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+.form-group {
+    margin: 15px 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.primary-btn {
+    background: #007bff;
+    color: white;
+}
+
+.primary-btn:hover {
+    background: #0056b3;
+}
+
+.success-btn {
+    background: #28a745;
+    color: white;
+}
+
+.success-btn:hover {
+    background: #1e7e34;
+}
+
+.link-section {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.link-section a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.error {
+    color: red;
+}

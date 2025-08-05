@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registration Error</title>
+    <link rel="stylesheet" href="/static/oauth.css">
+</head>
+<body>
+    <h2>Registration Failed</h2>
+    <p class="error">{{ error_message }}</p>
+    <div class="link-section">
+        <a href="/register_user?{{ retry_params }}">Try Again</a>
+    </div>
+</body>
+</html>
