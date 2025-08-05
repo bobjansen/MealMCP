@@ -209,7 +209,7 @@ async def authorize(
     <body>
         <h2>Authorize MealMCP Access</h2>
         <p>The application <strong>{client_id}</strong> wants to access your MealMCP data.</p>
-        
+
         <form method="post" action="/authorize">
             <input type="hidden" name="response_type" value="{response_type}">
             <input type="hidden" name="client_id" value="{client_id}">
@@ -218,20 +218,20 @@ async def authorize(
             <input type="hidden" name="state" value="{state or ''}">
             <input type="hidden" name="code_challenge" value="{code_challenge}">
             <input type="hidden" name="code_challenge_method" value="{code_challenge_method}">
-            
+
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            
+
             <button type="submit">Authorize</button>
         </form>
-        
+
         <div class="register">
             <p>Don't have an account? <a href="/register_user?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}&state={state or ''}&code_challenge={code_challenge}&code_challenge_method={code_challenge_method}">Register here</a></p>
         </div>
@@ -355,7 +355,7 @@ async def register_user_form(
     </head>
     <body>
         <h2>Create MealMCP Account</h2>
-        
+
         <form method="post" action="/register_user">
             <input type="hidden" name="client_id" value="{client_id}">
             <input type="hidden" name="redirect_uri" value="{redirect_uri}">
@@ -363,30 +363,30 @@ async def register_user_form(
             <input type="hidden" name="state" value="{state}">
             <input type="hidden" name="code_challenge" value="{code_challenge}">
             <input type="hidden" name="code_challenge_method" value="{code_challenge_method}">
-            
+
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="email">Email (optional):</label>
                 <input type="email" id="email" name="email">
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="confirm_password">Confirm Password:</label>
                 <input type="password" id="confirm_password" name="confirm_password" required>
             </div>
-            
+
             <button type="submit">Register</button>
         </form>
-        
+
         <div class="login">
             <p>Already have an account? <a href="/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}&state={state}&code_challenge={code_challenge}&code_challenge_method={code_challenge_method}">Login here</a></p>
         </div>
