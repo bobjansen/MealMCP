@@ -673,6 +673,84 @@ def add_pantry_item(
         return {"status": "error", "message": "Failed to add item to pantry"}
 
 
+@mcp.tool()
+def get_user_profile(user_id: str = Depends(get_current_user)) -> Dict[str, Any]:
+    """Get comprehensive user profile including preferences, household size, and constraints.
+
+    This is the primary tool for LLMs to understand user context for personalized meal planning
+    and recipe recommendations. It provides all necessary information in a single call.
+    """
+    if not user_id:
+        return {"status": "error", "message": "Authentication required"}
+
+    user_id, pantry = get_user_pantry_oauth(user_id)
+    if not pantry:
+        return {"status": "error", "message": "Failed to get user pantry"}
+
+    try:
+        # Get household characteristics
+        household = pantry.get_household_characteristics()
+
+        # Get preferences
+        preferences = pantry.get_preferences()
+
+        # Convert any datetime objects to ISO strings for JSON serialization
+        def serialize_datetime_objects(obj):
+            if isinstance(obj, dict):
+                return {k: serialize_datetime_objects(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [serialize_datetime_objects(item) for item in obj]
+            elif hasattr(obj, "isoformat"):  # datetime object
+                return obj.isoformat()
+            else:
+                return obj
+
+        preferences = serialize_datetime_objects(preferences)
+        household = serialize_datetime_objects(household)
+
+        # Organize preferences by category for easier LLM consumption
+        preferences_summary = {
+            "required_dietary": [],
+            "preferred_dietary": [],
+            "allergies": [],
+            "dislikes": [],
+            "likes": [],
+        }
+
+        for pref in preferences:
+            category = pref.get("category", "")
+            item = pref.get("item", "")
+            level = pref.get("level", "")
+
+            if category == "dietary":
+                if level == "required":
+                    preferences_summary["required_dietary"].append(item)
+                elif level == "preferred":
+                    preferences_summary["preferred_dietary"].append(item)
+            elif category == "allergy":
+                preferences_summary["allergies"].append(item)
+            elif category == "dislike":
+                preferences_summary["dislikes"].append(item)
+            elif category == "like":
+                preferences_summary["likes"].append(item)
+
+        # Add total people count for easy reference
+        household["total_people"] = household.get("adults", 2) + household.get(
+            "children", 0
+        )
+
+        profile_data = {
+            "household": household,
+            "dietary_preferences": preferences,
+            "preferences_summary": preferences_summary,
+        }
+
+        return {"status": "success", "data": profile_data}
+
+    except Exception as e:
+        return {"status": "error", "message": f"Error getting user profile: {str(e)}"}
+
+
 # MCP Tool endpoints that require authentication
 
 
