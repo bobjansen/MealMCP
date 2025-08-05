@@ -7,9 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Running the Application
 - **Flask Web Interface (Recommended)**: `uv run run_web.py` - Smart launcher with backend detection and validation
 - **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000
-- **MCP Server (Local)**: `uv run mcp_server.py` - Starts the MCP server in single-user local mode
-- **MCP Server (Remote)**: `MCP_MODE=remote uv run mcp_server.py` - Starts the MCP server in multi-user remote mode
-- **MCP Server (Start Script)**: `uv run start_server.py` - Starts server with mode selection and configuration
+- **Unified MCP Server (Recommended)**: `uv run run_mcp.py [mode]` - Single server supporting all transport modes
+  - `uv run run_mcp.py` - FastMCP local mode (default)
+  - `uv run run_mcp.py http --port 8080` - HTTP REST API server
+  - `uv run run_mcp.py oauth --multiuser` - OAuth 2.1 multi-user server
+  - `uv run run_mcp.py sse --remote` - Server-Sent Events with token auth
+- **Legacy MCP Servers**: Individual servers (deprecated, use unified server instead)
+  - `uv run mcp_server.py` - Basic FastMCP server
+  - `uv run mcp_server_oauth.py` - OAuth server
 - **Legacy Dash Interface**: `uv run app.py` - Original Dash web interface on http://localhost:8050
 
 ### Testing
