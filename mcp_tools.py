@@ -1,157 +1,55 @@
 """
-MCP Tool Definitions - Optimized for Meal Planning
-LLM-centric tool design where LLM does decision-making and tools handle execution
+MCP Tool Definitions - Current Implementation
+Aligned with the actual tools implemented in mcp_server.py
 """
 
 from typing import List, Dict, Any
 
-# Optimized MCP tools focused on meal planning workflow
+# Current MCP tools (15 total) matching mcp_server.py implementation
 MCP_TOOLS: List[Dict[str, Any]] = [
-    # === CORE MEAL PLANNING TOOLS ===
+    # === USER PROFILE ===
     {
-        "name": "plan_meals",
-        "description": "Execute a meal plan by assigning specific recipes to specific dates. The LLM should decide which recipes to assign to which dates, then use this tool to save the plan.",
+        "name": "get_user_profile",
+        "description": "Get comprehensive user profile including preferences, household size, and constraints for personalized meal planning",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "meal_assignments": {
-                    "type": "array",
-                    "description": "Array of meal assignments to execute",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "date": {
-                                "type": "string",
-                                "format": "date",
-                                "description": "Date for this meal (YYYY-MM-DD)",
-                            },
-                            "recipe_name": {
-                                "type": "string",
-                                "description": "Name of the recipe to assign",
-                            },
-                            "meal_type": {
-                                "type": "string",
-                                "enum": ["breakfast", "lunch", "dinner", "snack"],
-                                "default": "dinner",
-                                "description": "Type of meal",
-                            },
-                        },
-                        "required": ["date", "recipe_name"],
-                    },
-                },
-                "replace_existing": {
-                    "type": "boolean",
-                    "default": False,
-                    "description": "Replace existing meal plan for these dates",
-                },
-            },
-            "required": ["meal_assignments"],
-        },
-    },
-    {
-        "name": "get_meal_plan",
-        "description": "Get the current meal plan for a specified date range",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "start_date": {
+                "token": {
                     "type": "string",
-                    "format": "date",
-                    "description": "Start date (YYYY-MM-DD)",
-                },
-                "days": {
-                    "type": "integer",
-                    "default": 7,
-                    "description": "Number of days to retrieve",
-                },
-            },
-            "required": ["start_date"],
-        },
-    },
-    {
-        "name": "generate_grocery_list",
-        "description": "Generate a smart grocery list based on meal plan and current pantry contents",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "start_date": {
-                    "type": "string",
-                    "format": "date",
-                    "description": "Start date for meal plan period",
-                },
-                "days": {
-                    "type": "integer",
-                    "default": 7,
-                    "description": "Number of days to include",
-                },
-                "group_by_section": {
-                    "type": "boolean",
-                    "default": True,
-                    "description": "Group items by store section",
-                },
+                    "description": "Authentication token (required for remote mode)",
+                }
             },
             "required": [],
         },
     },
-    # === RECIPE INTELLIGENCE TOOLS ===
+    # === PREFERENCES MANAGEMENT ===
     {
-        "name": "suggest_recipes_from_pantry",
-        "description": "Get recipe suggestions based on ingredients currently available in pantry",
+        "name": "add_preference",
+        "description": "Add a new food preference to the database",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "max_missing_ingredients": {
-                    "type": "integer",
-                    "default": 3,
-                    "description": "Maximum number of missing ingredients to allow",
-                },
-                "max_prep_time": {
-                    "type": "integer",
-                    "description": "Maximum preparation time in minutes",
-                },
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "search_recipes",
-        "description": "Search and filter recipes by multiple criteria",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "query": {
+                "category": {
                     "type": "string",
-                    "description": "Text search in recipe names",
+                    "enum": ["like", "dislike", "allergy", "dietary"],
+                    "description": "Category of preference",
                 },
-                "max_prep_time": {
-                    "type": "integer",
-                    "description": "Maximum prep time in minutes",
-                },
-                "min_rating": {
-                    "type": "number",
-                    "description": "Minimum recipe rating (1-5)",
-                },
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "check_recipe_feasibility",
-        "description": "Check if a recipe can be made with current pantry contents and what's missing",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "recipe_name": {
+                "item": {
                     "type": "string",
-                    "description": "Name of the recipe to check",
+                    "description": "Food item or dietary restriction",
                 },
-                "servings": {
-                    "type": "number",
-                    "default": 4,
-                    "description": "Number of servings desired",
+                "level": {
+                    "type": "string",
+                    "enum": ["required", "preferred", "avoid"],
+                    "description": "Preference level",
+                },
+                "notes": {"type": "string", "description": "Optional notes"},
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
                 },
             },
-            "required": ["recipe_name"],
+            "required": ["category", "item", "level"],
         },
     },
     # === RECIPE MANAGEMENT ===
@@ -168,7 +66,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "time_minutes": {
                     "type": "integer",
-                    "description": "Total preparation and cooking time",
+                    "description": "Preparation time in minutes",
                 },
                 "ingredients": {
                     "type": "array",
@@ -182,22 +80,95 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                         "required": ["name", "quantity", "unit"],
                     },
                 },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                },
             },
             "required": ["name", "instructions", "time_minutes", "ingredients"],
         },
     },
     {
-        "name": "get_all_recipes",
-        "description": "Get all recipes with basic information",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
-    },
-    {
         "name": "get_recipe",
-        "description": "Get detailed recipe information",
+        "description": "Get detailed information about a specific recipe",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "recipe_name": {"type": "string", "description": "Name of the recipe"}
+                "recipe_name": {"type": "string", "description": "Name of the recipe"},
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                },
+            },
+            "required": ["recipe_name"],
+        },
+    },
+    {
+        "name": "get_all_recipes",
+        "description": "Get all recipes with basic information",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "edit_recipe",
+        "description": "Edit an existing recipe",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_name": {
+                    "type": "string",
+                    "description": "Name of recipe to edit",
+                },
+                "instructions": {
+                    "type": "string",
+                    "description": "Updated cooking instructions",
+                },
+                "time_minutes": {
+                    "type": "integer",
+                    "description": "Updated preparation time",
+                },
+                "ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "quantity": {"type": "number"},
+                            "unit": {"type": "string"},
+                        },
+                        "required": ["name", "quantity", "unit"],
+                    },
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                },
+            },
+            "required": ["recipe_name", "instructions", "time_minutes", "ingredients"],
+        },
+    },
+    {
+        "name": "execute_recipe",
+        "description": "Execute a recipe by removing required ingredients from pantry",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_name": {
+                    "type": "string",
+                    "description": "Name of recipe to execute",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                },
             },
             "required": ["recipe_name"],
         },
@@ -206,77 +177,126 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     {
         "name": "get_pantry_contents",
         "description": "Get current pantry inventory",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
-    },
-    {
-        "name": "add_pantry_item",
-        "description": "Add items to pantry",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "item_name": {"type": "string", "description": "Name of the item"},
-                "quantity": {"type": "number", "description": "Amount to add"},
-                "unit": {"type": "string", "description": "Unit of measurement"},
-                "notes": {"type": "string", "description": "Optional notes"},
-            },
-            "required": ["item_name", "quantity", "unit"],
-        },
-    },
-    {
-        "name": "remove_pantry_item",
-        "description": "Remove or consume items from pantry",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "item_name": {"type": "string", "description": "Name of the item"},
-                "quantity": {"type": "number", "description": "Amount to remove"},
-                "unit": {"type": "string", "description": "Unit of measurement"},
-                "reason": {
+                "token": {
                     "type": "string",
-                    "enum": ["consumed", "expired", "spoiled", "other"],
-                    "default": "consumed",
-                    "description": "Reason for removal",
-                },
-            },
-            "required": ["item_name", "quantity", "unit"],
-        },
-    },
-    # === PREFERENCES MANAGEMENT ===
-    {
-        "name": "get_food_preferences",
-        "description": "Get current food preferences and dietary restrictions",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "preference_type": {
-                    "type": "string",
-                    "enum": ["like", "dislike", "allergy", "dietary"],
-                    "description": "Filter by preference type",
+                    "description": "Authentication token (required for remote mode)",
                 }
             },
             "required": [],
         },
     },
-    # === UTILITY ===
     {
-        "name": "clear_meal_plan",
-        "description": "Clear meal plan for specified date range to allow LLM to create a fresh plan",
+        "name": "manage_pantry_item",
+        "description": "Add or remove an item from the pantry",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "start_date": {
+                "action": {
                     "type": "string",
-                    "format": "date",
-                    "description": "Start date",
+                    "enum": ["add", "remove"],
+                    "description": "Action to perform",
                 },
-                "days": {
-                    "type": "integer",
-                    "default": 7,
-                    "description": "Number of days to clear",
+                "item_name": {"type": "string", "description": "Name of the item"},
+                "quantity": {
+                    "type": "number",
+                    "description": "Amount to add or remove",
+                },
+                "unit": {"type": "string", "description": "Unit of measurement"},
+                "notes": {"type": "string", "description": "Optional notes"},
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
                 },
             },
-            "required": ["start_date"],
+            "required": ["action", "item_name", "quantity", "unit"],
         },
+    },
+    # === MEAL PLANNING ===
+    {
+        "name": "get_week_plan",
+        "description": "Get the meal plan for the next 7 days",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_grocery_list",
+        "description": "Get grocery items needed for the coming week's meal plan",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "set_recipe_for_date",
+        "description": "Set a recipe for a specific date in the meal plan",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_name": {"type": "string", "description": "Name of the recipe"},
+                "meal_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Date for the meal (YYYY-MM-DD)",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for remote mode)",
+                },
+            },
+            "required": ["recipe_name", "meal_date"],
+        },
+    },
+    # === ADMIN/SYSTEM ===
+    {
+        "name": "create_user",
+        "description": "Create a new user (admin only)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username for new user"},
+                "admin_token": {
+                    "type": "string",
+                    "description": "Admin authentication token",
+                },
+            },
+            "required": ["username", "admin_token"],
+        },
+    },
+    {
+        "name": "list_users",
+        "description": "List all users (admin only)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "admin_token": {
+                    "type": "string",
+                    "description": "Admin authentication token",
+                }
+            },
+            "required": ["admin_token"],
+        },
+    },
+    {
+        "name": "get_server_info",
+        "description": "Get server information and available tools",
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
     },
 ]
 
@@ -292,3 +312,27 @@ def get_tool_by_name(tool_name: str) -> Dict[str, Any]:
 def get_tool_names() -> List[str]:
     """Get list of all available tool names."""
     return [tool["name"] for tool in MCP_TOOLS]
+
+
+def get_tool_count() -> int:
+    """Get total number of available tools."""
+    return len(MCP_TOOLS)
+
+
+def get_tools_by_category() -> Dict[str, List[str]]:
+    """Get tools organized by category."""
+    categories = {
+        "User Profile": ["get_user_profile"],
+        "Preferences": ["add_preference"],
+        "Recipe Management": [
+            "add_recipe",
+            "get_recipe",
+            "get_all_recipes",
+            "edit_recipe",
+            "execute_recipe",
+        ],
+        "Pantry Management": ["get_pantry_contents", "manage_pantry_item"],
+        "Meal Planning": ["get_week_plan", "get_grocery_list", "set_recipe_for_date"],
+        "Admin/System": ["create_user", "list_users", "get_server_info"],
+    }
+    return categories
