@@ -41,6 +41,34 @@ class PostgreSQLPantryManager(PantryManager):
         """Get a database connection. Should be used in a context manager."""
         return psycopg2.connect(**self.connection_params)
 
+    def _ensure_household_table_exists(self):
+        """Ensure the household_characteristics table exists."""
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS household_characteristics (
+                            id INTEGER PRIMARY KEY DEFAULT 1,
+                            adults INTEGER DEFAULT 2,
+                            children INTEGER DEFAULT 0,
+                            notes TEXT,
+                            updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """
+                    )
+
+                    # Insert default record if none exists
+                    cursor.execute(
+                        """
+                        INSERT INTO household_characteristics (id, adults, children, updated_date)
+                        VALUES (1, 2, 0, CURRENT_TIMESTAMP)
+                        ON CONFLICT (id) DO NOTHING
+                        """
+                    )
+        except Exception as e:
+            print(f"Error ensuring household table exists: {e}")
+
     def add_ingredient(self, name: str, default_unit: str) -> bool:
         """
         Add a new ingredient to the database.
@@ -824,3 +852,79 @@ class PostgreSQLPantryManager(PantryManager):
                 )
 
         return grocery_list
+
+    def get_household_characteristics(self) -> Dict[str, Any]:
+        """Get household characteristics including number of adults and children."""
+        self._ensure_household_table_exists()
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT adults, children, notes, updated_date
+                        FROM household_characteristics
+                        WHERE id = 1
+                        """
+                    )
+                    result = cursor.fetchone()
+                    if result:
+                        adults, children, notes, updated_date = result
+                        return {
+                            "adults": adults,
+                            "children": children,
+                            "notes": notes or "",
+                            "updated_date": (
+                                updated_date.isoformat()
+                                if updated_date
+                                else datetime.now().isoformat()
+                            ),
+                        }
+                    else:
+                        # Return default values if no record exists
+                        return {
+                            "adults": 2,
+                            "children": 0,
+                            "notes": "",
+                            "updated_date": datetime.now().isoformat(),
+                        }
+        except Exception as e:
+            print(f"Error getting household characteristics: {e}")
+            return {
+                "adults": 2,
+                "children": 0,
+                "notes": "",
+                "updated_date": datetime.now().isoformat(),
+            }
+
+    def set_household_characteristics(
+        self, adults: int, children: int, notes: str = ""
+    ) -> bool:
+        """Set household characteristics."""
+        self._ensure_household_table_exists()
+        if adults < 1:
+            print("Number of adults must be at least 1")
+            return False
+        if children < 0:
+            print("Number of children cannot be negative")
+            return False
+
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO household_characteristics 
+                        (id, adults, children, notes, updated_date)
+                        VALUES (1, %s, %s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (id) DO UPDATE SET
+                            adults = EXCLUDED.adults,
+                            children = EXCLUDED.children,
+                            notes = EXCLUDED.notes,
+                            updated_date = CURRENT_TIMESTAMP
+                        """,
+                        (adults, children, notes),
+                    )
+                    return True
+        except Exception as e:
+            print(f"Error setting household characteristics: {e}")
+            return False

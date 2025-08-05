@@ -783,3 +783,68 @@ class SQLitePantryManager(PantryManager):
                 )
 
         return grocery_list
+
+    def get_household_characteristics(self) -> Dict[str, Any]:
+        """Get household characteristics including number of adults and children."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT adults, children, notes, updated_date
+                    FROM HouseholdCharacteristics
+                    WHERE id = 1
+                    """
+                )
+                result = cursor.fetchone()
+                if result:
+                    adults, children, notes, updated_date = result
+                    return {
+                        "adults": adults,
+                        "children": children,
+                        "notes": notes or "",
+                        "updated_date": updated_date,
+                    }
+                else:
+                    # Return default values if no record exists
+                    return {
+                        "adults": 2,
+                        "children": 0,
+                        "notes": "",
+                        "updated_date": datetime.now().isoformat(),
+                    }
+        except Exception as e:
+            print(f"Error getting household characteristics: {e}")
+            return {
+                "adults": 2,
+                "children": 0,
+                "notes": "",
+                "updated_date": datetime.now().isoformat(),
+            }
+
+    def set_household_characteristics(
+        self, adults: int, children: int, notes: str = ""
+    ) -> bool:
+        """Set household characteristics."""
+        if adults < 1:
+            print("Number of adults must be at least 1")
+            return False
+        if children < 0:
+            print("Number of children cannot be negative")
+            return False
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO HouseholdCharacteristics
+                    (id, adults, children, notes, updated_date)
+                    VALUES (1, ?, ?, ?, datetime('now'))
+                    """,
+                    (adults, children, notes),
+                )
+                return True
+        except Exception as e:
+            print(f"Error setting household characteristics: {e}")
+            return False

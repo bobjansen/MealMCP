@@ -24,40 +24,6 @@ def get_user_pantry(token: Optional[str] = None) -> tuple[Optional[str], Optiona
 
 
 @mcp.tool()
-def list_units() -> List[Dict[str, Any]]:
-    """List all units of measurement
-
-    Returns
-    -------
-    List[str]
-        List of measurement units
-    """
-    return UNITS
-
-
-@mcp.tool()
-def list_preferences(token: Optional[str] = None) -> Dict[str, Any]:
-    """Get all food preferences from the database.
-
-    Parameters
-    ----------
-    token : str, optional
-        Authentication token (required for remote mode)
-
-    Returns
-    -------
-    Dict[str, Any]
-        Response containing preferences list or error
-    """
-    user_id, pantry = get_user_pantry(token)
-    if not pantry:
-        return {"status": "error", "message": "Authentication required"}
-
-    preferences = pantry.get_preferences()
-    return {"status": "success", "preferences": preferences}
-
-
-@mcp.tool()
 def add_preference(
     category: str, item: str, level: str, notes: str = None, token: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -286,44 +252,6 @@ def execute_recipe(recipe_name: str, token: Optional[str] = None) -> Dict[str, A
 
 
 @mcp.tool()
-def rate_recipe(
-    recipe_name: str, rating: int, token: Optional[str] = None
-) -> Dict[str, Any]:
-    """Rate a recipe on a scale of 1-5.
-
-    Parameters
-    ----------
-    recipe_name : str
-        Name of the recipe to rate
-    rating : int
-        Rating from 1 (poor) to 5 (excellent)
-    token : str, optional
-        Authentication token (required for remote mode)
-
-    Returns
-    -------
-    Dict[str, Any]
-        Success status and message
-    """
-    user_id, pantry = get_user_pantry(token)
-    if not pantry:
-        return {"status": "error", "message": "Authentication required"}
-
-    if not (1 <= rating <= 5):
-        return {"status": "error", "message": "Rating must be between 1 and 5"}
-
-    success = pantry.rate_recipe(recipe_name, rating)
-
-    if success:
-        return {
-            "status": "success",
-            "message": f"Recipe '{recipe_name}' rated {rating} stars",
-        }
-    else:
-        return {"status": "error", "message": f"Failed to rate recipe '{recipe_name}'"}
-
-
-@mcp.tool()
 def get_pantry_contents(token: Optional[str] = None) -> Dict[str, Any]:
     """Get the current contents of the pantry.
 
@@ -347,23 +275,26 @@ def get_pantry_contents(token: Optional[str] = None) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def add_pantry_item(
+def manage_pantry_item(
+    action: str,
     item_name: str,
     quantity: float,
     unit: str,
     notes: str = None,
     token: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Add an item to the pantry.
+    """Add or remove an item from the pantry.
 
     Parameters
     ----------
+    action : str
+        Action to perform: "add" or "remove"
     item_name : str
-        Name of the item to add
+        Name of the item
     quantity : float
-        Amount to add
+        Amount to add or remove
     unit : str
-        Unit of measurement
+        Unit of measurement (g, kg, ml, l, cups, etc.)
     notes : str, optional
         Optional notes about the transaction
     token : str, optional
@@ -373,61 +304,38 @@ def add_pantry_item(
     -------
     Dict[str, Any]
         Success/error message
+
+    Examples
+    --------
+    >>> manage_pantry_item("add", "flour", 1000, "g", "Whole wheat flour")
+    {"status": "success", "message": "Added 1000 g of flour to pantry"}
     """
     user_id, pantry = get_user_pantry(token)
     if not pantry:
         return {"status": "error", "message": "Authentication required"}
 
-    success = pantry.add_item(item_name, quantity, unit, notes)
+    if action not in ["add", "remove"]:
+        return {"status": "error", "message": "Action must be 'add' or 'remove'"}
+
+    if action == "add":
+        success = pantry.add_item(item_name, quantity, unit, notes)
+        action_past = "Added"
+        preposition = "to"
+    else:
+        success = pantry.remove_item(item_name, quantity, unit, notes)
+        action_past = "Removed"
+        preposition = "from"
+
     if success:
         return {
             "status": "success",
-            "message": f"Added {quantity} {unit} of {item_name} to pantry",
+            "message": f"{action_past} {quantity} {unit} of {item_name} {preposition} pantry",
         }
     else:
-        return {"status": "error", "message": "Failed to add item to pantry"}
-
-
-@mcp.tool()
-def remove_pantry_item(
-    item_name: str,
-    quantity: float,
-    unit: str,
-    notes: str = None,
-    token: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Remove an item from the pantry.
-
-    Parameters
-    ----------
-    item_name : str
-        Name of the item to remove
-    quantity : float
-        Amount to remove
-    unit : str
-        Unit of measurement
-    notes : str, optional
-        Optional notes about the transaction
-    token : str, optional
-        Authentication token (required for remote mode)
-
-    Returns
-    -------
-    Dict[str, Any]
-        Success/error message
-    """
-    user_id, pantry = get_user_pantry(token)
-    if not pantry:
-        return {"status": "error", "message": "Authentication required"}
-
-    success = pantry.remove_item(item_name, quantity, unit, notes)
-    if success:
         return {
-            "status": "success",
-            "message": f"Removed {quantity} {unit} of {item_name} from pantry",
+            "status": "error",
+            "message": f"Failed to {action} item {preposition} pantry",
         }
-    else:
-        return {"status": "error", "message": "Failed to remove item from pantry"}
 
 
 @mcp.tool()
@@ -520,6 +428,105 @@ def create_user(username: str, admin_token: str) -> Dict[str, Any]:
         }
 
     return context.create_user(username, admin_token)
+
+
+@mcp.tool()
+def get_user_profile(token: Optional[str] = None) -> Dict[str, Any]:
+    """Get comprehensive user profile including preferences, household size, and constraints.
+
+    This is the primary tool for LLMs to understand user context for personalized meal planning
+    and recipe recommendations. It provides all necessary information in a single call.
+
+    Parameters
+    ----------
+    token : str, optional
+        Authentication token (required for remote mode)
+
+    Returns
+    -------
+    Dict[str, Any]
+        Response containing complete user profile:
+        - status: "success" or "error"
+        - data: Dictionary with household, preferences, and constraints (if successful)
+        - message: Error message (if error)
+
+    Examples
+    --------
+    >>> get_user_profile()
+    {
+        "status": "success",
+        "data": {
+            "household": {
+                "adults": 2,
+                "children": 1,
+                "total_people": 3,
+                "notes": ""
+            },
+            "dietary_preferences": [
+                {"category": "dietary", "item": "vegetarian", "level": "required"},
+                {"category": "allergy", "item": "peanuts", "level": "avoid"}
+            ],
+            "preferences_summary": {
+                "required_dietary": ["vegetarian"],
+                "allergies": ["peanuts"],
+                "dislikes": ["mushrooms"],
+                "likes": ["pasta", "chicken"]
+            }
+        }
+    }
+    """
+    user_id, pantry = get_user_pantry(token)
+    if not user_id or not pantry:
+        return {"status": "error", "message": "Authentication required"}
+
+    try:
+        # Get household characteristics
+        household = pantry.get_household_characteristics()
+
+        # Get preferences
+        preferences = pantry.get_preferences()
+
+        # Organize preferences by category for easier LLM consumption
+        preferences_summary = {
+            "required_dietary": [],
+            "preferred_dietary": [],
+            "allergies": [],
+            "dislikes": [],
+            "likes": [],
+        }
+
+        for pref in preferences:
+            category = pref.get("category", "")
+            item = pref.get("item", "")
+            level = pref.get("level", "")
+
+            if category == "dietary":
+                if level == "required":
+                    preferences_summary["required_dietary"].append(item)
+                elif level == "preferred":
+                    preferences_summary["preferred_dietary"].append(item)
+            elif category == "allergy":
+                preferences_summary["allergies"].append(item)
+            elif category == "dislike":
+                preferences_summary["dislikes"].append(item)
+            elif category == "like":
+                preferences_summary["likes"].append(item)
+
+        # Add total people count for easy reference
+        household["total_people"] = household.get("adults", 2) + household.get(
+            "children", 0
+        )
+
+        profile_data = {
+            "household": household,
+            "dietary_preferences": preferences,
+            "preferences_summary": preferences_summary,
+        }
+
+        return {"status": "success", "data": profile_data}
+
+    except Exception as e:
+        return {"status": "error", "message": f"Error getting user profile: {str(e)}"}
 
 
 @mcp.tool()

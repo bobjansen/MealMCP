@@ -330,3 +330,35 @@ class PantryManager(ABC):
             List[Dict[str, Any]]: List of items needed with quantities
         """
         pass
+
+    # Household Characteristics
+    @abstractmethod
+    def get_household_characteristics(self) -> Dict[str, Any]:
+        """
+        Get household characteristics including number of adults and children.
+
+        Returns:
+            Dict[str, Any]: Dictionary containing:
+                - adults: number of adults in household
+                - children: number of children in household
+                - notes: additional notes about household
+                - updated_date: last update date
+        """
+        pass
+
+    @abstractmethod
+    def set_household_characteristics(
+        self, adults: int, children: int, notes: str = ""
+    ) -> bool:
+        """
+        Set household characteristics.
+
+        Args:
+            adults: Number of adults in household (minimum 1)
+            children: Number of children in household (minimum 0)
+            notes: Additional notes about household characteristics
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        pass

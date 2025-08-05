@@ -1031,3 +1031,77 @@ class SharedPantryManager(PantryManager):
         except Exception as e:
             print(f"Error getting transaction history: {e}")
             return []
+
+    def get_household_characteristics(self) -> Dict[str, Any]:
+        """Get household characteristics from user data for the current user."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                cursor.execute(
+                    f"""
+                    SELECT household_adults, household_children, preferred_language
+                    FROM users
+                    WHERE id = {ph}
+                    """,
+                    (self.user_id,),
+                )
+                result = cursor.fetchone()
+                if result:
+                    adults, children, language = result
+                    return {
+                        "adults": adults or 2,
+                        "children": children or 0,
+                        "notes": f"Language preference: {language or 'en'}",
+                        "updated_date": datetime.now().isoformat(),
+                    }
+                else:
+                    # Return default values if no record exists
+                    return {
+                        "adults": 2,
+                        "children": 0,
+                        "notes": "",
+                        "updated_date": datetime.now().isoformat(),
+                    }
+        except Exception as e:
+            print(f"Error getting household characteristics: {e}")
+            return {
+                "adults": 2,
+                "children": 0,
+                "notes": "",
+                "updated_date": datetime.now().isoformat(),
+            }
+
+    def set_household_characteristics(
+        self, adults: int, children: int, notes: str = ""
+    ) -> bool:
+        """Set household characteristics for the current user."""
+        if adults < 1:
+            print("Number of adults must be at least 1")
+            return False
+        if children < 0:
+            print("Number of children cannot be negative")
+            return False
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                cursor.execute(
+                    f"""
+                    UPDATE users
+                    SET household_adults = {ph}, household_children = {ph}
+                    WHERE id = {ph}
+                    """,
+                    (adults, children, self.user_id),
+                )
+
+                if self.backend == "postgresql":
+                    return cursor.rowcount > 0
+                else:
+                    return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error setting household characteristics: {e}")
+            return False

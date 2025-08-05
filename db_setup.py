@@ -90,6 +90,27 @@ def setup_database(
         """
     )
 
+    # Create HouseholdCharacteristics table for user household information
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS HouseholdCharacteristics (
+            id INTEGER PRIMARY KEY,
+            adults INTEGER DEFAULT 2,
+            children INTEGER DEFAULT 0,
+            notes TEXT,
+            updated_date TEXT NOT NULL
+        )
+        """
+    )
+
+    # Insert default household characteristics if none exist
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO HouseholdCharacteristics (id, adults, children, updated_date)
+        VALUES (1, 2, 0, datetime('now'))
+        """
+    )
+
     # Commit changes and close the connection
     conn.commit()
     conn.close()
