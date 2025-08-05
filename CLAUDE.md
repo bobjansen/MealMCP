@@ -133,12 +133,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Follow Flask patterns with `flash()` messages and `redirect()` responses
 - Support internationalization using `i18n.t()` function
 
-### Legacy Dash Interface Development
-- New web components go in `app.py`
-- Use Bootstrap components from `dash_bootstrap_components`
-- Follow the existing callback pattern with proper Input/Output/State decorators
-- Single-user mode only (no authentication support)
-
 ### Multi-User Mode Configuration
 
 **Flask Web Interface Multi-User Setup**:
