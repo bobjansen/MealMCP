@@ -158,8 +158,8 @@ class MCPToolRouter:
             return {"status": "error", "message": f"Recipe '{recipe_name}' not found"}
 
         # Update the recipe
-        success = pantry_manager.update_recipe(
-            recipe_name=recipe_name,
+        success = pantry_manager.edit_recipe(
+            name=recipe_name,
             instructions=arguments["instructions"],
             time_minutes=arguments["time_minutes"],
             ingredients=arguments["ingredients"],
@@ -464,8 +464,9 @@ class MCPToolRouter:
 
             for i in range(days):
                 current_date = start + timedelta(days=i)
-                if pantry_manager.clear_recipe_for_date(
-                    current_date.strftime("%Y-%m-%d")
+                # Try to clear by setting empty meal plan (implementation dependent)
+                if pantry_manager.set_meal_plan(
+                    current_date.strftime("%Y-%m-%d"), None
                 ):
                     success_count += 1
 

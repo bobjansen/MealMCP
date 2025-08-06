@@ -293,11 +293,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "required": ["admin_token"],
         },
     },
-    {
-        "name": "get_server_info",
-        "description": "Get server information and available tools",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
-    },
 ]
 
 
@@ -333,6 +328,6 @@ def get_tools_by_category() -> Dict[str, List[str]]:
         ],
         "Pantry Management": ["get_pantry_contents", "manage_pantry_item"],
         "Meal Planning": ["get_week_plan", "get_grocery_list", "set_recipe_for_date"],
-        "Admin/System": ["create_user", "list_users", "get_server_info"],
+        "Admin/System": ["create_user", "list_users"],
     }
     return categories

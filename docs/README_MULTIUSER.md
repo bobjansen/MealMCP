@@ -99,22 +99,6 @@ MCP_MODE=remote ADMIN_TOKEN=admin-token ADDITIONAL_USERS="alice:alice-token,bob:
 - Use your user token for authentication
 - Admin functions require the admin token
 
-### Example Tool Calls
-
-**Local Mode:**
-```python
-# No token needed
-list_preferences()
-add_recipe("Pasta", "Cook pasta...", 20, [{"name": "pasta", "quantity": 100, "unit": "gram"}])
-```
-
-**Remote Mode:**
-```python
-# Token required for all calls
-list_preferences(token="your-user-token")
-add_recipe("Pasta", "Cook pasta...", 20, [{"name": "pasta", "quantity": 100, "unit": "gram"}], token="your-user-token")
-```
-
 ## User Management
 
 ### Admin Functions
@@ -129,12 +113,6 @@ create_user("username", "admin-token")
 ```python
 list_users("admin-token")
 # Returns: {"status": "success", "users": ["admin", "alice", "bob"]}
-```
-
-**Get server info:**
-```python
-get_server_info()
-# Returns: {"status": "success", "mode": "remote", "multi_user": true, "authentication_required": true}
 ```
 
 ## Database Structure

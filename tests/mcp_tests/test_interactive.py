@@ -47,12 +47,11 @@ def interactive_test():
     print("  1. list_units - Show measurement units")
     print("  2. list_preferences - Show food preferences")
     print("  3. add_preference - Add a food preference")
-    print("  4. get_server_info - Get server information")
-    print("  5. add_pantry_item - Add item to pantry")
-    print("  6. get_pantry_contents - Show pantry contents")
-    print("  7. get_all_recipes - Show all recipes")
-    print("  8. add_recipe - Add a new recipe")
-    print("  9. quit - Exit")
+    print("  4. add_pantry_item - Add item to pantry")
+    print("  5. get_pantry_contents - Show pantry contents")
+    print("  6. get_all_recipes - Show all recipes")
+    print("  7. add_recipe - Add a new recipe")
+    print("  8. quit - Exit")
 
     while True:
         choice = input("\nEnter command number (or 'quit'): ").strip()
@@ -73,8 +72,6 @@ def interactive_test():
                 {"category": category, "item": item, "level": level, "notes": notes},
             )
         elif choice == "4":
-            call_tool_direct("get_server_info", {})
-        elif choice == "5":
             item_name = input("Item name: ")
             try:
                 quantity = float(input("Quantity: "))
@@ -92,11 +89,11 @@ def interactive_test():
                     "notes": notes,
                 },
             )
-        elif choice == "6":
+        elif choice == "5":
             call_tool_direct("get_pantry_contents", {})
-        elif choice == "7":
+        elif choice == "6":
             call_tool_direct("get_all_recipes", {})
-        elif choice == "8":
+        elif choice == "7":
             print("Adding a recipe...")
             name = input("Recipe name: ")
             instructions = input("Instructions: ")
@@ -144,7 +141,6 @@ def quick_test():
     print("=" * 30)
 
     # Test basic functionality
-    call_tool_direct("get_server_info", {})
     call_tool_direct("list_units", {})
     call_tool_direct("list_preferences", {})
     call_tool_direct("get_pantry_contents", {})
@@ -172,7 +168,6 @@ def remote_mode_test():
     print(f"Testing with token: {token[:20]}...")
 
     # Test with token
-    call_tool_direct("get_server_info", {})
     call_tool_direct("list_preferences", {"token": token})
     call_tool_direct("get_pantry_contents", {"token": token})
 

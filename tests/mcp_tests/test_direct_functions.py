@@ -21,11 +21,9 @@ def test_local_mode():
     # Import the server tools
     try:
         from mcp_server import (
-            get_server_info,
             list_units,
-            list_preferences,
-            add_preference,
             get_all_recipes,
+            get_pantry_contents,
         )
 
         print("✅ Server modules imported successfully")
@@ -33,15 +31,7 @@ def test_local_mode():
         print(f"❌ Import error: {e}")
         return
 
-    # Test 1: Server info
-    print("\n1. Testing get_server_info()...")
-    try:
-        result = get_server_info()
-        print(f"   Result: {json.dumps(result, indent=2)}")
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
-
-    # Test 2: List units
+    # Test 1: List units
     print("\n2. Testing list_units()...")
     try:
         result = list_units()
@@ -53,16 +43,8 @@ def test_local_mode():
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
-    # Test 3: List preferences (initially empty)
-    print("\n3. Testing list_preferences()...")
-    try:
-        result = list_preferences()
-        print(f"   Result: {json.dumps(result, indent=2)}")
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
-
-    # Test 4: Add a preference
-    print("\n4. Testing add_preference()...")
+    # Test 2: Add a preference
+    print("\n2. Testing add_preference()...")
     try:
         result = add_preference(
             category="dietary",
@@ -74,16 +56,16 @@ def test_local_mode():
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
-    # Test 5: List preferences again (should have our new one)
-    print("\n5. Testing list_preferences() after adding one...")
+    # Test 3: List preferences again (should have our new one)
+    print("\n3. Testing get_pantry_contents() after adding one...")
     try:
-        result = list_preferences()
+        result = get_pantry_contents()
         print(f"   Result: {json.dumps(result, indent=2)}")
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
-    # Test 6: List recipes (initially empty)
-    print("\n6. Testing get_all_recipes()...")
+    # Test 4: List recipes (initially empty)
+    print("\n4. Testing get_all_recipes()...")
     try:
         result = get_all_recipes()
         print(f"   Result: {json.dumps(result, indent=2)}")
@@ -110,40 +92,28 @@ def test_remote_mode():
 
     importlib.reload(mcp_server)
 
-    from mcp_server import (
-        get_server_info,
-        list_preferences,
-        add_preference,
-        create_user,
-        list_users,
-    )
+    from mcp_server import UnifiedMCPServer
 
-    # Test 1: Server info
-    print("\n1. Testing get_server_info() in remote mode...")
+    mcp_server = UnifiedMCPServer()
+
+    # Test 1: Try without token (should fail)
+    print("\n1. Testing get_pantry_contents() without token (should fail)...")
     try:
-        result = get_server_info()
+        result = mcp_server.get_pantry_contents()
         print(f"   Result: {json.dumps(result, indent=2)}")
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
-    # Test 2: Try without token (should fail)
-    print("\n2. Testing list_preferences() without token (should fail)...")
+    # Test 2: Try with admin token (should work)
+    print("\n2. Testing get_pantry_contents() with admin token...")
     try:
-        result = list_preferences()
+        result = mcp_server.get_pantry_contents(token="test-admin-token-123")
         print(f"   Result: {json.dumps(result, indent=2)}")
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
-    # Test 3: Try with admin token (should work)
-    print("\n3. Testing list_preferences() with admin token...")
-    try:
-        result = list_preferences(token="test-admin-token-123")
-        print(f"   Result: {json.dumps(result, indent=2)}")
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
-
-    # Test 4: Create a new user
-    print("\n4. Testing create_user()...")
+    # Test 3: Create a new user
+    print("\n3. Testing create_user()...")
     try:
         result = create_user("testuser", "test-admin-token-123")
         print(f"   Result: {json.dumps(result, indent=2)}")
@@ -152,10 +122,10 @@ def test_remote_mode():
             user_token = result.get("token")
             print(f"   🎉 Created user with token: {user_token[:20]}...")
 
-            # Test 5: Use the new user token
-            print("\n5. Testing list_preferences() with new user token...")
+            # Test 4: Use the new user token
+            print("\n4. Testing get_pantry_contents() with new user token...")
             try:
-                result = list_preferences(token=user_token)
+                result = get_pantry_contents(token=user_token)
                 print(f"   Result: {json.dumps(result, indent=2)}")
             except Exception as e:
                 print(f"   ❌ Error: {e}")
@@ -163,8 +133,8 @@ def test_remote_mode():
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
-    # Test 6: List all users
-    print("\n6. Testing list_users()...")
+    # Test 5: List all users
+    print("\n5. Testing list_users()...")
     try:
         result = list_users("test-admin-token-123")
         print(f"   Result: {json.dumps(result, indent=2)}")

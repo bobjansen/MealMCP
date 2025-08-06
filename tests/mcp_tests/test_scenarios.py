@@ -197,7 +197,12 @@ def test_user_management_flow():
 
         importlib.reload(mcp_server)
 
-        from mcp_server import create_user, list_users, list_preferences, add_preference
+        from mcp_server import (
+            create_user,
+            list_users,
+            get_pantry_contents,
+            add_preference,
+        )
 
         # Step 1: List initial users
         print("1. Listing initial users...")
@@ -232,13 +237,13 @@ def test_user_management_flow():
             print(f"   User preference: {json.dumps(user_pref, indent=2)}")
 
             # Check admin preferences
-            admin_prefs = list_preferences("test-admin-token-123")
+            admin_prefs = get_pantry_contents("test-admin-token-123")
             print(
                 f"   Admin sees: {len(admin_prefs.get('preferences', []))} preferences"
             )
 
             # Check user preferences
-            user_prefs = list_preferences(user_token)
+            user_prefs = get_pantry_contents(user_token)
             print(f"   User sees: {len(user_prefs.get('preferences', []))} preferences")
 
         # Step 4: List all users

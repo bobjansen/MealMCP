@@ -32,25 +32,23 @@ logger = logging.getLogger(__name__)
 from mcp_context import MCPContext
 from mcp_tool_router import MCPToolRouter
 
-# Transport-specific imports (conditional)
-transport_mode = os.getenv("MCP_TRANSPORT", "fastmcp").lower()
-auth_mode = os.getenv("MCP_MODE", "local").lower()
-
-if transport_mode in ["fastmcp", "stdio"]:
+# Import all possible transport modules
+try:
     from mcp.server.fastmcp import FastMCP
-elif transport_mode in ["http", "oauth"]:
+except ImportError:
+    FastMCP = None
+
+try:
     from fastapi import FastAPI, HTTPException, Request, Form, Depends
     from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
     from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
-elif transport_mode == "sse":
-    from fastapi import FastAPI, Request
     from fastapi.responses import StreamingResponse
-    from fastapi.middleware.cors import CORSMiddleware
+except ImportError:
+    FastAPI = None
 
-# OAuth-specific imports (conditional)
-if transport_mode == "oauth" or auth_mode == "multiuser":
+try:
     from oauth_server import OAuthServer
     from mcp_oauth_templates import (
         generate_login_form,
@@ -58,14 +56,17 @@ if transport_mode == "oauth" or auth_mode == "multiuser":
         generate_error_page,
     )
     from mcp_oauth_handlers import OAuthFlowHandler
+except ImportError:
+    OAuthServer = None
 
 
 class UnifiedMCPServer:
     """Unified MCP Server supporting multiple transports and auth modes."""
 
     def __init__(self):
-        self.transport = transport_mode
-        self.auth_mode = auth_mode
+        # Read configuration from environment at runtime
+        self.transport = os.getenv("MCP_TRANSPORT", "fastmcp").lower()
+        self.auth_mode = os.getenv("MCP_MODE", "local").lower()
         self.host = os.getenv("MCP_HOST", "localhost")
         self.port = int(os.getenv("MCP_PORT", "8000"))
 
@@ -86,10 +87,14 @@ class UnifiedMCPServer:
     def _setup_transport(self):
         """Setup transport layer based on configuration."""
         if self.transport in ["fastmcp", "stdio"]:
+            if FastMCP is None:
+                raise ImportError("FastMCP is not available - install mcp package")
             self.mcp = FastMCP("RecipeManager")
             self._register_fastmcp_tools()
 
         elif self.transport in ["http", "oauth", "sse"]:
+            if FastAPI is None:
+                raise ImportError("FastAPI is not available - install fastapi package")
             self.app = FastAPI(title="MealMCP Unified Server", version="1.0.0")
 
             # Add CORS middleware
@@ -103,9 +108,17 @@ class UnifiedMCPServer:
 
             # Mount static files for OAuth
             if self.transport == "oauth":
-                self.app.mount(
-                    "/static", StaticFiles(directory="static"), name="static"
-                )
+                import pathlib
+
+                static_dir = pathlib.Path(__file__).parent / "static"
+                if static_dir.exists():
+                    self.app.mount(
+                        "/static", StaticFiles(directory=str(static_dir)), name="static"
+                    )
+                else:
+                    logger.warning(
+                        f"Static directory not found at {static_dir}, OAuth UI may not work properly"
+                    )
 
             # Add request logging
             @self.app.middleware("http")
@@ -122,6 +135,10 @@ class UnifiedMCPServer:
     def _setup_authentication(self):
         """Setup authentication based on mode."""
         if self.transport == "oauth" or self.auth_mode == "multiuser":
+            if OAuthServer is None:
+                raise ImportError(
+                    "OAuth components not available - install oauth dependencies"
+                )
             # OAuth 2.1 authentication
             public_url = os.getenv("MCP_PUBLIC_URL", f"http://{self.host}:{self.port}")
             use_postgresql = (
@@ -133,6 +150,8 @@ class UnifiedMCPServer:
             self.security = HTTPBearer(auto_error=False)
 
         elif self.auth_mode == "remote":
+            if FastAPI is None:
+                raise ImportError("FastAPI is not available - install fastapi package")
             # Simple token authentication
             self.security = HTTPBearer(auto_error=False)
 
@@ -163,6 +182,48 @@ class UnifiedMCPServer:
             return self._get_user_pantry_oauth(user_id)
         else:
             return self.context.authenticate_and_get_pantry(token)
+
+    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Call a tool through the router with proper authentication."""
+        # Extract token from arguments if present
+        token = arguments.get("token")
+
+        # Handle special admin-only tools
+        if tool_name == "create_user":
+            admin_token = arguments.get("admin_token")
+            username = arguments.get("username")
+            if not admin_token or not username:
+                return {
+                    "status": "error",
+                    "message": "Admin token and username required",
+                }
+            return self.context.create_user(username, admin_token)
+
+        if tool_name == "list_users":
+            admin_token = arguments.get("admin_token")
+            if not admin_token:
+                return {"status": "error", "message": "Admin token required"}
+            # Verify admin token and return user list
+            admin_user = self.context.user_manager.authenticate(admin_token)
+            if admin_user != "admin":
+                return {"status": "error", "message": "Admin access required"}
+
+            users = []
+            user_data_dir = os.getenv("USER_DATA_DIR", "user_data")
+            if os.path.exists(user_data_dir):
+                for username in os.listdir(user_data_dir):
+                    user_dir = os.path.join(user_data_dir, username)
+                    if os.path.isdir(user_dir):
+                        users.append({"username": username})
+            return {"status": "success", "users": users}
+
+        # Get authenticated user and pantry manager
+        user_id, pantry = self.get_user_pantry(token=token)
+        if not pantry:
+            return {"status": "error", "message": "Authentication required"}
+
+        # Call the tool through the router
+        return self.tool_router.call_tool(tool_name, arguments, pantry)
 
     def _get_user_pantry_oauth(
         self, user_id: str
@@ -248,6 +309,14 @@ class UnifiedMCPServer:
             if not pantry:
                 return {"status": "error", "message": "Authentication required"}
             return self.tool_router.call_tool("get_all_recipes", {}, pantry)
+
+        @self.mcp.tool()
+        def add_preference(token: Optional[str] = None) -> Dict[str, Any]:
+            """Add a preference"""
+            user_id, pantry = self.get_user_pantry(token=token)
+            if not pantry:
+                return {"status": "error", "message": "Authentication required"}
+            return self.tool_router.call_tool("add_preference", {}, pantry)
 
         @self.mcp.tool()
         def get_pantry_contents(token: Optional[str] = None) -> Dict[str, Any]:
@@ -717,7 +786,11 @@ class UnifiedMCPServer:
             sys.exit(1)
 
 
-# Main entry point
-if __name__ == "__main__":
+def main():
     server = UnifiedMCPServer()
     server.run()
+
+
+# Main entry point
+if __name__ == "__main__":
+    main()

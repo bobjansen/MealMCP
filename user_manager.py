@@ -12,7 +12,10 @@ class UserManager:
         self.mode = mode  # "local" or "remote"
         self.users: Dict[str, Dict[str, str]] = {}
         self.tokens: Dict[str, str] = {}  # token -> user_id
-        self.data_dir = Path("user_data")
+
+        # Use USER_DATA_DIR environment variable if set, otherwise default to "user_data"
+        data_dir_path = os.getenv("USER_DATA_DIR", "user_data")
+        self.data_dir = Path(data_dir_path)
 
         if mode == "remote":
             self.data_dir.mkdir(exist_ok=True)
@@ -51,7 +54,8 @@ class UserManager:
     def get_user_db_path(self, user_id: str) -> str:
         """Get the database path for a specific user."""
         if self.mode == "local":
-            return "pantry.db"
+            # In local mode, use PANTRY_DB_PATH if set, otherwise default to "pantry.db"
+            return os.getenv("PANTRY_DB_PATH", "pantry.db")
 
         # Create user-specific database file
         user_db_dir = self.data_dir / user_id
