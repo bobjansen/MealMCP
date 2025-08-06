@@ -27,7 +27,7 @@ if not secret_key:
     print(f"Generated Flask secret key: {secret_key}")
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="assets")
 app.secret_key = secret_key
 
 # Determine backend mode
