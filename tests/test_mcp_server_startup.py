@@ -233,7 +233,7 @@ class TestMCPServerStartup:
         os.environ["MCP_MODE"] = "multiuser"
         # Missing MCP_PUBLIC_URL
 
-        with patch("mcp_server.OAuthServer") as mock_oauth:
+        with patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth:
             mock_oauth.side_effect = Exception("Missing public URL")
 
             with pytest.raises(Exception):
@@ -246,7 +246,8 @@ class TestMCPServerStartup:
         os.environ["MCP_TRANSPORT"] = "oauth"
 
         with patch(
-            "mcp_server.OAuthServer", side_effect=ImportError("OAuth not available")
+            "mcp_core.server.unified_server.OAuthServer",
+            side_effect=ImportError("OAuth not available"),
         ):
             with pytest.raises(ImportError):
                 server = UnifiedMCPServer()
