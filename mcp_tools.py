@@ -5,7 +5,7 @@ Aligned with the actual tools implemented in mcp_server.py
 
 from typing import List, Dict, Any
 
-# Current MCP tools (15 total) matching mcp_server.py implementation
+# Current MCP tools (23 total) matching mcp_server.py implementation
 MCP_TOOLS: List[Dict[str, Any]] = [
     # === USER PROFILE ===
     {
@@ -263,34 +263,225 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "required": ["recipe_name", "meal_date"],
         },
     },
-    # === ADMIN/SYSTEM ===
+    # === UTILITY TOOLS ===
     {
-        "name": "create_user",
-        "description": "Create a new user (admin only)",
+        "name": "list_units",
+        "description": "List all available units of measurement",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "username": {"type": "string", "description": "Username for new user"},
-                "admin_token": {
+                "token": {
                     "type": "string",
-                    "description": "Admin authentication token",
+                    "description": "Authentication token (required for multiuser mode)",
+                }
+            },
+            "required": [],
+        },
+    },
+    # === PANTRY MANAGEMENT (INDIVIDUAL) ===
+    {
+        "name": "add_pantry_item",
+        "description": "Add an item to the pantry",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "item_name": {"type": "string", "description": "Name of the item"},
+                "quantity": {"type": "number", "description": "Quantity to add"},
+                "unit": {"type": "string", "description": "Unit of measurement"},
+                "notes": {"type": "string", "description": "Optional notes"},
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
-            "required": ["username", "admin_token"],
+            "required": ["item_name", "quantity", "unit"],
         },
     },
     {
-        "name": "list_users",
-        "description": "List all users (admin only)",
+        "name": "remove_pantry_item",
+        "description": "Remove an item from the pantry",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "admin_token": {
+                "item_name": {"type": "string", "description": "Name of the item"},
+                "quantity": {"type": "number", "description": "Quantity to remove"},
+                "unit": {"type": "string", "description": "Unit of measurement"},
+                "token": {
                     "type": "string",
-                    "description": "Admin authentication token",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": ["item_name", "quantity", "unit"],
+        },
+    },
+    # === PREFERENCES ===
+    {
+        "name": "get_food_preferences",
+        "description": "Get all food preferences",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
                 }
             },
-            "required": ["admin_token"],
+            "required": [],
+        },
+    },
+    # === MEAL PLANNING ===
+    {
+        "name": "plan_meals",
+        "description": "Plan meals for specified dates",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "meal_assignments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "description": "Date in YYYY-MM-DD format",
+                            },
+                            "recipe_name": {
+                                "type": "string",
+                                "description": "Recipe name",
+                            },
+                        },
+                        "required": ["date", "recipe_name"],
+                    },
+                    "description": "Array of meal assignments",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": ["meal_assignments"],
+        },
+    },
+    {
+        "name": "get_meal_plan",
+        "description": "Get meal plan for specified period",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "Start date in YYYY-MM-DD format",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days (default: 7)",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": ["start_date"],
+        },
+    },
+    {
+        "name": "clear_meal_plan",
+        "description": "Clear meal plan for specified date range",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "Start date in YYYY-MM-DD format",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "End date in YYYY-MM-DD format",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": ["start_date", "end_date"],
+        },
+    },
+    {
+        "name": "generate_grocery_list",
+        "description": "Generate grocery list for upcoming meal plan",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "Start date in YYYY-MM-DD format",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days (default: 7)",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": [],
+        },
+    },
+    # === RECIPE ANALYSIS ===
+    {
+        "name": "search_recipes",
+        "description": "Search recipes with filters",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+                "max_prep_time": {
+                    "type": "integer",
+                    "description": "Maximum preparation time in minutes",
+                },
+                "min_rating": {
+                    "type": "integer",
+                    "description": "Minimum rating (1-5)",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "suggest_recipes_from_pantry",
+        "description": "Suggest recipes based on available pantry items",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "check_recipe_feasibility",
+        "description": "Check if a recipe can be made with current pantry items",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_name": {
+                    "type": "string",
+                    "description": "Recipe name to check",
+                },
+                "token": {
+                    "type": "string",
+                    "description": "Authentication token (required for multiuser mode)",
+                },
+            },
+            "required": ["recipe_name"],
         },
     },
 ]

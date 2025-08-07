@@ -45,7 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - FastMCP-based server providing tools for Claude Desktop integration
 - Supports both single-user local mode and multi-user remote mode
 - Exposes pantry management functions as MCP tools with optional authentication
-- Key tools include: `list_units()`, `add_preference()`, `list_recipes()`, `add_recipe()`, `plan_meals()`
+- Key tools include: `get_user_profile()`, `add_preference()`, `get_all_recipes()`, `add_recipe()`, `manage_pantry_item()`, `get_week_plan()`, `set_recipe_for_date()`
 - Uses `MCPContext` for user management and `UserManager` for authentication
 - In local mode: single `PantryManager` instance, no authentication
 - In remote mode: per-user `PantryManager` instances with token-based authentication
@@ -123,12 +123,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Backend Detection**: Automatic based on `PANTRY_BACKEND` environment variable
 
 ### MCP Tool Development
-- New MCP tools should be added to `mcp_server.py` using `@mcp.tool()` decorator
+- New MCP tools should be added in two places:
+  1. **Tool Definition**: Add to `mcp_tools.py` with proper schema definition
+  2. **Tool Implementation**: Add to `mcp_tool_router.py` with actual implementation
 - All tools must include optional `token: Optional[str] = None` parameter for authentication
-- Use `get_user_pantry(token)` helper to authenticate and get user's PantryManager instance
+- Tool router calls `get_user_pantry(token)` to authenticate and get user's PantryManager instance
 - Return `{"status": "error", "message": "Authentication required"}` if authentication fails
 - Follow the existing pattern: authenticate, call `PantryManager` methods, return structured data
 - Include proper type hints and docstrings
+- **Important**: Ensure tools are registered in BOTH `mcp_tools.py` (for exposure) AND `mcp_tool_router.py` (for implementation)
+
+### Available MCP Tools
+The following tools are currently available through the MCP interface (as defined in `mcp_tools.py`):
+
+**Utilities:**
+- `list_units()`: List all available units of measurement
+
+**User Profile & Preferences:**
+- `get_user_profile()`: Get comprehensive user profile including preferences, household size, and constraints
+- `add_preference(category, item, level, notes?)`: Add food preference (like/dislike/allergy/dietary)
+- `get_food_preferences()`: Get all food preferences
+
+**Recipe Management:**
+- `add_recipe(name, instructions, time_minutes, ingredients)`: Add a new recipe to the database
+- `get_recipe(recipe_name)`: Get detailed information about a specific recipe
+- `get_all_recipes()`: Get all recipes with basic information
+- `edit_recipe(recipe_name, field, new_value)`: Edit an existing recipe
+- `execute_recipe(recipe_name)`: Execute recipe by removing required ingredients from pantry
+
+**Recipe Analysis:**
+- `search_recipes(query?, max_prep_time?, min_rating?)`: Search recipes with filters
+- `suggest_recipes_from_pantry()`: Suggest recipes based on available pantry items
+- `check_recipe_feasibility(recipe_name)`: Check if a recipe can be made with current pantry items
+
+**Pantry Management:**
+- `get_pantry_contents()`: Get current pantry inventory
+- `manage_pantry_item(action, item_name, quantity, unit)`: Add or remove items from pantry (unified)
+- `add_pantry_item(item_name, quantity, unit, notes?)`: Add an item to the pantry (individual)
+- `remove_pantry_item(item_name, quantity, unit)`: Remove an item from the pantry (individual)
+
+**Meal Planning:**
+- `get_week_plan()`: Get meal plan for the next 7 days
+- `get_meal_plan(start_date, days?)`: Get meal plan for specified period
+- `plan_meals(meal_assignments)`: Plan meals for specified dates
+- `set_recipe_for_date(meal_date, recipe_name)`: Set a recipe for a specific date
+- `clear_meal_plan(start_date, end_date)`: Clear meal plan for specified date range
+
+**Grocery Management:**
+- `get_grocery_list()`: Get grocery items needed for the coming week's meal plan
+- `generate_grocery_list(start_date?, days?)`: Generate grocery list for upcoming meal plan
+
+**Note:** All tools accept an optional `token` parameter for authentication in multiuser mode.
 
 ### Flask Web Interface Development
 - New routes and components go in `app_flask.py`
