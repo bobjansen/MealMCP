@@ -401,17 +401,61 @@ class UnifiedMCPServer:
                             },
                         }
 
-                    # Handle authentication
-                    user_id, data_manager = self.get_user_data_manager()
-                    if not data_manager and self.auth_mode != "local":
-                        return {
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "error": {
-                                "code": -32600,
-                                "message": "Authentication required",
-                            },
-                        }
+                    # Handle authentication for OAuth mode
+                    if self.transport == "oauth" and self.oauth:
+                        # Extract authorization header
+                        auth_header = request.headers.get("authorization")
+                        if not auth_header or not auth_header.startswith("Bearer "):
+                            # No valid token - initiate OAuth flow by redirecting to authorize endpoint
+                            public_url = os.getenv(
+                                "MCP_PUBLIC_URL", f"http://{self.host}:{self.port}"
+                            )
+                            authorize_url = f"{public_url}/authorize?response_type=code&client_id=mcp_client&redirect_uri={public_url}/callback"
+                            return {
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "error": {
+                                    "code": -32600,
+                                    "message": "Authentication required",
+                                    "data": {"authorize_url": authorize_url},
+                                },
+                            }
+
+                        # Extract token and validate
+                        token = auth_header.split(" ", 1)[1]
+                        token_data = self.oauth.validate_access_token(token)
+                        if not token_data:
+                            # Invalid token - initiate OAuth flow
+                            public_url = os.getenv(
+                                "MCP_PUBLIC_URL", f"http://{self.host}:{self.port}"
+                            )
+                            authorize_url = f"{public_url}/authorize?response_type=code&client_id=mcp_client&redirect_uri={public_url}/callback"
+                            return {
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "error": {
+                                    "code": -32600,
+                                    "message": "Invalid or expired token",
+                                    "data": {"authorize_url": authorize_url},
+                                },
+                            }
+
+                        user_id = token_data["user_id"]
+                        user_id, data_manager = self.get_user_data_manager(
+                            user_id=user_id
+                        )
+                    else:
+                        # Handle authentication for non-OAuth modes
+                        user_id, data_manager = self.get_user_data_manager()
+                        if not data_manager and self.auth_mode != "local":
+                            return {
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "error": {
+                                    "code": -32600,
+                                    "message": "Authentication required",
+                                },
+                            }
 
                     result = self.tool_router.call_tool(
                         tool_name, arguments, data_manager
