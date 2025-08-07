@@ -35,8 +35,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PantryManager Interface**
 - Abstract interface defined in `pantry_manager_abc.py` that standardizes pantry management operations
-- Two implementations: `SQLitePantryManager` (default) and `PostgreSQLPantryManager`
-- Created through `PantryManagerFactory` for flexible backend selection
+- Two implementations: `SQLitePantryManager` (single-user) and `SharedPantryManager` (multi-user)
+- Single-user: Created through `PantryManagerFactory` for local SQLite scenarios
+- Multi-user: `SharedPantryManager` used directly for PostgreSQL with user_id scoping
 - Manages ingredients, recipes, pantry inventory, preferences, and meal planning
 - All database interactions go through concrete implementations for consistency
 
@@ -79,10 +80,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Key Files
 - `constants.py`: Defines `UNITS` list for measurement units
 - `pantry_manager_abc.py`: Abstract base class defining the PantryManager interface
-- `pantry_manager_sqlite.py`: SQLite implementation of PantryManager (single-user backend)
-- `pantry_manager_postgresql.py`: PostgreSQL implementation of PantryManager (single-user backend)
+- `pantry_manager_sqlite.py`: SQLite implementation of PantryManager (single-user local mode)
 - `pantry_manager_shared.py`: SharedPantryManager implementation for multi-user PostgreSQL with user_id scoping
-- `pantry_manager_factory.py`: Factory class for creating PantryManager instances
+- `pantry_manager_factory.py`: Factory class for creating single-user SQLite PantryManager instances
 - `db_setup.py`: SQLite database schema creation for single-user mode
 - `db_setup_shared.py`: PostgreSQL database schema with user_id scoping for multi-user mode
 - `web_auth_simple.py`: Simple user authentication system for Flask web interface

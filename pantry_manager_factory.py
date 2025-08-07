@@ -6,25 +6,16 @@ from pantry_manager_sqlite import SQLitePantryManager
 
 
 # Lazy import PostgreSQL to avoid dependency issues
-def _get_postgresql_manager():
-    """Lazy import PostgreSQL manager to avoid dependency issues."""
-    try:
-        from pantry_manager_postgresql import PostgreSQLPantryManager
-
-        return PostgreSQLPantryManager
-    except ImportError as e:
-        raise ImportError(
-            "PostgreSQL support requires psycopg2. Install with: pip install psycopg2-binary"
-        ) from e
-
-
 class PantryManagerFactory:
-    """Factory class for creating PantryManager instances."""
+    """
+    Factory class for creating PantryManager instances.
+
+    Note: PostgreSQL multi-user scenarios use SharedPantryManager directly.
+    This factory only supports SQLite for single-user local mode.
+    """
 
     _backends = {
         "sqlite": SQLitePantryManager,
-        "postgresql": _get_postgresql_manager,
-        "postgres": _get_postgresql_manager,  # Alias
     }
 
     @classmethod
@@ -32,11 +23,11 @@ class PantryManagerFactory:
         self, backend: str = None, connection_string: str = None, **kwargs
     ) -> PantryManager:
         """
-        Create a PantryManager instance based on configuration.
+        Create a PantryManager instance for single-user local mode.
 
         Args:
-            backend: Backend type ('sqlite', 'postgresql').
-                    If None, determined from environment or connection_string
+            backend: Backend type. Only 'sqlite' is supported.
+                    If None, determined from environment (defaults to 'sqlite')
             connection_string: Database connection string
             **kwargs: Additional configuration options
 
@@ -50,19 +41,25 @@ class PantryManagerFactory:
         if backend is None:
             backend = os.getenv("PANTRY_BACKEND", "sqlite").lower()
 
+        # Validate that PostgreSQL is not requested through factory
+        if backend in ("postgresql", "postgres"):
+            raise ValueError(
+                "PostgreSQL backend is not supported through factory. "
+                "Use SharedPantryManager directly for multi-user PostgreSQL scenarios."
+            )
+
         # Auto-detect backend from connection string
-        if connection_string and backend == "sqlite":
-            if connection_string.startswith(("postgresql://", "postgres://")):
-                backend = "postgresql"
+        if connection_string and connection_string.startswith(
+            ("postgresql://", "postgres://")
+        ):
+            raise ValueError(
+                "PostgreSQL connection strings not supported through factory. "
+                "Use SharedPantryManager directly for multi-user PostgreSQL scenarios."
+            )
 
         # Set default connection string
         if connection_string is None:
-            if backend == "sqlite":
-                connection_string = os.getenv("PANTRY_DB_PATH", "pantry.db")
-            elif backend in ("postgresql", "postgres"):
-                connection_string = os.getenv(
-                    "PANTRY_DATABASE_URL", "postgresql://localhost/mealmcp"
-                )
+            connection_string = os.getenv("PANTRY_DB_PATH", "pantry.db")
 
         # Get backend class
         if backend not in self._backends:
@@ -72,9 +69,6 @@ class PantryManagerFactory:
             )
 
         backend_class = self._backends[backend]
-        if callable(backend_class) and not isinstance(backend_class, type):
-            # Handle lazy imports
-            backend_class = backend_class()
 
         # Create and return instance
         return backend_class(connection_string, **kwargs)
@@ -82,11 +76,11 @@ class PantryManagerFactory:
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> PantryManager:
         """
-        Create a PantryManager from a configuration dictionary.
+        Create a PantryManager from a configuration dictionary for single-user local mode.
 
         Args:
             config: Configuration dictionary with keys:
-                - backend: Backend type
+                - backend: Backend type (only 'sqlite' supported)
                 - connection_string: Database connection
                 - Additional backend-specific options
 
@@ -106,12 +100,11 @@ class PantryManagerFactory:
     @classmethod
     def from_environment(cls) -> PantryManager:
         """
-        Create a PantryManager from environment variables.
+        Create a PantryManager from environment variables for single-user local mode.
 
         Environment variables:
-        - PANTRY_BACKEND: Backend type ('sqlite', 'postgresql')
+        - PANTRY_BACKEND: Backend type (only 'sqlite' supported, default: 'sqlite')
         - PANTRY_DB_PATH: SQLite database path (default: 'pantry.db')
-        - PANTRY_DATABASE_URL: PostgreSQL connection URL
 
         Returns:
             PantryManager: Configured pantry manager instance
@@ -129,7 +122,7 @@ def create_pantry_manager(
     backend: str = None, connection_string: str = None, **kwargs
 ) -> PantryManager:
     """
-    Convenience function to create a PantryManager instance.
+    Convenience function to create a PantryManager instance for single-user local mode.
 
     See PantryManagerFactory.create() for parameter details.
     """
@@ -138,21 +131,27 @@ def create_pantry_manager(
 
 def create_pantry_manager_from_url(url: str, **kwargs) -> PantryManager:
     """
-    Create a PantryManager from a database URL.
+    Create a PantryManager from a database URL for single-user local mode.
 
     Args:
-        url: Database URL (e.g., 'sqlite:///path/to/db.sqlite' or 'postgresql://...')
+        url: Database URL (only SQLite supported, e.g., 'sqlite:///path/to/db.sqlite')
         **kwargs: Additional configuration options
 
     Returns:
         PantryManager: Configured pantry manager instance
+
+    Raises:
+        ValueError: If PostgreSQL URL is provided
     """
     if url.startswith("sqlite://"):
         # Remove sqlite:// prefix
         path = url[9:] if url.startswith("sqlite:///") else url[7:]
         return PantryManagerFactory.create("sqlite", path, **kwargs)
     elif url.startswith(("postgresql://", "postgres://")):
-        return PantryManagerFactory.create("postgresql", url, **kwargs)
+        raise ValueError(
+            "PostgreSQL URLs not supported through factory. "
+            "Use SharedPantryManager directly for multi-user PostgreSQL scenarios."
+        )
     else:
         # Assume it's a file path for SQLite
         return PantryManagerFactory.create("sqlite", url, **kwargs)

@@ -147,8 +147,9 @@ class TestMCPServerStartup:
         assert server.mcp is None
 
     def test_postgresql_backend_configuration(self, temp_dir, clean_env):
-        """Test PostgreSQL backend configuration."""
+        """Test PostgreSQL backend configuration with OAuth multiuser mode."""
         os.environ["MCP_TRANSPORT"] = "oauth"
+        os.environ["MCP_MODE"] = "multiuser"  # Add multiuser mode for PostgreSQL
         os.environ["PANTRY_BACKEND"] = "postgresql"
         os.environ["PANTRY_DATABASE_URL"] = (
             "postgresql://test:test@localhost:5432/mealmcp"
