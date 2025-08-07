@@ -6,6 +6,7 @@ All users share one database with user_id scoping for data isolation.
 import sqlite3
 import psycopg2
 import psycopg2.extras
+import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -47,6 +48,169 @@ class SharedPantryManager(PantryManager):
                 }
             )
 
+    # Input Validation Methods
+    def _validate_string(
+        self,
+        value: Any,
+        field_name: str,
+        max_length: int = 255,
+        min_length: int = 1,
+        allow_empty: bool = False,
+    ) -> str:
+        """Validate and sanitize string input."""
+        if not isinstance(value, str):
+            raise ValueError(
+                f"{field_name} must be a string, got {type(value).__name__}"
+            )
+
+        value = value.strip()
+
+        if not allow_empty and len(value) == 0:
+            raise ValueError(f"{field_name} cannot be empty")
+
+        if len(value) < min_length:
+            raise ValueError(
+                f"{field_name} must be at least {min_length} characters long"
+            )
+
+        if len(value) > max_length:
+            raise ValueError(f"{field_name} cannot exceed {max_length} characters")
+
+        return value
+
+    def _validate_ingredient_name(self, name: Any) -> str:
+        """Validate ingredient name."""
+        name = self._validate_string(name, "Ingredient name", max_length=100)
+        # Allow letters, numbers, spaces, hyphens, apostrophes, parentheses
+        if not re.match(r"^[a-zA-Z0-9\s\-'()]+$", name):
+            raise ValueError("Ingredient name contains invalid characters")
+        return name
+
+    def _validate_unit(self, unit: Any) -> str:
+        """Validate unit name."""
+        unit = self._validate_string(unit, "Unit", max_length=50)
+        # Allow letters, spaces, periods, forward slashes for units like "cups", "lb", "fl oz", "tbsp"
+        if not re.match(r"^[a-zA-Z\s\./]+$", unit):
+            raise ValueError("Unit contains invalid characters")
+        return unit
+
+    def _validate_quantity(self, quantity: Any) -> float:
+        """Validate quantity value."""
+        if isinstance(quantity, (int, float)):
+            quantity = float(quantity)
+        else:
+            try:
+                quantity = float(quantity)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Quantity must be a number, got {type(quantity).__name__}"
+                )
+
+        if quantity < 0:
+            raise ValueError("Quantity cannot be negative")
+
+        if quantity > 999999:  # Reasonable upper limit
+            raise ValueError("Quantity is too large (max: 999,999)")
+
+        return quantity
+
+    def _validate_recipe_name(self, name: Any) -> str:
+        """Validate recipe name."""
+        name = self._validate_string(name, "Recipe name", max_length=200)
+        # More permissive for recipe names - allow most printable characters except <>&
+        if re.search(r"[<>&]", name):
+            raise ValueError("Recipe name contains invalid characters")
+        return name
+
+    def _validate_instructions(self, instructions: Any) -> str:
+        """Validate recipe instructions."""
+        instructions = self._validate_string(
+            instructions, "Instructions", max_length=10000
+        )
+        # Remove potentially dangerous content but allow most text
+        if re.search(
+            r"<script[^>]*>.*?</script>", instructions, re.IGNORECASE | re.DOTALL
+        ):
+            raise ValueError("Instructions contain potentially dangerous content")
+        return instructions
+
+    def _validate_time_minutes(self, time_minutes: Any) -> int:
+        """Validate cooking time in minutes."""
+        if isinstance(time_minutes, (int, float)):
+            time_minutes = int(time_minutes)
+        else:
+            try:
+                time_minutes = int(time_minutes)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Time must be a number, got {type(time_minutes).__name__}"
+                )
+
+        if time_minutes < 0:
+            raise ValueError("Time cannot be negative")
+
+        if time_minutes > 10080:  # 1 week in minutes
+            raise ValueError("Time is too long (max: 1 week)")
+
+        return time_minutes
+
+    def _validate_date(self, date_value: Any) -> str:
+        """Validate date string."""
+        if isinstance(date_value, date):
+            return date_value.isoformat()
+
+        if not isinstance(date_value, str):
+            raise ValueError(
+                f"Date must be a string or date object, got {type(date_value).__name__}"
+            )
+
+        date_value = date_value.strip()
+
+        # Validate ISO date format (YYYY-MM-DD)
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_value):
+            raise ValueError("Date must be in YYYY-MM-DD format")
+
+        try:
+            # Validate it's a real date
+            datetime.strptime(date_value, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("Invalid date")
+
+        return date_value
+
+    def _validate_preference_category(self, category: Any) -> str:
+        """Validate preference category."""
+        category = self._validate_string(category, "Category", max_length=50)
+        # Only allow specific categories
+        allowed_categories = {
+            "dietary",
+            "allergy",
+            "like",
+            "dislike",
+            "cuisine",
+            "other",
+        }
+        if category.lower() not in allowed_categories:
+            raise ValueError(
+                f"Invalid category. Allowed: {', '.join(allowed_categories)}"
+            )
+        return category.lower()
+
+    def _validate_preference_level(self, level: Any) -> str:
+        """Validate preference level."""
+        level = self._validate_string(level, "Level", max_length=20)
+        # Only allow specific levels
+        allowed_levels = {"required", "preferred", "neutral", "avoid", "severe"}
+        if level.lower() not in allowed_levels:
+            raise ValueError(f"Invalid level. Allowed: {', '.join(allowed_levels)}")
+        return level.lower()
+
+    def _validate_notes(self, notes: Any) -> str:
+        """Validate notes field."""
+        if notes is None:
+            return ""
+        return self._validate_string(notes, "Notes", max_length=1000, allow_empty=True)
+
     def _get_connection(self):
         """Get a database connection. Should be used in a context manager."""
         if self.backend == "postgresql":
@@ -62,6 +226,10 @@ class SharedPantryManager(PantryManager):
 
     def add_ingredient(self, name: str, default_unit: str) -> bool:
         """Add a new ingredient to the database."""
+        # Validate inputs
+        name = self._validate_ingredient_name(name)
+        default_unit = self._validate_unit(default_unit)
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -83,8 +251,13 @@ class SharedPantryManager(PantryManager):
         self, category: str, item: str, level: str, notes: str = None
     ) -> bool:
         """Add a new food preference to the database."""
-        if not category or not item or not level:
-            raise ValueError("Category, item, and level are required")
+        # Validate inputs
+        category = self._validate_preference_category(category)
+        item = self._validate_ingredient_name(
+            item
+        )  # Same validation as ingredient names
+        level = self._validate_preference_level(level)
+        notes = self._validate_notes(notes)
 
         try:
             with self._get_connection() as conn:
@@ -218,6 +391,12 @@ class SharedPantryManager(PantryManager):
         self, item_name: str, quantity: float, unit: str, notes: Optional[str] = None
     ) -> bool:
         """Add a new item to the pantry or increase existing item quantity."""
+        # Validate inputs
+        item_name = self._validate_ingredient_name(item_name)
+        quantity = self._validate_quantity(quantity)
+        unit = self._validate_unit(unit)
+        notes = self._validate_notes(notes)
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -272,6 +451,12 @@ class SharedPantryManager(PantryManager):
         self, item_name: str, quantity: float, unit: str, notes: Optional[str] = None
     ) -> bool:
         """Remove a quantity of an item from the pantry."""
+        # Validate inputs
+        item_name = self._validate_ingredient_name(item_name)
+        quantity = self._validate_quantity(quantity)
+        unit = self._validate_unit(unit)
+        notes = self._validate_notes(notes)
+
         try:
             # First check if we have enough of the item
             current_quantity = self.get_item_quantity(item_name, unit)
@@ -481,6 +666,32 @@ class SharedPantryManager(PantryManager):
         ingredients: List[Dict[str, Any]],
     ) -> bool:
         """Add a new recipe to the database for the current user."""
+        # Validate inputs
+        name = self._validate_recipe_name(name)
+        instructions = self._validate_instructions(instructions)
+        time_minutes = self._validate_time_minutes(time_minutes)
+
+        # Validate ingredients list
+        if not isinstance(ingredients, list):
+            raise ValueError("Ingredients must be a list")
+
+        validated_ingredients = []
+        for i, ingredient in enumerate(ingredients):
+            if not isinstance(ingredient, dict):
+                raise ValueError(f"Ingredient {i} must be a dictionary")
+
+            ingredient_name = self._validate_ingredient_name(ingredient.get("name", ""))
+            ingredient_quantity = self._validate_quantity(ingredient.get("quantity", 0))
+            ingredient_unit = self._validate_unit(ingredient.get("unit", ""))
+
+            validated_ingredients.append(
+                {
+                    "name": ingredient_name,
+                    "quantity": ingredient_quantity,
+                    "unit": ingredient_unit,
+                }
+            )
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -510,8 +721,8 @@ class SharedPantryManager(PantryManager):
                     )
                     recipe_id = cursor.lastrowid
 
-                # Add ingredients
-                for ingredient in ingredients:
+                # Add ingredients (use validated ingredients)
+                for ingredient in validated_ingredients:
                     ingredient_id = self.get_ingredient_id(ingredient["name"])
                     if ingredient_id is None:
                         # Create new ingredient if it doesn't exist
@@ -678,6 +889,32 @@ class SharedPantryManager(PantryManager):
         ingredients: List[Dict[str, Any]],
     ) -> bool:
         """Edit an existing recipe in the database for the current user."""
+        # Validate inputs (same as add_recipe)
+        name = self._validate_recipe_name(name)
+        instructions = self._validate_instructions(instructions)
+        time_minutes = self._validate_time_minutes(time_minutes)
+
+        # Validate ingredients list
+        if not isinstance(ingredients, list):
+            raise ValueError("Ingredients must be a list")
+
+        validated_ingredients = []
+        for i, ingredient in enumerate(ingredients):
+            if not isinstance(ingredient, dict):
+                raise ValueError(f"Ingredient {i} must be a dictionary")
+
+            ingredient_name = self._validate_ingredient_name(ingredient.get("name", ""))
+            ingredient_quantity = self._validate_quantity(ingredient.get("quantity", 0))
+            ingredient_unit = self._validate_unit(ingredient.get("unit", ""))
+
+            validated_ingredients.append(
+                {
+                    "name": ingredient_name,
+                    "quantity": ingredient_quantity,
+                    "unit": ingredient_unit,
+                }
+            )
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -723,7 +960,7 @@ class SharedPantryManager(PantryManager):
                 )
 
                 # Add new ingredients
-                for ingredient in ingredients:
+                for ingredient in validated_ingredients:
                     ingredient_id = self.get_ingredient_id(ingredient["name"])
                     if ingredient_id is None:
                         # Create new ingredient if it doesn't exist
@@ -750,9 +987,15 @@ class SharedPantryManager(PantryManager):
 
     def rate_recipe(self, recipe_name: str, rating: int) -> bool:
         """Rate a recipe on a scale of 1-5 for the current user."""
+        # Validate inputs
+        recipe_name = self._validate_recipe_name(recipe_name)
+
+        if not isinstance(rating, (int, float)):
+            raise ValueError("Rating must be a number")
+
+        rating = int(rating)
         if not (1 <= rating <= 5):
-            print("Rating must be between 1 and 5")
-            return False
+            raise ValueError("Rating must be between 1 and 5")
 
         try:
             with self._get_connection() as conn:
@@ -836,6 +1079,10 @@ class SharedPantryManager(PantryManager):
 
     def set_meal_plan(self, meal_date: str, recipe_name: str) -> bool:
         """Assign a recipe to a specific date in the meal plan for the current user."""
+        # Validate inputs
+        meal_date = self._validate_date(meal_date)
+        recipe_name = self._validate_recipe_name(recipe_name)
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -880,6 +1127,10 @@ class SharedPantryManager(PantryManager):
 
     def get_meal_plan(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
         """Retrieve planned meals between two dates for the current user."""
+        # Validate inputs
+        start_date = self._validate_date(start_date)
+        end_date = self._validate_date(end_date)
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -903,6 +1154,9 @@ class SharedPantryManager(PantryManager):
 
     def clear_recipe_for_date(self, meal_date: str) -> bool:
         """Clear/remove a recipe from a specific date in the meal plan for the current user."""
+        # Validate inputs
+        meal_date = self._validate_date(meal_date)
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -1077,12 +1331,22 @@ class SharedPantryManager(PantryManager):
         self, adults: int, children: int, notes: str = ""
     ) -> bool:
         """Set household characteristics for the current user."""
-        if adults < 1:
-            print("Number of adults must be at least 1")
-            return False
-        if children < 0:
-            print("Number of children cannot be negative")
-            return False
+        # Validate inputs
+        if not isinstance(adults, (int, float)):
+            raise ValueError("Adults must be a number")
+
+        adults = int(adults)
+        if adults < 1 or adults > 50:  # Reasonable upper limit
+            raise ValueError("Number of adults must be between 1 and 50")
+
+        if not isinstance(children, (int, float)):
+            raise ValueError("Children must be a number")
+
+        children = int(children)
+        if children < 0 or children > 50:  # Reasonable upper limit
+            raise ValueError("Number of children must be between 0 and 50")
+
+        notes = self._validate_notes(notes)
 
         try:
             with self._get_connection() as conn:
