@@ -125,38 +125,3 @@ class ShortIDGenerator:
             # Map A-F to letters
             hex_to_alpha = {"A": "A", "B": "B", "C": "C", "D": "D", "E": "E", "F": "F"}
             return hex_to_alpha[hex_char]
-
-
-def test_short_ids():
-    """Test the short ID system."""
-    print("Testing Short ID System")
-    print("=" * 40)
-
-    test_cases = [1, 10, 123, 1000, 9999, 46655]  # 46655 = ZZZ in base36
-
-    for test_id in test_cases:
-        short_id = ShortIDGenerator.generate(test_id)
-        parsed_id = ShortIDGenerator.parse(short_id)
-        is_valid = ShortIDGenerator.is_valid(short_id)
-
-        print(f"ID {test_id:5d} -> {short_id:6s} -> {parsed_id:5d} (valid: {is_valid})")
-
-        # Test with invalid checksum
-        if len(short_id) > 2:
-            invalid_id = (
-                short_id[:-1] + "X" if short_id[-1] != "X" else short_id[:-1] + "Y"
-            )
-            invalid_parsed = ShortIDGenerator.parse(invalid_id)
-            print(
-                f"      Invalid: {invalid_id:6s} -> {invalid_parsed} (should be None)"
-            )
-
-    print("\nTesting edge cases:")
-    edge_cases = ["", "R", "RX", "RXYZ", "invalid", "r123x", "R123X"]
-    for case in edge_cases:
-        result = ShortIDGenerator.parse(case)
-        print(f"'{case}' -> {result}")
-
-
-if __name__ == "__main__":
-    test_short_ids()
