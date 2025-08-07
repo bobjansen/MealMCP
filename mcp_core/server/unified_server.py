@@ -1,5 +1,4 @@
-"""
-Generic Unified MCP Server - Transport and authentication framework.
+""" Generic Unified MCP Server - Transport and authentication framework.
 
 A generic MCP server that can be configured with different tool routers
 and data managers to work with any type of application.
@@ -24,7 +23,7 @@ import json
 import logging
 import asyncio
 from typing import Any, Dict, List, Optional, Union, Callable
-from datetime import datetime
+from datetime import datetime, date
 
 # Configure logging early
 logging.basicConfig(level=logging.INFO)
@@ -59,6 +58,17 @@ try:
     )
 except ImportError:
     OAuthServer = None
+
+
+class DateTimeJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime and date objects."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, date):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 class UnifiedMCPServer:
@@ -104,6 +114,15 @@ class UnifiedMCPServer:
         # Register OAuth endpoints after both transport and authentication are set up
         if self.app and self.oauth:
             self._register_oauth_endpoints()
+            # Log OAuth endpoints like the original working server
+            public_url = os.getenv("MCP_PUBLIC_URL", f"http://{self.host}:{self.port}")
+            logger.info(f"Starting OAUTH server on {self.host}:{self.port}")
+            logger.info("OAuth endpoints:")
+            logger.info(f"  Authorization: {public_url}/authorize")
+            logger.info(f"  Token: {public_url}/token")
+            logger.info(
+                f"  Discovery: {public_url}/.well-known/oauth-authorization-server"
+            )
 
     def _setup_transport(self):
         """Setup transport layer based on configuration."""
@@ -248,7 +267,9 @@ class UnifiedMCPServer:
         self, user_id: str
     ) -> tuple[Optional[str], Optional[Any]]:
         """Get user data manager for OAuth mode."""
+        logger.debug(f"_get_user_data_manager_oauth called with user_id: {user_id}")
         if not user_id:
+            logger.debug("user_id is None or empty, returning None")
             return None, None
 
         # Create or get data manager for OAuth user
@@ -262,7 +283,9 @@ class UnifiedMCPServer:
                     logger.error("PANTRY_DATABASE_URL not set for PostgreSQL backend")
                     return None, None
 
+                logger.debug(f"Creating SharedPantryManager for user_id={user_id} with database_url={database_url}")
                 self.context.data_managers[user_id] = SharedPantryManager(
+                    connection_string=database_url,
                     user_id=int(user_id),
                     backend="postgresql",
                 )
@@ -346,7 +369,7 @@ class UnifiedMCPServer:
             return {
                 "service": self.server_name,
                 "protocolVersion": "2025-06-18",
-                "capabilities": {"tools": {"listChanged": False}},
+                "capabilities": {"tools": {"listChanged": True}},
                 "tools": tools,
             }
 
@@ -365,13 +388,17 @@ class UnifiedMCPServer:
                         "id": request_id,
                         "result": {
                             "protocolVersion": "2025-06-18",
-                            "capabilities": {"tools": {"listChanged": False}},
+                            "capabilities": {"tools": {"listChanged": True}},
                             "serverInfo": {
                                 "name": self.server_name,
                                 "version": "1.0.0",
                             },
                         },
                     }
+
+                elif method == "notifications/initialized":
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(content={}, status_code=202)
 
                 elif method == "tools/list":
                     tools = []
@@ -402,45 +429,33 @@ class UnifiedMCPServer:
                         }
 
                     # Handle authentication for OAuth mode
-                    if self.transport == "oauth" and self.oauth:
-                        # Extract authorization header
+                    if self.transport == "oauth" or self.auth_mode == "oauth":
+                        # Handle OAuth authentication like the original working implementation
+                        user_id = None
                         auth_header = request.headers.get("authorization")
-                        if not auth_header or not auth_header.startswith("Bearer "):
-                            # No valid token - initiate OAuth flow by redirecting to authorize endpoint
-                            public_url = os.getenv(
-                                "MCP_PUBLIC_URL", f"http://{self.host}:{self.port}"
-                            )
-                            authorize_url = f"{public_url}/authorize?response_type=code&client_id=mcp_client&redirect_uri={public_url}/callback"
-                            return {
-                                "jsonrpc": "2.0",
-                                "id": request_id,
-                                "error": {
-                                    "code": -32600,
+                        if auth_header and auth_header.startswith("Bearer "):
+                            # Create simple credentials object for validation
+                            class SimpleCredentials:
+                                def __init__(self, token):
+                                    self.credentials = token
+
+                            credentials = SimpleCredentials(auth_header[7:])
+                            user_id = self.get_current_user(credentials)
+
+                        if not user_id and self.auth_mode != "local":
+                            # Return HTTP 401 with WWW-Authenticate header for OAuth flow
+                            from fastapi.responses import JSONResponse
+
+                            return JSONResponse(
+                                content={
+                                    "error": "unauthorized",
                                     "message": "Authentication required",
-                                    "data": {"authorize_url": authorize_url},
                                 },
-                            }
-
-                        # Extract token and validate
-                        token = auth_header.split(" ", 1)[1]
-                        token_data = self.oauth.validate_access_token(token)
-                        if not token_data:
-                            # Invalid token - initiate OAuth flow
-                            public_url = os.getenv(
-                                "MCP_PUBLIC_URL", f"http://{self.host}:{self.port}"
+                                status_code=401,
+                                headers={"WWW-Authenticate": "Bearer"},
                             )
-                            authorize_url = f"{public_url}/authorize?response_type=code&client_id=mcp_client&redirect_uri={public_url}/callback"
-                            return {
-                                "jsonrpc": "2.0",
-                                "id": request_id,
-                                "error": {
-                                    "code": -32600,
-                                    "message": "Invalid or expired token",
-                                    "data": {"authorize_url": authorize_url},
-                                },
-                            }
 
-                        user_id = token_data["user_id"]
+                        # Get user data manager with proper authentication
                         user_id, data_manager = self.get_user_data_manager(
                             user_id=user_id
                         )
@@ -466,7 +481,7 @@ class UnifiedMCPServer:
                         "id": request_id,
                         "result": {
                             "content": [
-                                {"type": "text", "text": json.dumps(result, indent=2)}
+                                {"type": "text", "text": json.dumps(result, indent=2, cls=DateTimeJSONEncoder)}
                             ]
                         },
                     }
@@ -558,100 +573,104 @@ class UnifiedMCPServer:
                 )
 
         @self.app.get("/authorize")
-        async def authorize_endpoint(request: Request):
+        async def authorize_endpoint(
+            response_type: str,
+            client_id: str,
+            redirect_uri: str,
+            scope: str = "read write",
+            state: str = None,
+            code_challenge: str = None,
+            code_challenge_method: str = "S256",
+        ):
             """OAuth authorization endpoint."""
             try:
-                # Extract query parameters
-                params = dict(request.query_params)
-
-                # Validate OAuth request
-                is_valid, error_response = self.oauth_handler.validate_oauth_request(
-                    params
+                # Validate OAuth request like the original working implementation
+                self.oauth_handler.validate_oauth_request(
+                    client_id, redirect_uri, code_challenge
                 )
-                if not is_valid:
-                    return HTMLResponse(
-                        content=generate_error_page(
-                            error_response.get("error", "Invalid request")
-                        ),
-                        status_code=400,
-                    )
 
-                # Store the authorization request
-                auth_request_id = self.oauth_handler.store_auth_request(params)
-
-                # Show login form
+                # Generate login form
                 login_form_html = generate_login_form(
-                    auth_request_id=auth_request_id,
-                    client_name=params.get("client_name", "Unknown Client"),
+                    client_id,
+                    redirect_uri,
+                    scope,
+                    state or "",
+                    code_challenge,
+                    code_challenge_method,
+                    response_type,
                 )
                 return HTMLResponse(content=login_form_html)
 
             except Exception as e:
                 logger.error(f"Authorization error: {e}")
                 return HTMLResponse(
-                    content=generate_error_page("Authorization server error"),
+                    content=f"<html><body><h2>Authorization Error</h2><p>{str(e)}</p></body></html>",
                     status_code=500,
                 )
 
         @self.app.post("/authorize")
         async def handle_authorization(
-            request: Request,
+            response_type: str = Form(...),
+            client_id: str = Form(...),
+            redirect_uri: str = Form(...),
+            scope: str = Form(...),
+            state: str = Form(None),
+            code_challenge: str = Form(...),
+            code_challenge_method: str = Form(...),
             username: str = Form(...),
             password: str = Form(...),
-            auth_request_id: str = Form(...),
         ):
             """Handle authorization form submission."""
             try:
-                # Authenticate user
-                user_authenticated = self.oauth.authenticate_user(username, password)
-                if not user_authenticated:
-                    return HTMLResponse(
-                        content=generate_error_page("Invalid username or password"),
-                        status_code=401,
-                    )
-
-                # Generate authorization code
-                auth_code = self.oauth_handler.generate_authorization_code(
-                    auth_request_id, username
+                # Authenticate user and create authorization code like the original
+                user_id, auth_code = self.oauth_handler.authenticate_and_create_code(
+                    username,
+                    password,
+                    client_id,
+                    redirect_uri,
+                    scope,
+                    code_challenge,
+                    code_challenge_method,
                 )
 
-                # Redirect back to client
-                auth_request = self.oauth_handler.get_auth_request(auth_request_id)
-                redirect_uri = auth_request["redirect_uri"]
-                state = auth_request.get("state")
-
-                redirect_url = f"{redirect_uri}?code={auth_code}"
-                if state:
-                    redirect_url += f"&state={state}"
-
-                return RedirectResponse(url=redirect_url, status_code=302)
+                # Create success redirect
+                return self.oauth_handler.create_success_redirect(
+                    redirect_uri, auth_code, state
+                )
 
             except Exception as e:
                 logger.error(f"Authorization handling error: {e}")
-                return HTMLResponse(
-                    content=generate_error_page("Authorization failed"), status_code=500
+                return self.oauth_handler.create_error_redirect(
+                    redirect_uri, "access_denied", str(e), state
                 )
 
         @self.app.post("/token")
-        async def token_endpoint(request: Request):
+        async def token_endpoint(
+            grant_type: str = Form(...),
+            code: str = Form(None),
+            redirect_uri: str = Form(None),
+            client_id: str = Form(...),
+            client_secret: str = Form(None),
+            code_verifier: str = Form(None),
+            refresh_token: str = Form(None),
+        ):
             """OAuth token exchange endpoint."""
             try:
-                # Handle both form data and JSON
-                content_type = request.headers.get("content-type", "")
-                if "application/json" in content_type:
-                    token_data = await request.json()
+                if grant_type == "authorization_code":
+                    tokens = self.oauth.exchange_code_for_tokens(
+                        code, client_id, redirect_uri, code_verifier, client_secret
+                    )
+                    return tokens
+                elif grant_type == "refresh_token":
+                    tokens = self.oauth.refresh_access_token(refresh_token, client_id)
+                    return tokens
                 else:
-                    form_data = await request.form()
-                    token_data = dict(form_data)
-
-                # Exchange authorization code for access token
-                token_response = self.oauth.exchange_code_for_token(token_data)
-                return JSONResponse(content=token_response)
+                    raise ValueError(f"Unsupported grant_type: {grant_type}")
 
             except Exception as e:
                 logger.error(f"Token exchange error: {e}")
                 return JSONResponse(
-                    content={"error": "invalid_grant", "error_description": str(e)},
+                    content={"error": "invalid_request", "error_description": str(e)},
                     status_code=400,
                 )
 

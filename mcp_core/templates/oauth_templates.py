@@ -32,8 +32,10 @@ def _build_oauth_params(
 
 def _load_template(template_name: str) -> str:
     """Load template file from templates directory."""
+    # Go up to project root, then to templates/oauth/
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     template_path = os.path.join(
-        os.path.dirname(__file__), "templates", "oauth", f"{template_name}.html"
+        project_root, "templates", "oauth", f"{template_name}.html"
     )
     try:
         with open(template_path, "r", encoding="utf-8") as f:
