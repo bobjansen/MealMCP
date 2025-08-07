@@ -15,10 +15,6 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import sys
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from mcp_server import UnifiedMCPServer
 from mcp_tool_router import MCPToolRouter
 from pantry_manager_factory import create_pantry_manager

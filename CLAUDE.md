@@ -11,11 +11,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `uv run run_mcp.py` - FastMCP local mode (default)
   - `uv run run_mcp.py http --port 8080` - HTTP REST API server
   - `uv run run_mcp.py oauth --multiuser` - OAuth 2.1 multi-user server
-  - `uv run run_mcp.py sse --remote` - Server-Sent Events with token auth
+  - `uv run run_mcp.py sse` - Server-Sent Events server
 
 ### Testing
-- **Run Tests**: `pytest` or `uv run pytest` - Runs the test suite located in the `tests/` directory
+- **Run All Tests**: `pytest` or `uv run pytest` - Runs all tests (both recipe-specific and MCP core tests)
+- **Run Recipe Tests Only**: `pytest tests/` - Runs recipe-specific tests in the `tests/` directory
+- **Run MCP Core Tests Only**: `pytest mcp_core/tests/` - Runs generic MCP tests in the `mcp_core/tests/` directory
 - **Single Test**: `pytest tests/test_pantry_manager.py` - Run a specific test file
+
+#### Test Organization
+- **`tests/`** - Recipe and pantry management specific tests (e.g., `test_pantry_manager.py`, `test_mcp_integration.py`)
+- **`mcp_core/tests/`** - Generic MCP server tests (e.g., `test_mcp_transport_modes.py`, `test_mcp_server_startup.py`)
 
 ### Environment Setup
 - **Install Dependencies**: `uv sync` - Installs all project dependencies

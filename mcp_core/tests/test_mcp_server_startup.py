@@ -20,10 +20,6 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import logging
 from io import StringIO
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from mcp_server import UnifiedMCPServer
 
 

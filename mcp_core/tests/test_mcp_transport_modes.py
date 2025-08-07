@@ -21,11 +21,10 @@ from urllib.parse import parse_qs, urlparse
 import subprocess
 import signal
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from mcp_server import UnifiedMCPServer
+
+# Project root for subprocess calls
+project_root = Path(__file__).parent.parent.parent
 
 
 class TestMCPTransportModes:
