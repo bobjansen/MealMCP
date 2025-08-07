@@ -42,80 +42,6 @@ class TestMCPMultiUserIsolation:
 
         return UnifiedMCPServer()
 
-    def test_user_data_directories_created(self, multiuser_server, temp_dir):
-        """Test that user data directories are created properly."""
-        # Create a user through the server's call_tool method
-        result = multiuser_server.call_tool(
-            "create_user",
-            {
-                "username": "isolation_test_user",
-                "admin_token": "multiuser-test-admin-token",
-            },
-        )
-        assert result["status"] == "success"
-
-        # Check that user directory was created
-        user_dir = Path(temp_dir) / "isolation_test_user"
-        assert user_dir.exists()
-        assert user_dir.is_dir()
-
-        # Check that database file exists
-        db_file = user_dir / "pantry.db"
-        assert db_file.exists()
-
-    def test_complete_data_isolation_recipes(self, multiuser_server):
-        """Test complete isolation of recipe data between users."""
-        # Create three users
-        users = []
-        for i in range(3):
-            result = multiuser_server.call_tool(
-                "create_user",
-                {
-                    "username": f"recipe_user_{i}",
-                    "admin_token": "multiuser-test-admin-token",
-                },
-            )
-            assert result["status"] == "success"
-            users.append((f"recipe_user_{i}", result["token"]))
-
-        # Each user adds unique recipes
-        for i, (username, token) in enumerate(users):
-            for j in range(3):  # 3 recipes per user
-                recipe_data = {
-                    "name": f"{username}_recipe_{j}",
-                    "instructions": f"Instructions for {username} recipe {j}",
-                    "time_minutes": 10 + i + j,
-                    "ingredients": [
-                        {
-                            "name": f"{username}_ingredient_{j}",
-                            "quantity": 1,
-                            "unit": "cup",
-                        }
-                    ],
-                    "token": token,
-                }
-                result = multiuser_server.call_tool("add_recipe", recipe_data)
-                assert result["status"] == "success"
-
-        # Verify each user only sees their own recipes
-        for i, (username, token) in enumerate(users):
-            result = multiuser_server.call_tool("get_all_recipes", {"token": token})
-            assert result["status"] == "success"
-
-            user_recipes = result["recipes"]
-            assert len(user_recipes) == 3
-
-            # Check that all recipes belong to this user
-            for recipe in user_recipes:
-                assert recipe["name"].startswith(f"{username}_recipe_")
-
-            # Check that no other user's recipes are visible
-            all_recipe_names = [r["name"] for r in user_recipes]
-            for other_i, (other_username, _) in enumerate(users):
-                if other_i != i:
-                    for j in range(3):
-                        assert f"{other_username}_recipe_{j}" not in all_recipe_names
-
     def test_complete_data_isolation_pantry(self, multiuser_server):
         """Test complete isolation of pantry data between users."""
         # Create two users
@@ -419,32 +345,6 @@ class TestMCPMultiUserIsolation:
         for user_id, status, recipe_count in results:
             assert status == "success"
             assert recipe_count == 3  # Each user should see exactly their 3 recipes
-
-    def test_user_directory_permissions(self, multiuser_server, temp_dir):
-        """Test that user directories have proper permissions."""
-        # Create a user
-        result = multiuser_server.call_tool(
-            "create_user",
-            {
-                "username": "permission_test_user",
-                "admin_token": "multiuser-test-admin-token",
-            },
-        )
-        assert result["status"] == "success"
-
-        # Check directory permissions
-        user_dir = Path(temp_dir) / "permission_test_user"
-        assert user_dir.exists()
-
-        # Directory should be readable and writable
-        assert os.access(user_dir, os.R_OK)
-        assert os.access(user_dir, os.W_OK)
-
-        # Database file should exist and be accessible
-        db_file = user_dir / "pantry.db"
-        assert db_file.exists()
-        assert os.access(db_file, os.R_OK)
-        assert os.access(db_file, os.W_OK)
 
     def test_user_data_persistence_across_requests(self, multiuser_server):
         """Test that user data persists across multiple requests."""

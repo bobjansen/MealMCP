@@ -348,7 +348,7 @@ class TestMCPServerStartup:
 
         with (
             patch("mcp_server.OAuthServer"),
-            patch("mcp_oauth_handlers.OAuthFlowHandler"),
+            patch("mcp_core.auth.oauth_handlers.OAuthFlowHandler"),
             patch("fastapi.staticfiles.StaticFiles") as mock_static,
         ):
 
