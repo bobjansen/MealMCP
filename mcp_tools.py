@@ -13,12 +13,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Get comprehensive user profile including preferences, household size, and constraints for personalized meal planning",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -44,10 +39,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "description": "Preference level",
                 },
                 "notes": {"type": "string", "description": "Optional notes"},
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["category", "item", "level"],
         },
@@ -80,10 +71,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                         "required": ["name", "quantity", "unit"],
                     },
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["name", "instructions", "time_minutes", "ingredients"],
         },
@@ -95,10 +82,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "recipe_name": {"type": "string", "description": "Name of the recipe"},
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["recipe_name"],
         },
@@ -108,12 +91,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Get all recipes with basic information",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -147,10 +125,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                         "required": ["name", "quantity", "unit"],
                     },
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["recipe_name", "instructions", "time_minutes", "ingredients"],
         },
@@ -165,10 +139,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "type": "string",
                     "description": "Name of recipe to execute",
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["recipe_name"],
         },
@@ -179,12 +149,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Get current pantry inventory",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -206,10 +171,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "unit": {"type": "string", "description": "Unit of measurement"},
                 "notes": {"type": "string", "description": "Optional notes"},
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["action", "item_name", "quantity", "unit"],
         },
@@ -220,12 +181,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Get the meal plan for the next 7 days",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -234,12 +190,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Get grocery items needed for the coming week's meal plan",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -255,10 +206,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "format": "date",
                     "description": "Date for the meal (YYYY-MM-DD)",
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["recipe_name", "meal_date"],
         },
@@ -269,12 +216,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "List all available units of measurement",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -289,10 +231,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "quantity": {"type": "number", "description": "Quantity to add"},
                 "unit": {"type": "string", "description": "Unit of measurement"},
                 "notes": {"type": "string", "description": "Optional notes"},
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["item_name", "quantity", "unit"],
         },
@@ -306,10 +244,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "item_name": {"type": "string", "description": "Name of the item"},
                 "quantity": {"type": "number", "description": "Quantity to remove"},
                 "unit": {"type": "string", "description": "Unit of measurement"},
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["item_name", "quantity", "unit"],
         },
@@ -320,12 +254,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Get all food preferences",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -354,10 +283,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     },
                     "description": "Array of meal assignments",
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["meal_assignments"],
         },
@@ -375,10 +300,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "days": {
                     "type": "integer",
                     "description": "Number of days (default: 7)",
-                },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["start_date"],
@@ -398,10 +319,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "type": "string",
                     "description": "End date in YYYY-MM-DD format",
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": ["start_date", "end_date"],
         },
@@ -419,10 +336,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "days": {
                     "type": "integer",
                     "description": "Number of days (default: 7)",
-                },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": [],
@@ -444,10 +357,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "type": "integer",
                     "description": "Minimum rating (1-5)",
                 },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                },
             },
             "required": [],
         },
@@ -457,12 +366,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         "description": "Suggest recipes based on available pantry items",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
-                }
-            },
+            "properties": {},
             "required": [],
         },
     },
@@ -475,10 +379,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "recipe_name": {
                     "type": "string",
                     "description": "Recipe name to check",
-                },
-                "token": {
-                    "type": "string",
-                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["recipe_name"],

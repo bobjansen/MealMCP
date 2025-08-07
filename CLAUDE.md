@@ -126,9 +126,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - New MCP tools should be added in two places:
   1. **Tool Definition**: Add to `mcp_tools.py` with proper schema definition
   2. **Tool Implementation**: Add to `mcp_tool_router.py` with actual implementation
-- All tools must include optional `token: Optional[str] = None` parameter for authentication
-- Tool router calls `get_user_pantry(token)` to authenticate and get user's PantryManager instance
-- Return `{"status": "error", "message": "Authentication required"}` if authentication fails
+- Authentication is handled at the server level, not in individual tool parameters
+- The server provides the appropriate authenticated `pantry_manager` instance to the tool router
+- Tools don't need to handle authentication directly - they receive a pre-authenticated manager
 - Follow the existing pattern: authenticate, call `PantryManager` methods, return structured data
 - Include proper type hints and docstrings
 - **Important**: Ensure tools are registered in BOTH `mcp_tools.py` (for exposure) AND `mcp_tool_router.py` (for implementation)
@@ -173,7 +173,7 @@ The following tools are currently available through the MCP interface (as define
 - `get_grocery_list()`: Get grocery items needed for the coming week's meal plan
 - `generate_grocery_list(start_date?, days?)`: Generate grocery list for upcoming meal plan
 
-**Note:** All tools accept an optional `token` parameter for authentication in multiuser mode.
+**Note:** Authentication is handled automatically at the server level based on the configured mode (local, remote, or OAuth multiuser).
 
 ### Flask Web Interface Development
 - New routes and components go in `app_flask.py`
