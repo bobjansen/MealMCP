@@ -116,10 +116,10 @@ class TestMCPServerStartup:
         os.environ["PANTRY_BACKEND"] = "postgresql"
         os.environ["PANTRY_DATABASE_URL"] = "postgresql://user:pass@localhost/test"
 
-        # Mock OAuth components
+        # Mock OAuth components - patch where they're used in the unified server
         with (
-            patch("mcp_server.OAuthServer") as mock_oauth,
-            patch("mcp_server.OAuthFlowHandler") as mock_handler,
+            patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+            patch("mcp_core.server.unified_server.OAuthFlowHandler") as mock_handler,
             patch("pantry_manager_shared.SharedPantryManager"),
         ):
 

@@ -22,6 +22,14 @@ Environment Configuration:
 # Import the recipe-specific server
 from recipe_mcp_server import RecipeMCPServer
 
+# Import OAuth components for backwards compatibility
+from mcp_core.auth import OAuthServer, OAuthFlowHandler
+from mcp_core.templates.oauth_templates import (
+    generate_login_form,
+    generate_register_form,
+    generate_error_page,
+)
+
 # Alias for backwards compatibility
 UnifiedMCPServer = RecipeMCPServer
 

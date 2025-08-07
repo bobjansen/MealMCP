@@ -35,7 +35,7 @@ class MCPContext:
             database_setup_func: Function to setup/initialize databases
         """
         self.mode = os.getenv("MCP_MODE", "local")  # "local" or "remote"
-        self.user_manager = UserManager(self.mode)
+        self.user_manager = UserManager(self.mode, database_setup_func)
         self.data_managers: Dict[str, Any] = {}
 
         # Store the factory functions

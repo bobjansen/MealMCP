@@ -226,14 +226,17 @@ class TestMCPTransportModes:
 
         # Mock OAuth components
         with (
-            patch("mcp_server.OAuthServer") as mock_oauth,
-            patch("mcp_server.OAuthFlowHandler") as mock_handler,
+            patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+            patch("mcp_core.server.unified_server.OAuthFlowHandler") as mock_handler,
             patch("pantry_manager_shared.SharedPantryManager") as mock_pm,
         ):
 
             mock_oauth_instance = MagicMock()
             mock_oauth_instance.get_discovery_metadata.return_value = {"issuer": "test"}
             mock_oauth.return_value = mock_oauth_instance
+
+            mock_handler_instance = MagicMock()
+            mock_handler.return_value = mock_handler_instance
 
             server = UnifiedMCPServer()
 
@@ -264,8 +267,8 @@ class TestMCPTransportModes:
 
         # Mock OAuth components
         with (
-            patch("mcp_server.OAuthServer") as mock_oauth,
-            patch("mcp_oauth_handlers.OAuthFlowHandler") as mock_handler,
+            patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+            patch("mcp_core.server.unified_server.OAuthFlowHandler") as mock_handler,
         ):
 
             # Setup OAuth mocks

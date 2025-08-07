@@ -101,6 +101,10 @@ class UnifiedMCPServer:
         self._setup_transport()
         self._setup_authentication()
 
+        # Register OAuth endpoints after both transport and authentication are set up
+        if self.app and self.oauth:
+            self._register_oauth_endpoints()
+
     def _setup_transport(self):
         """Setup transport layer based on configuration."""
         if self.transport in ["fastmcp", "stdio"]:
@@ -167,6 +171,8 @@ class UnifiedMCPServer:
 
             self.oauth = OAuthServer(base_url=public_url, use_postgresql=use_postgresql)
             self.oauth_handler = OAuthFlowHandler(self.oauth)
+            # OAuth also needs HTTP Bearer for API endpoints
+            self.security = HTTPBearer(auto_error=False)
 
         elif self.transport in ["http", "sse"] and self.auth_mode == "remote":
             # Simple token authentication
@@ -480,14 +486,171 @@ class UnifiedMCPServer:
                     },
                 )
 
-        # Add OAuth endpoints if configured
-        if self.oauth:
-            self._register_oauth_endpoints()
+        # OAuth endpoints are registered after authentication setup in __init__
 
     def _register_oauth_endpoints(self):
         """Register OAuth 2.1 endpoints."""
-        # Implementation would go here - for now, reference existing OAuth code
-        pass
+        if not self.oauth or not self.oauth_handler:
+            return
+
+        @self.app.get("/.well-known/oauth-authorization-server")
+        async def oauth_discovery():
+            """OAuth 2.1 authorization server metadata endpoint."""
+            return self.oauth.get_discovery_metadata()
+
+        @self.app.get("/.well-known/oauth-protected-resource")
+        async def oauth_protected_resource():
+            """OAuth 2.1 protected resource metadata endpoint."""
+            return self.oauth.get_protected_resource_metadata()
+
+        @self.app.post("/register")
+        async def register_client(request: Request):
+            """OAuth client registration endpoint."""
+            try:
+                client_data = await request.json()
+                result = self.oauth.register_client(client_data)
+                return JSONResponse(content=result, status_code=201)
+            except Exception as e:
+                logger.error(f"Client registration error: {e}")
+                return JSONResponse(
+                    content={
+                        "error": "invalid_client_metadata",
+                        "error_description": str(e),
+                    },
+                    status_code=400,
+                )
+
+        @self.app.get("/authorize")
+        async def authorize_endpoint(request: Request):
+            """OAuth authorization endpoint."""
+            try:
+                # Extract query parameters
+                params = dict(request.query_params)
+
+                # Validate OAuth request
+                is_valid, error_response = self.oauth_handler.validate_oauth_request(
+                    params
+                )
+                if not is_valid:
+                    return HTMLResponse(
+                        content=generate_error_page(
+                            error_response.get("error", "Invalid request")
+                        ),
+                        status_code=400,
+                    )
+
+                # Store the authorization request
+                auth_request_id = self.oauth_handler.store_auth_request(params)
+
+                # Show login form
+                login_form_html = generate_login_form(
+                    auth_request_id=auth_request_id,
+                    client_name=params.get("client_name", "Unknown Client"),
+                )
+                return HTMLResponse(content=login_form_html)
+
+            except Exception as e:
+                logger.error(f"Authorization error: {e}")
+                return HTMLResponse(
+                    content=generate_error_page("Authorization server error"),
+                    status_code=500,
+                )
+
+        @self.app.post("/authorize")
+        async def handle_authorization(
+            request: Request,
+            username: str = Form(...),
+            password: str = Form(...),
+            auth_request_id: str = Form(...),
+        ):
+            """Handle authorization form submission."""
+            try:
+                # Authenticate user
+                user_authenticated = self.oauth.authenticate_user(username, password)
+                if not user_authenticated:
+                    return HTMLResponse(
+                        content=generate_error_page("Invalid username or password"),
+                        status_code=401,
+                    )
+
+                # Generate authorization code
+                auth_code = self.oauth_handler.generate_authorization_code(
+                    auth_request_id, username
+                )
+
+                # Redirect back to client
+                auth_request = self.oauth_handler.get_auth_request(auth_request_id)
+                redirect_uri = auth_request["redirect_uri"]
+                state = auth_request.get("state")
+
+                redirect_url = f"{redirect_uri}?code={auth_code}"
+                if state:
+                    redirect_url += f"&state={state}"
+
+                return RedirectResponse(url=redirect_url, status_code=302)
+
+            except Exception as e:
+                logger.error(f"Authorization handling error: {e}")
+                return HTMLResponse(
+                    content=generate_error_page("Authorization failed"), status_code=500
+                )
+
+        @self.app.post("/token")
+        async def token_endpoint(request: Request):
+            """OAuth token exchange endpoint."""
+            try:
+                # Handle both form data and JSON
+                content_type = request.headers.get("content-type", "")
+                if "application/json" in content_type:
+                    token_data = await request.json()
+                else:
+                    form_data = await request.form()
+                    token_data = dict(form_data)
+
+                # Exchange authorization code for access token
+                token_response = self.oauth.exchange_code_for_token(token_data)
+                return JSONResponse(content=token_response)
+
+            except Exception as e:
+                logger.error(f"Token exchange error: {e}")
+                return JSONResponse(
+                    content={"error": "invalid_grant", "error_description": str(e)},
+                    status_code=400,
+                )
+
+        @self.app.get("/register_user")
+        async def user_registration_form():
+            """User registration form endpoint."""
+            return HTMLResponse(content=generate_register_form())
+
+        @self.app.post("/register_user")
+        async def handle_user_registration(
+            request: Request,
+            username: str = Form(...),
+            email: str = Form(...),
+            password: str = Form(...),
+        ):
+            """Handle user registration form submission."""
+            try:
+                # Register new user
+                success = self.oauth.register_user(username, email, password)
+                if success:
+                    return HTMLResponse(
+                        content="<h2>Registration successful! You can now log in.</h2>"
+                    )
+                else:
+                    return HTMLResponse(
+                        content=generate_error_page(
+                            "Registration failed - user might already exist"
+                        ),
+                        status_code=400,
+                    )
+
+            except Exception as e:
+                logger.error(f"User registration error: {e}")
+                return HTMLResponse(
+                    content=generate_error_page("Registration failed"), status_code=500
+                )
 
     async def run_async(self):
         """Run the server asynchronously."""
