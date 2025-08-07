@@ -62,8 +62,8 @@ class TestMCPMultiUserE2E:
         # Mock PostgreSQL components
         with (
             patch("pantry_manager_shared.SharedPantryManager") as mock_pm,
-            patch("mcp_server.OAuthServer") as mock_oauth,
-            patch("mcp_server.OAuthFlowHandler") as mock_handler,
+            patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+            patch("mcp_core.server.unified_server.OAuthFlowHandler") as mock_handler,
         ):
 
             # Setup mocked pantry manager
@@ -76,6 +76,10 @@ class TestMCPMultiUserE2E:
             mock_oauth_instance = MagicMock()
             mock_oauth_instance.validate_access_token.return_value = {"user_id": "1"}
             mock_oauth.return_value = mock_oauth_instance
+
+            # Setup mocked OAuth handler
+            mock_handler_instance = MagicMock()
+            mock_handler.return_value = mock_handler_instance
 
             server = UnifiedMCPServer()
             server._mock_pantry = mock_pantry
@@ -480,8 +484,8 @@ class TestMCPMultiUserE2E:
         # Simulate OAuth authentication
         test_user_id = "1"
 
-        # Test getting user pantry in OAuth mode
-        user_id, pantry = server._get_user_pantry_oauth(test_user_id)
+        # Test getting user data manager in OAuth mode
+        user_id, pantry = server._get_user_data_manager_oauth(test_user_id)
         assert user_id == test_user_id
         assert pantry is not None
 

@@ -357,10 +357,18 @@ class TestMCPTransportModes:
             # Mock OAuth/PostgreSQL components if needed
             if transport == "oauth":
                 with (
-                    patch("mcp_server.OAuthServer"),
-                    patch("mcp_oauth_handlers.OAuthFlowHandler"),
+                    patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+                    patch(
+                        "mcp_core.server.unified_server.OAuthFlowHandler"
+                    ) as mock_handler,
                     patch("pantry_manager_shared.SharedPantryManager"),
                 ):
+                    # Setup mock OAuth components
+                    mock_oauth_instance = MagicMock()
+                    mock_oauth.return_value = mock_oauth_instance
+
+                    mock_handler_instance = MagicMock()
+                    mock_handler.return_value = mock_handler_instance
                     server = UnifiedMCPServer()
                     assert server.transport == transport
                     assert server.auth_mode == mode
@@ -424,8 +432,8 @@ class TestMCPTransportModes:
         os.environ["MCP_PUBLIC_URL"] = "http://localhost:18000"
 
         with (
-            patch("mcp_server.OAuthServer") as mock_oauth,
-            patch("mcp_oauth_handlers.OAuthFlowHandler"),
+            patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+            patch("mcp_core.server.unified_server.OAuthFlowHandler") as mock_handler,
             patch("pantry_manager_shared.SharedPantryManager"),
         ):
 
@@ -434,6 +442,9 @@ class TestMCPTransportModes:
                 "user_id": "test_user"
             }
             mock_oauth.return_value = mock_oauth_instance
+
+            mock_handler_instance = MagicMock()
+            mock_handler.return_value = mock_handler_instance
 
             server = UnifiedMCPServer()
 

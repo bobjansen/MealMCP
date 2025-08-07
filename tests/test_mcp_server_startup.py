@@ -160,20 +160,27 @@ class TestMCPServerStartup:
         )
 
         with (
-            patch("mcp_server.OAuthServer") as mock_oauth,
-            patch("mcp_server.OAuthFlowHandler"),
+            patch("mcp_core.server.unified_server.OAuthServer") as mock_oauth,
+            patch("mcp_core.server.unified_server.OAuthFlowHandler") as mock_handler,
             patch("pantry_manager_shared.SharedPantryManager") as mock_pm,
         ):
+            # Setup mock OAuth server
+            mock_oauth_instance = MagicMock()
+            mock_oauth.return_value = mock_oauth_instance
+
+            mock_handler_instance = MagicMock()
+            mock_handler.return_value = mock_handler_instance
 
             server = UnifiedMCPServer()
 
             # Test OAuth PostgreSQL integration
-            user_id, pantry = server._get_user_pantry_oauth("123")
+            user_id, pantry = server._get_user_data_manager_oauth("123")
             mock_pm.assert_called()
 
-            # Verify connection string was used
+            # Verify PostgreSQL backend was used
             call_args = mock_pm.call_args
-            assert "postgresql://test:test@localhost:5432/mealmcp" in str(call_args)
+            assert call_args[1]["user_id"] == 123  # user_id passed as integer
+            assert call_args[1]["backend"] == "postgresql"  # backend is postgresql
 
     def test_sqlite_backend_configuration(self, temp_dir, clean_env):
         """Test SQLite backend configuration."""
@@ -251,7 +258,7 @@ class TestMCPServerStartup:
         os.environ["ADMIN_TOKEN"] = "context-test-token"
 
         # Clear any existing context state
-        from mcp_context import current_user
+        from mcp_core.server.context import current_user
 
         current_user.set(None)
 
@@ -259,7 +266,7 @@ class TestMCPServerStartup:
 
         assert server.context is not None
         assert server.context.user_manager is not None
-        assert server.context.pantry_managers == {}
+        assert server.context.data_managers == {}
         assert server.context.get_current_user() is None
 
         # Test user creation through context
@@ -267,9 +274,9 @@ class TestMCPServerStartup:
         assert token is not None
 
         # Test authentication
-        user_id, pantry = server.context.authenticate_and_get_pantry(token)
+        user_id, data_manager = server.context.authenticate_and_get_data_manager(token)
         assert user_id == "context_test_user"
-        assert pantry is not None
+        assert data_manager is not None
 
     def test_tool_router_initialization(self, temp_dir, clean_env):
         """Test that tool router is properly initialized."""
@@ -395,15 +402,18 @@ class TestMCPServerStartup:
         response = client.get("/health")
         assert response.status_code == 200
         health_data = response.json()
+        assert "transport" in health_data
+        assert "auth_mode" in health_data
+        assert health_data["transport"] == "http"
+        assert health_data["auth_mode"] == "local"
 
-        # Test root endpoint
+        # Test root endpoint (discovery)
         response = client.get("/")
         assert response.status_code == 200
         root_data = response.json()
-
-        # Verify consistency
-        assert health_data["transport"] == root_data["transport"]
-        assert health_data["auth_mode"] == root_data["auth_mode"]
+        assert "service" in root_data
+        assert "protocolVersion" in root_data
+        assert "capabilities" in root_data
 
     def test_graceful_shutdown_preparation(self, temp_dir, clean_env):
         """Test that server is prepared for graceful shutdown."""
