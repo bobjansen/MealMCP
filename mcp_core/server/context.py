@@ -34,7 +34,7 @@ class MCPContext:
             data_manager_factory: Function to create data manager instances
             database_setup_func: Function to setup/initialize databases
         """
-        self.mode = os.getenv("MCP_MODE", "local")  # "local" or "remote"
+        self.mode = os.getenv("MCP_MODE", "local")  # "local" or "multiuser"
         self.user_manager = UserManager(self.mode, database_setup_func)
         self.data_managers: Dict[str, Any] = {}
 
@@ -66,24 +66,9 @@ class MCPContext:
                 )
             return user_id, self.data_managers.get(user_id)
 
-        if not token:
-            return None, None
-
-        user_id = self.user_manager.authenticate(token)
-        if not user_id:
-            return None, None
-
-        # Lazy load data manager for this user
-        if user_id not in self.data_managers and self.data_manager_factory:
-            db_path = self.user_manager.get_user_db_path(user_id)
-            self.data_managers[user_id] = self.data_manager_factory(
-                connection_string=db_path
-            )
-
-            if self.database_setup_func:
-                self.database_setup_func(db_path)
-
-        return user_id, self.data_managers.get(user_id)
+        # In multiuser mode, authentication is handled by OAuth
+        # This method should not be used for multiuser mode
+        return None, None
 
     def set_current_user(self, user_id: str):
         """Set the current user in context."""
@@ -95,16 +80,11 @@ class MCPContext:
 
     def create_user(self, username: str, admin_token: str) -> Dict[str, Any]:
         """Create a new user (admin only)."""
-        # Verify admin token
-        admin_user = self.user_manager.authenticate(admin_token)
-        if admin_user != "admin":
-            return {"status": "error", "message": "Admin access required"}
-
-        try:
-            token = self.user_manager.create_user(username)
-            return {"status": "success", "token": token, "username": username}
-        except ValueError as e:
-            return {"status": "error", "message": str(e)}
+        # User creation is only supported in multiuser mode through OAuth
+        return {
+            "status": "error",
+            "message": "User creation is handled by OAuth in multiuser mode",
+        }
 
     # Backwards compatibility method for recipe-specific usage
     def authenticate_and_get_pantry(

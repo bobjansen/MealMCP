@@ -50,23 +50,6 @@ class TestMCPIntegration:
         return server
 
     @pytest.fixture
-    def remote_server(self, temp_dir):
-        """Create server with remote authentication."""
-        # Clean environment first
-        for key in list(os.environ.keys()):
-            if key.startswith(("MCP_", "PANTRY_", "USER_DATA", "ADMIN_TOKEN")):
-                del os.environ[key]
-
-        os.environ["MCP_TRANSPORT"] = "fastmcp"
-        os.environ["MCP_MODE"] = "remote"
-        os.environ["PANTRY_BACKEND"] = "sqlite"
-        os.environ["USER_DATA_DIR"] = temp_dir
-        os.environ["ADMIN_TOKEN"] = "integration-test-admin-token"
-
-        server = UnifiedMCPServer()
-        return server
-
-    @pytest.fixture
     def sample_recipes(self):
         """Sample recipes for testing."""
         import uuid
@@ -484,24 +467,6 @@ class TestMCPIntegration:
         assert f"vegetarian_{test_id}" in summary["required_dietary"]
         assert f"shellfish_{test_id}" in summary["allergies"]
         assert f"italian_food_{test_id}" in summary["likes"]
-
-    def test_remote_mode_authentication_flow(self, remote_server):
-        """Test remote mode authentication workflow."""
-        # Create user
-        result = remote_server.context.authenticate_and_get_pantry("invalid-token")
-        assert result[0] is None  # Should fail with invalid token
-
-        # Create user through the user manager
-        token = remote_server.context.user_manager.create_user("integration_test_user")
-
-        # Now authenticate with valid token
-        user_id, pantry = remote_server.context.authenticate_and_get_pantry(token)
-        assert user_id == "integration_test_user"
-        assert pantry is not None
-
-        # Test tool access with authentication
-        result = remote_server.tool_router.call_tool("get_user_profile", {}, pantry)
-        assert result["status"] == "success"
 
     def test_error_handling_edge_cases(self, sqlite_server):
         """Test error handling and edge cases."""

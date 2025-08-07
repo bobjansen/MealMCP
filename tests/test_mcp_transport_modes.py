@@ -322,8 +322,8 @@ class TestMCPTransportModes:
         """Test that different transport modes configure correctly."""
         test_configs = [
             ("fastmcp", "local", "sqlite"),
-            ("http", "remote", "sqlite"),
-            ("sse", "remote", "sqlite"),
+            ("http", "local", "sqlite"),
+            ("sse", "local", "sqlite"),
             ("oauth", "multiuser", "postgresql"),
         ]
 
@@ -350,9 +350,7 @@ class TestMCPTransportModes:
                     temp_dir, f"test_{transport}.db"
                 )
 
-            if mode == "remote":
-                os.environ["ADMIN_TOKEN"] = "test-admin-token"
-                os.environ["USER_DATA_DIR"] = temp_dir
+            # No additional setup needed for local mode
 
             # Mock OAuth/PostgreSQL components if needed
             if transport == "oauth":
@@ -398,8 +396,7 @@ class TestMCPTransportModes:
 
         # Test SSE components
         os.environ["MCP_TRANSPORT"] = "sse"
-        os.environ["MCP_MODE"] = "remote"
-        os.environ["ADMIN_TOKEN"] = "test-sse"
+        os.environ["MCP_MODE"] = "local"
         server_sse = UnifiedMCPServer()
         assert server_sse.mcp is None
         assert server_sse.app is not None
@@ -415,14 +412,12 @@ class TestMCPTransportModes:
         user_id, pantry = server.get_user_pantry()
         assert pantry is not None  # Should work without auth
 
-        # HTTP + Remote (token auth)
+        # HTTP + Local (no auth required)
         os.environ["MCP_TRANSPORT"] = "http"
-        os.environ["MCP_MODE"] = "remote"
-        os.environ["ADMIN_TOKEN"] = "test-token"
-        os.environ["USER_DATA_DIR"] = temp_dir
+        os.environ["MCP_MODE"] = "local"
         server = UnifiedMCPServer()
-        user_id, pantry = server.get_user_pantry(token="invalid")
-        assert user_id is None  # Should require valid token
+        user_id, pantry = server.get_user_pantry()
+        assert pantry is not None  # Should work without auth
 
         # OAuth + Multiuser (OAuth auth) - mocked
         os.environ["MCP_TRANSPORT"] = "oauth"

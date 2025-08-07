@@ -15,14 +15,12 @@ Options:
     --host HOST     - Server host (default: localhost)
     --port PORT     - Server port (default: 8000)
     --local         - Local mode (no authentication)
-    --remote        - Remote mode (token authentication)
     --multiuser     - Multi-user mode (OAuth required)
 
 Examples:
     python run_mcp.py                          # FastMCP local mode
     python run_mcp.py http --port 8080         # HTTP server on port 8080
     python run_mcp.py oauth --multiuser        # OAuth multi-user server
-    python run_mcp.py sse --remote             # SSE with token auth
 """
 
 import os
@@ -51,9 +49,6 @@ def main():
     auth_group = parser.add_mutually_exclusive_group()
     auth_group.add_argument("--local", action="store_true", help="Local mode (no auth)")
     auth_group.add_argument(
-        "--remote", action="store_true", help="Remote mode (token auth)"
-    )
-    auth_group.add_argument(
         "--multiuser", action="store_true", help="Multi-user mode (OAuth)"
     )
 
@@ -72,8 +67,6 @@ def main():
     # Set auth mode
     if args.local:
         os.environ["MCP_MODE"] = "local"
-    elif args.remote:
-        os.environ["MCP_MODE"] = "remote"
     elif args.multiuser:
         os.environ["MCP_MODE"] = "multiuser"
         if args.transport != "oauth":

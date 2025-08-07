@@ -174,9 +174,7 @@ class UnifiedMCPServer:
             # OAuth also needs HTTP Bearer for API endpoints
             self.security = HTTPBearer(auto_error=False)
 
-        elif self.transport in ["http", "sse"] and self.auth_mode == "remote":
-            # Simple token authentication
-            self.security = HTTPBearer(auto_error=False)
+        # No additional authentication setup needed for local mode HTTP/SSE
 
     def get_current_user(self, credentials=None) -> Optional[str]:
         """Extract user from authentication credentials."""
@@ -188,12 +186,7 @@ class UnifiedMCPServer:
             token_data = self.oauth.validate_access_token(credentials.credentials)
             return token_data["user_id"] if token_data else None
 
-        elif self.auth_mode == "remote":
-            # Token mode - validate with context
-            user_id, _ = self.context.authenticate_and_get_data_manager(
-                credentials.credentials
-            )
-            return user_id
+        # No other authentication modes supported
 
         return None
 

@@ -198,36 +198,6 @@ except Exception as e:
         assert "command" in config["mcpServers"]["meal-manager"]
         assert "args" in config["mcpServers"]["meal-manager"]
 
-    def test_remote_mode_oauth_simulation(self, temp_dir):
-        """Test remote mode with simulated OAuth flow."""
-        # Set up remote mode environment
-        env = os.environ.copy()
-        env["MCP_MODE"] = "remote"
-        env["ADMIN_TOKEN"] = "test-admin-12345"
-        env["USER_DATA_DIR"] = temp_dir
-
-        # Import server in remote mode
-        with patch.dict(os.environ, env):
-            from mcp_server import UnifiedMCPServer
-
-            server = UnifiedMCPServer()
-
-            assert server.auth_mode == "remote"
-
-            # Test user creation through user manager
-            token = server.context.user_manager.create_user("oauth_test_user")
-            assert token is not None
-
-            # Test with user token
-            user_id, pantry = server.get_user_pantry(token=token)
-            assert user_id == "oauth_test_user"
-            assert pantry is not None
-
-            profile_result = server.tool_router.call_tool(
-                "get_user_profile", {}, pantry
-            )
-            assert profile_result["status"] == "success"
-
     def test_error_recovery(self, temp_dir):
         """Test error recovery and resilience."""
         from mcp_server import UnifiedMCPServer

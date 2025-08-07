@@ -45,29 +45,11 @@ class TestMCPUnifiedIntegration:
         server = UnifiedMCPServer()
         return server
 
-    @pytest.fixture
-    def remote_server(self, temp_dir):
-        """Create a remote mode MCP server for testing."""
-        # Set up environment for remote mode
-        os.environ["MCP_MODE"] = "remote"
-        os.environ["ADMIN_TOKEN"] = "test-admin-token-12345"
-        os.environ["USER_DATA_DIR"] = temp_dir
-
-        server = UnifiedMCPServer()
-        return server
-
     def test_server_initialization_local_mode(self, local_server):
         """Test server initializes correctly in local mode."""
         assert local_server.auth_mode == "local"
         assert local_server.context is not None
         assert local_server.tool_router is not None
-
-    def test_server_initialization_remote_mode(self, remote_server):
-        """Test server initializes correctly in remote mode."""
-        assert remote_server.auth_mode == "remote"
-        assert remote_server.context is not None
-        assert remote_server.context.mode == "remote"
-        assert remote_server.tool_router is not None
 
     def test_tool_routing_initialization(self, local_server):
         """Test that tool router is properly initialized."""
@@ -137,75 +119,6 @@ class TestMCPUnifiedIntegration:
         recipe_names = [r["name"] for r in recipes_result["recipes"]]
         assert "Test Recipe" in recipe_names
 
-    def test_remote_mode_authentication_required(self, remote_server):
-        """Test that remote mode requires authentication."""
-        # Try to call tool without token
-        result = remote_server.call_tool("get_all_recipes", {})
-        assert result["status"] == "error"
-        assert "authentication" in result["message"].lower()
-
-    def test_remote_mode_admin_token_works(self, remote_server):
-        """Test that admin token works in remote mode."""
-        # Test with admin token
-        result = remote_server.call_tool(
-            "get_pantry_contents", {"token": "test-admin-token-12345"}
-        )
-        assert result["status"] == "success"
-
-    def test_remote_mode_user_creation(self, remote_server):
-        """Test user creation in remote mode."""
-        # Create a user with admin token
-        result = remote_server.call_tool(
-            "create_user",
-            {"username": "testuser123", "admin_token": "test-admin-token-12345"},
-        )
-        assert result["status"] == "success"
-        assert "token" in result
-
-    def test_remote_mode_user_isolation(self, remote_server):
-        """Test that users have isolated data in remote mode."""
-        # Create two users
-        user1_result = remote_server.call_tool(
-            "create_user",
-            {"username": "user1", "admin_token": "test-admin-token-12345"},
-        )
-        assert user1_result["status"] == "success"
-        user1_token = user1_result["token"]
-
-        user2_result = remote_server.call_tool(
-            "create_user",
-            {"username": "user2", "admin_token": "test-admin-token-12345"},
-        )
-        assert user2_result["status"] == "success"
-        user2_token = user2_result["token"]
-
-        # Add recipe for user1
-        recipe_data = {
-            "name": "User1 Recipe",
-            "instructions": "User1's special recipe",
-            "time_minutes": 20,
-            "ingredients": [{"name": "test", "quantity": 1, "unit": "cup"}],
-            "token": user1_token,
-        }
-        add_result = remote_server.call_tool("add_recipe", recipe_data)
-        assert add_result["status"] == "success"
-
-        # Check user1 can see their recipe
-        user1_recipes = remote_server.call_tool(
-            "get_all_recipes", {"token": user1_token}
-        )
-        assert user1_recipes["status"] == "success"
-        recipe_names = [r["name"] for r in user1_recipes["recipes"]]
-        assert "User1 Recipe" in recipe_names
-
-        # Check user2 cannot see user1's recipe
-        user2_recipes = remote_server.call_tool(
-            "get_all_recipes", {"token": user2_token}
-        )
-        assert user2_recipes["status"] == "success"
-        user2_recipe_names = [r["name"] for r in user2_recipes["recipes"]]
-        assert "User1 Recipe" not in user2_recipe_names
-
     def test_error_handling_invalid_tool(self, local_server):
         """Test error handling for invalid tool names."""
         result = local_server.call_tool("nonexistent_tool", {})
@@ -223,14 +136,6 @@ class TestMCPUnifiedIntegration:
             },
         )
         assert result["status"] == "error"
-
-    def test_error_handling_invalid_token(self, remote_server):
-        """Test error handling for invalid authentication tokens."""
-        result = remote_server.call_tool(
-            "get_all_recipes", {"token": "invalid-token-123"}
-        )
-        assert result["status"] == "error"
-        assert "authentication" in result["message"].lower()
 
     def test_meal_planning_workflow(self, local_server):
         """Test complete meal planning workflow."""

@@ -12,7 +12,7 @@ Supports:
 
 Environment Configuration:
 - MCP_TRANSPORT: "fastmcp" (default), "http", "sse", "oauth"
-- MCP_MODE: "local" (default), "remote", "multiuser"
+- MCP_MODE: "local" (default), "multiuser"
 - MCP_HOST: "localhost"
 - MCP_PORT: 8000
 - PANTRY_BACKEND: "sqlite", "postgresql"

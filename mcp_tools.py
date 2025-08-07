@@ -16,7 +16,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 }
             },
             "required": [],
@@ -46,7 +46,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "notes": {"type": "string", "description": "Optional notes"},
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["category", "item", "level"],
@@ -82,7 +82,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["name", "instructions", "time_minutes", "ingredients"],
@@ -97,7 +97,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "recipe_name": {"type": "string", "description": "Name of the recipe"},
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["recipe_name"],
@@ -111,7 +111,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 }
             },
             "required": [],
@@ -149,7 +149,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["recipe_name", "instructions", "time_minutes", "ingredients"],
@@ -167,7 +167,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["recipe_name"],
@@ -182,7 +182,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 }
             },
             "required": [],
@@ -208,7 +208,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "notes": {"type": "string", "description": "Optional notes"},
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["action", "item_name", "quantity", "unit"],
@@ -223,7 +223,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 }
             },
             "required": [],
@@ -237,7 +237,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 }
             },
             "required": [],
@@ -257,7 +257,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 },
                 "token": {
                     "type": "string",
-                    "description": "Authentication token (required for remote mode)",
+                    "description": "Authentication token (required for multiuser mode)",
                 },
             },
             "required": ["recipe_name", "meal_date"],
