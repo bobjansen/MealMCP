@@ -76,18 +76,6 @@ class OAuthServer:
 
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id TEXT PRIMARY KEY,
-                    username TEXT UNIQUE,
-                    password_hash TEXT,
-                    email TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """
-            )
-
-            conn.execute(
-                """
                 CREATE TABLE IF NOT EXISTS user_consents (
                     user_id TEXT,
                     client_id TEXT,
@@ -257,31 +245,15 @@ class OAuthServer:
         }
 
     def create_user(self, username: str, password: str, email: str = None) -> str:
-        """Create a new user account."""
+        """Create a new user account.
+
+        In SQLite mode, authentication is disabled and a single default user is
+        always used. Username, password and email are ignored.
+        """
         if self.use_postgresql:
             return self._create_user_postgresql(username, password, email)
         else:
-            return self._create_user_sqlite(username, password, email)
-
-    def _create_user_sqlite(
-        self, username: str, password: str, email: str = None
-    ) -> str:
-        """Create a new user account in SQLite."""
-        user_id = secrets.token_urlsafe(16)
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-
-        with sqlite3.connect(self.db_path) as conn:
-            try:
-                conn.execute(
-                    """
-                    INSERT INTO users (user_id, username, password_hash, email)
-                    VALUES (?, ?, ?, ?)
-                """,
-                    (user_id, username, password_hash, email),
-                )
-                return user_id
-            except sqlite3.IntegrityError:
-                raise ValueError("Username already exists")
+            return "1"  # Default single-user ID for SQLite mode
 
     def _create_user_postgresql(
         self, username: str, password: str, email: str = None
@@ -307,27 +279,15 @@ class OAuthServer:
                     raise ValueError("Username already exists")
 
     def authenticate_user(self, username: str, password: str) -> Optional[str]:
-        """Authenticate user credentials."""
+        """Authenticate user credentials.
+
+        For SQLite mode, no authentication is required and the default user ID
+        is always returned.
+        """
         if self.use_postgresql:
             return self._authenticate_user_postgresql(username, password)
         else:
-            return self._authenticate_user_sqlite(username, password)
-
-    def _authenticate_user_sqlite(self, username: str, password: str) -> Optional[str]:
-        """Authenticate user credentials against SQLite."""
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT user_id FROM users 
-                WHERE username = ? AND password_hash = ?
-            """,
-                (username, password_hash),
-            )
-
-            result = cursor.fetchone()
-            return result[0] if result else None
+            return "1"
 
     def _authenticate_user_postgresql(
         self, username: str, password: str
