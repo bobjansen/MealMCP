@@ -9,6 +9,7 @@ import hashlib
 import base64
 import json
 import time
+import re
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlencode, parse_qs
 from datetime import datetime, timedelta
@@ -450,11 +451,9 @@ class OAuthServer:
         # Wildcard matching for Claude patterns
         for allowed_uri in allowed_uris:
             if "*" in allowed_uri:
-                # Simple wildcard matching for claude.ai URLs
-                pattern = allowed_uri.replace("*", ".*")
-                import re
-
-                if re.match(pattern, redirect_uri):
+                # Build regex pattern using re.escape to handle special characters
+                pattern = re.escape(allowed_uri).replace("\\*", ".*")
+                if re.fullmatch(pattern, redirect_uri):
                     return True
 
         return False
