@@ -123,6 +123,7 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
                 """
                 CREATE TABLE IF NOT EXISTS recipes (
                     id SERIAL PRIMARY KEY,
+                    short_id VARCHAR(10) NOT NULL,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     name VARCHAR(255) NOT NULL,
                     instructions TEXT NOT NULL,
@@ -130,7 +131,7 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
                     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
                     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(user_id, name)
+                    UNIQUE(user_id, short_id)
                 )
             """
             )
@@ -280,6 +281,7 @@ def _setup_sqlite_shared(db_path: str) -> bool:
             """
             CREATE TABLE IF NOT EXISTS recipes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                short_id TEXT NOT NULL,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
                 instructions TEXT NOT NULL,
@@ -287,7 +289,7 @@ def _setup_sqlite_shared(db_path: str) -> bool:
                 rating INTEGER CHECK (rating >= 1 AND rating <= 5),
                 created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id, name)
+                UNIQUE(user_id, short_id)
             )
         """
         )

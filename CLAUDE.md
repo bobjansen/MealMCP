@@ -173,6 +173,12 @@ The following tools are currently available through the MCP interface (as define
 - `get_grocery_list()`: Get grocery items needed for the coming week's meal plan
 - `generate_grocery_list(start_date?, days?)`: Generate grocery list for upcoming meal plan
 
+**Short ID-Based Recipe Editing:**
+- `edit_recipe_by_id(recipe_id, name?, instructions?, time_minutes?, ingredients?)`: Edit recipes by short ID with partial updates and detailed error messages
+- `get_recipe_id(recipe_name)`: Get a recipe's short ID by name for precise editing
+- Short IDs are human-friendly (e.g., R123A, R456B) with checksums to prevent typos
+- All recipe operations support both short IDs and UUIDs for maximum precision
+
 **Note:** Authentication is handled automatically at the server level based on the configured mode (local, remote, or OAuth multiuser).
 
 ### Flask Web Interface Development

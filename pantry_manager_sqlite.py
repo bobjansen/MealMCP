@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
+from short_id_utils import ShortIDGenerator
 
 
 class SQLitePantryManager(PantryManager):
@@ -345,7 +346,7 @@ class SQLitePantryManager(PantryManager):
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
-    ) -> bool:
+    ) -> tuple[bool, Optional[str]]:
         """
         Add a new recipe to the database.
 
@@ -359,21 +360,27 @@ class SQLitePantryManager(PantryManager):
                 - unit: unit of measurement
 
         Returns:
-            bool: True if successful, False otherwise
+            tuple[bool, Optional[str]]: (Success status, Recipe Short ID)
         """
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 now = datetime.now().isoformat()
 
-                # Insert recipe
+                # Strategy: Get the next recipe ID by querying the current max ID
+                cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM Recipes")
+                next_id = cursor.fetchone()[0]
+
+                # Generate short ID from the predicted next ID
+                short_id = ShortIDGenerator.generate(next_id)
+
                 cursor.execute(
                     """
                     INSERT INTO Recipes
-                    (name, instructions, time_minutes, created_date, last_modified)
-                    VALUES (?, ?, ?, ?, ?)
+                    (short_id, name, instructions, time_minutes, created_date, last_modified)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (name, instructions, time_minutes, now, now),
+                    (short_id, name, instructions, time_minutes, now, now),
                 )
                 recipe_id = cursor.lastrowid
 
@@ -398,10 +405,10 @@ class SQLitePantryManager(PantryManager):
                             ingredient["unit"],
                         ),
                     )
-                return True
+                return True, short_id
         except Exception as e:
             print(f"Error adding recipe: {e}")
-            return False
+            return False, None
 
     def get_recipe(self, recipe_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -533,16 +540,16 @@ class SQLitePantryManager(PantryManager):
         Get all recipes from the database.
 
         Returns:
-            List[Dict[str, Any]]: List of all recipes with their details
+            List[Dict[str, Any]]: List of all recipes with their details including short IDs
         """
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT name FROM Recipes ORDER BY name")
+                cursor.execute("SELECT short_id, name FROM Recipes ORDER BY name")
                 recipes = []
 
-                for (name,) in cursor.fetchall():
-                    recipe = self.get_recipe(name)
+                for short_id, name in cursor.fetchall():
+                    recipe = self.get_recipe_by_short_id(short_id)
                     if recipe:
                         recipes.append(recipe)
 
@@ -719,6 +726,193 @@ class SQLitePantryManager(PantryManager):
         except Exception as e:
             print(f"Error executing recipe: {e}")
             return False, f"Error executing recipe: {str(e)}"
+
+    def get_recipe_by_short_id(self, short_id: str) -> Optional[Dict[str, Any]]:
+        """Get a recipe and its ingredients by short ID."""
+        # Validate short ID format
+        numeric_id = ShortIDGenerator.parse(short_id)
+        if numeric_id is None:
+            return None
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                # Get recipe details
+                cursor.execute(
+                    "SELECT id, short_id, name, instructions, time_minutes, rating, created_date, last_modified FROM Recipes WHERE id = ?",
+                    (numeric_id,),
+                )
+                recipe_row = cursor.fetchone()
+                if not recipe_row:
+                    return None
+
+                (
+                    recipe_id,
+                    stored_short_id,
+                    name,
+                    instructions,
+                    time_minutes,
+                    rating,
+                    created_date,
+                    last_modified,
+                ) = recipe_row
+                recipe = {
+                    "id": recipe_id,
+                    "short_id": stored_short_id,
+                    "name": name,
+                    "instructions": instructions,
+                    "time_minutes": time_minutes,
+                    "rating": rating,
+                    "created_date": created_date,
+                    "last_modified": last_modified,
+                    "ingredients": [],
+                }
+
+                # Get ingredients
+                cursor.execute(
+                    """
+                    SELECT i.name, ri.quantity, ri.unit
+                    FROM RecipeIngredients ri
+                    JOIN Ingredients i ON ri.ingredient_id = i.id
+                    WHERE ri.recipe_id = ?
+                    """,
+                    (recipe_id,),
+                )
+                ingredients = cursor.fetchall()
+                for ingredient_name, quantity, unit in ingredients:
+                    recipe["ingredients"].append(
+                        {"name": ingredient_name, "quantity": quantity, "unit": unit}
+                    )
+
+                return recipe
+        except Exception as e:
+            print(f"Error getting recipe by short ID: {e}")
+            return None
+
+    def get_recipe_short_id(self, recipe_name: str) -> Optional[str]:
+        """Get the short ID of a recipe by name."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT short_id FROM Recipes WHERE name = ?",
+                    (recipe_name,),
+                )
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting recipe short ID: {e}")
+            return None
+
+    def edit_recipe_by_short_id(
+        self,
+        short_id: str,
+        name: Optional[str] = None,
+        instructions: Optional[str] = None,
+        time_minutes: Optional[int] = None,
+        ingredients: Optional[List[Dict[str, Any]]] = None,
+    ) -> tuple[bool, str]:
+        """Edit an existing recipe by short ID with detailed error messages."""
+        # Validate short ID format
+        numeric_id = ShortIDGenerator.parse(short_id)
+        if numeric_id is None:
+            return (
+                False,
+                f"Invalid short ID format: '{short_id}'. Expected format: R123A",
+            )
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Check if recipe exists
+                cursor.execute(
+                    "SELECT id, name FROM Recipes WHERE id = ?", (numeric_id,)
+                )
+                result = cursor.fetchone()
+                if not result:
+                    return False, f"Recipe with short ID '{short_id}' not found"
+
+                recipe_id, current_name = result
+                updated_fields = []
+                update_params = []
+
+                # Build update query dynamically based on provided fields
+                if name is not None:
+                    updated_fields.append("name = ?")
+                    update_params.append(name)
+
+                if instructions is not None:
+                    updated_fields.append("instructions = ?")
+                    update_params.append(instructions)
+
+                if time_minutes is not None:
+                    updated_fields.append("time_minutes = ?")
+                    update_params.append(time_minutes)
+
+                # Always update last_modified
+                updated_fields.append("last_modified = ?")
+                update_params.append(datetime.now().isoformat())
+                update_params.append(recipe_id)  # For WHERE clause
+
+                if updated_fields:
+                    cursor.execute(
+                        f"UPDATE Recipes SET {', '.join(updated_fields)} WHERE id = ?",
+                        update_params,
+                    )
+
+                # Update ingredients if provided
+                if ingredients is not None:
+                    # Delete existing ingredients
+                    cursor.execute(
+                        "DELETE FROM RecipeIngredients WHERE recipe_id = ?",
+                        (recipe_id,),
+                    )
+
+                    # Add new ingredients
+                    for ingredient in ingredients:
+                        ingredient_id = self.get_ingredient_id(ingredient["name"])
+                        if ingredient_id is None:
+                            # Create new ingredient if it doesn't exist
+                            self.add_ingredient(ingredient["name"], ingredient["unit"])
+                            ingredient_id = self.get_ingredient_id(ingredient["name"])
+
+                        cursor.execute(
+                            """
+                            INSERT INTO RecipeIngredients
+                            (recipe_id, ingredient_id, quantity, unit)
+                            VALUES (?, ?, ?, ?)
+                            """,
+                            (
+                                recipe_id,
+                                ingredient_id,
+                                ingredient["quantity"],
+                                ingredient["unit"],
+                            ),
+                        )
+
+                # Build success message
+                changes = []
+                if name is not None and name != current_name:
+                    changes.append(f"name from '{current_name}' to '{name}'")
+                if instructions is not None:
+                    changes.append("instructions")
+                if time_minutes is not None:
+                    changes.append(f"time to {time_minutes} minutes")
+                if ingredients is not None:
+                    changes.append(f"ingredients ({len(ingredients)} items)")
+
+                if changes:
+                    return True, f"Successfully updated {', '.join(changes)}"
+                else:
+                    return (
+                        True,
+                        "No changes were made (all provided values were identical to current values)",
+                    )
+
+        except Exception as e:
+            print(f"Error editing recipe by short ID: {e}")
+            return False, f"Error editing recipe: {str(e)}"
 
     def set_meal_plan(self, meal_date: str, recipe_name: str) -> bool:
         """Assign a recipe to a specific date in the MealPlan table."""

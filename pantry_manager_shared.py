@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from pantry_manager_abc import PantryManager
+from short_id_utils import ShortIDGenerator
 
 
 class SharedPantryManager(PantryManager):
@@ -664,7 +665,7 @@ class SharedPantryManager(PantryManager):
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
-    ) -> bool:
+    ) -> tuple[bool, Optional[str]]:
         """Add a new recipe to the database for the current user."""
         # Validate inputs
         name = self._validate_recipe_name(name)
@@ -697,16 +698,33 @@ class SharedPantryManager(PantryManager):
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
+                # Generate user-scoped short ID based on user's recipe count
+                cursor.execute(
+                    f"SELECT COUNT(*) FROM recipes WHERE user_id = {ph}",
+                    (self.user_id,),
+                )
+                user_recipe_count = cursor.fetchone()[0]
+                next_user_recipe_id = user_recipe_count + 1
+                short_id = ShortIDGenerator.generate(next_user_recipe_id)
+
                 if self.backend == "postgresql":
                     now = datetime.now()
                     cursor.execute(
                         f"""
                         INSERT INTO recipes
-                        (user_id, name, instructions, time_minutes, created_date, last_modified)
-                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                        (short_id, user_id, name, instructions, time_minutes, created_date, last_modified)
+                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
                         RETURNING id
                     """,
-                        (self.user_id, name, instructions, time_minutes, now, now),
+                        (
+                            short_id,
+                            self.user_id,
+                            name,
+                            instructions,
+                            time_minutes,
+                            now,
+                            now,
+                        ),
                     )
                     recipe_id = cursor.fetchone()[0]
                 else:
@@ -714,10 +732,18 @@ class SharedPantryManager(PantryManager):
                     cursor.execute(
                         f"""
                         INSERT INTO recipes
-                        (user_id, name, instructions, time_minutes, created_date, last_modified)
-                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                        (short_id, user_id, name, instructions, time_minutes, created_date, last_modified)
+                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
                     """,
-                        (self.user_id, name, instructions, time_minutes, now, now),
+                        (
+                            short_id,
+                            self.user_id,
+                            name,
+                            instructions,
+                            time_minutes,
+                            now,
+                            now,
+                        ),
                     )
                     recipe_id = cursor.lastrowid
 
@@ -742,10 +768,10 @@ class SharedPantryManager(PantryManager):
                             ingredient["unit"],
                         ),
                     )
-                return True
+                return True, short_id
         except Exception as e:
             print(f"Error adding recipe: {e}")
-            return False
+            return False, None
 
     def get_recipe(self, recipe_name: str) -> Optional[Dict[str, Any]]:
         """Get a recipe and its ingredients by name for the current user."""
@@ -826,11 +852,11 @@ class SharedPantryManager(PantryManager):
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
-                # Single query with JOIN to get all recipe data and ingredients
+                # Single query with JOIN to get all recipe data and ingredients including short IDs
                 cursor.execute(
                     f"""
                     SELECT 
-                        r.name, r.instructions, r.time_minutes, r.rating,
+                        r.short_id, r.name, r.instructions, r.time_minutes, r.rating,
                         r.created_date, r.last_modified,
                         i.name as ingredient_name, ri.quantity, ri.unit
                     FROM recipes r
@@ -845,34 +871,36 @@ class SharedPantryManager(PantryManager):
                 # Group results by recipe
                 recipes = {}
                 for row in cursor.fetchall():
-                    recipe_name = row[0]
-                    if recipe_name not in recipes:
-                        recipes[recipe_name] = {
+                    recipe_short_id = str(row[0])
+                    recipe_name = row[1]
+                    if recipe_short_id not in recipes:
+                        recipes[recipe_short_id] = {
+                            "short_id": recipe_short_id,
                             "name": recipe_name,
-                            "instructions": row[1],
-                            "time_minutes": row[2],
-                            "rating": float(row[3]) if row[3] is not None else None,
+                            "instructions": row[2],
+                            "time_minutes": row[3],
+                            "rating": float(row[4]) if row[4] is not None else None,
                             "created_date": (
-                                row[4].isoformat()
-                                if isinstance(row[4], datetime)
-                                else row[4]
-                            ),
-                            "last_modified": (
                                 row[5].isoformat()
                                 if isinstance(row[5], datetime)
                                 else row[5]
                             ),
+                            "last_modified": (
+                                row[6].isoformat()
+                                if isinstance(row[6], datetime)
+                                else row[6]
+                            ),
                             "ingredients": [],
                         }
 
-                    if row[6]:  # Has ingredients
-                        recipes[recipe_name]["ingredients"].append(
+                    if row[7]:  # Has ingredients
+                        recipes[recipe_short_id]["ingredients"].append(
                             {
-                                "name": row[6],
+                                "name": row[7],
                                 "quantity": (
-                                    float(row[7]) if row[7] is not None else 0.0
+                                    float(row[8]) if row[8] is not None else 0.0
                                 ),
-                                "unit": row[8],
+                                "unit": row[9],
                             }
                         )
 
@@ -1076,6 +1104,248 @@ class SharedPantryManager(PantryManager):
         except Exception as e:
             print(f"Error executing recipe: {e}")
             return False, f"Error executing recipe: {str(e)}"
+
+    # Short ID-based Recipe Methods
+    def get_recipe_by_short_id(self, short_id: str) -> Optional[Dict[str, Any]]:
+        """Get a recipe and its ingredients by short ID for the current user."""
+        # Validate short ID format
+        if not ShortIDGenerator.is_valid(short_id):
+            return None
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                # Get recipe details by short_id within user scope
+                cursor.execute(
+                    f"""
+                    SELECT id, short_id, name, instructions, time_minutes, rating, created_date, last_modified 
+                    FROM recipes 
+                    WHERE short_id = {ph} AND user_id = {ph}
+                    """,
+                    (short_id, self.user_id),
+                )
+                recipe_row = cursor.fetchone()
+                if not recipe_row:
+                    return None
+
+                (
+                    recipe_id,
+                    stored_short_id,
+                    name,
+                    instructions,
+                    time_minutes,
+                    rating,
+                    created_date,
+                    last_modified,
+                ) = recipe_row
+                recipe = {
+                    "id": recipe_id,
+                    "short_id": stored_short_id,
+                    "name": name,
+                    "instructions": instructions,
+                    "time_minutes": time_minutes,
+                    "rating": rating,
+                    "created_date": str(created_date),
+                    "last_modified": str(last_modified),
+                    "ingredients": [],
+                }
+
+                # Get ingredients
+                cursor.execute(
+                    f"""
+                    SELECT i.name, ri.quantity, ri.unit
+                    FROM recipe_ingredients ri
+                    JOIN ingredients i ON ri.ingredient_id = i.id
+                    WHERE ri.recipe_id = {ph}
+                    """,
+                    (recipe_id,),
+                )
+                ingredients = cursor.fetchall()
+                for ingredient_name, quantity, unit in ingredients:
+                    recipe["ingredients"].append(
+                        {
+                            "name": ingredient_name,
+                            "quantity": float(quantity),
+                            "unit": unit,
+                        }
+                    )
+
+                return recipe
+        except Exception as e:
+            print(f"Error getting recipe by short ID: {e}")
+            return None
+
+    def get_recipe_short_id(self, recipe_name: str) -> Optional[str]:
+        """Get the short ID of a recipe by name for the current user."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+                cursor.execute(
+                    f"""
+                    SELECT short_id FROM recipes 
+                    WHERE name = {ph} AND user_id = {ph}
+                    """,
+                    (recipe_name, self.user_id),
+                )
+                result = cursor.fetchone()
+                return str(result[0]) if result else None
+        except Exception as e:
+            print(f"Error getting recipe short ID: {e}")
+            return None
+
+    def edit_recipe_by_short_id(
+        self,
+        short_id: str,
+        name: Optional[str] = None,
+        instructions: Optional[str] = None,
+        time_minutes: Optional[int] = None,
+        ingredients: Optional[List[Dict[str, Any]]] = None,
+    ) -> tuple[bool, str]:
+        """Edit an existing recipe by short ID with detailed error messages for the current user."""
+        # Validate short ID format
+        if not ShortIDGenerator.is_valid(short_id):
+            return (
+                False,
+                f"Invalid short ID format: '{short_id}'. Expected format: R123A",
+            )
+
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                # Check if recipe exists for this user by short_id
+                cursor.execute(
+                    f"SELECT id, name FROM recipes WHERE short_id = {ph} AND user_id = {ph}",
+                    (short_id, self.user_id),
+                )
+                result = cursor.fetchone()
+                if not result:
+                    return (
+                        False,
+                        f"Recipe with short ID '{short_id}' not found for current user",
+                    )
+
+                recipe_id, current_name = result
+                updated_fields = []
+                update_params = []
+
+                # Validate and build update query dynamically
+                if name is not None:
+                    name = self._validate_recipe_name(name)
+                    updated_fields.append(f"name = {ph}")
+                    update_params.append(name)
+
+                if instructions is not None:
+                    instructions = self._validate_instructions(instructions)
+                    updated_fields.append(f"instructions = {ph}")
+                    update_params.append(instructions)
+
+                if time_minutes is not None:
+                    time_minutes = self._validate_time_minutes(time_minutes)
+                    updated_fields.append(f"time_minutes = {ph}")
+                    update_params.append(time_minutes)
+
+                # Always update last_modified
+                updated_fields.append(f"last_modified = {ph}")
+                if self.backend == "postgresql":
+                    update_params.append(datetime.now())
+                else:
+                    update_params.append(datetime.now().isoformat())
+
+                # Add WHERE conditions
+                update_params.extend([short_id, self.user_id])
+
+                if updated_fields:
+                    cursor.execute(
+                        f"UPDATE recipes SET {', '.join(updated_fields)} WHERE short_id = {ph} AND user_id = {ph}",
+                        update_params,
+                    )
+
+                # Update ingredients if provided
+                if ingredients is not None:
+                    # Validate ingredients
+                    validated_ingredients = []
+                    for i, ingredient in enumerate(ingredients):
+                        if not isinstance(ingredient, dict):
+                            return False, f"Ingredient {i} must be a dictionary"
+
+                        try:
+                            ingredient_name = self._validate_ingredient_name(
+                                ingredient.get("name", "")
+                            )
+                            ingredient_quantity = self._validate_quantity(
+                                ingredient.get("quantity", 0)
+                            )
+                            ingredient_unit = self._validate_unit(
+                                ingredient.get("unit", "")
+                            )
+
+                            validated_ingredients.append(
+                                {
+                                    "name": ingredient_name,
+                                    "quantity": ingredient_quantity,
+                                    "unit": ingredient_unit,
+                                }
+                            )
+                        except ValueError as e:
+                            return False, f"Invalid ingredient {i}: {str(e)}"
+
+                    # Delete existing ingredients
+                    cursor.execute(
+                        f"DELETE FROM recipe_ingredients WHERE recipe_id = {ph}",
+                        (recipe_id,),
+                    )
+
+                    # Add new ingredients
+                    for ingredient in validated_ingredients:
+                        ingredient_id = self.get_ingredient_id(ingredient["name"])
+                        if ingredient_id is None:
+                            # Create new ingredient if it doesn't exist
+                            self.add_ingredient(ingredient["name"], ingredient["unit"])
+                            ingredient_id = self.get_ingredient_id(ingredient["name"])
+
+                        cursor.execute(
+                            f"""
+                            INSERT INTO recipe_ingredients
+                            (recipe_id, ingredient_id, quantity, unit)
+                            VALUES ({ph}, {ph}, {ph}, {ph})
+                            """,
+                            (
+                                recipe_id,
+                                ingredient_id,
+                                ingredient["quantity"],
+                                ingredient["unit"],
+                            ),
+                        )
+
+                # Build success message
+                changes = []
+                if name is not None and name != current_name:
+                    changes.append(f"name from '{current_name}' to '{name}'")
+                if instructions is not None:
+                    changes.append("instructions")
+                if time_minutes is not None:
+                    changes.append(f"time to {time_minutes} minutes")
+                if ingredients is not None:
+                    changes.append(f"ingredients ({len(ingredients)} items)")
+
+                if changes:
+                    return True, f"Successfully updated {', '.join(changes)}"
+                else:
+                    return (
+                        True,
+                        "No changes were made (all provided values were identical to current values)",
+                    )
+
+        except ValueError as ve:
+            return False, f"Validation error: {str(ve)}"
+        except Exception as e:
+            print(f"Error editing recipe by short ID: {e}")
+            return False, f"Error editing recipe: {str(e)}"
 
     def set_meal_plan(self, meal_date: str, recipe_name: str) -> bool:
         """Assign a recipe to a specific date in the meal plan for the current user."""

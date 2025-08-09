@@ -39,7 +39,8 @@ def setup_database(
         """
         CREATE TABLE IF NOT EXISTS Recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
+            short_id TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
             instructions TEXT NOT NULL,
             time_minutes INTEGER NOT NULL,
             rating INTEGER DEFAULT NULL CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),

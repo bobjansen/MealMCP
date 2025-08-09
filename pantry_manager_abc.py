@@ -199,7 +199,7 @@ class PantryManager(ABC):
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
-    ) -> bool:
+    ) -> tuple[bool, Optional[str]]:
         """
         Add a new recipe to the database.
 
@@ -213,7 +213,7 @@ class PantryManager(ABC):
                 - unit: unit of measurement
 
         Returns:
-            bool: True if successful, False otherwise
+            tuple[bool, Optional[str]]: (Success status, Recipe Short ID)
         """
         pass
 
@@ -289,6 +289,57 @@ class PantryManager(ABC):
 
         Returns:
             tuple[bool, str]: (Success status, Message with details or error)
+        """
+        pass
+
+    # Short ID-based Recipe Methods
+    @abstractmethod
+    def get_recipe_by_short_id(self, short_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a recipe and its ingredients by short ID.
+
+        Args:
+            short_id: Short ID of the recipe (e.g., "R123A")
+
+        Returns:
+            Optional[Dict[str, Any]]: Recipe details including ingredients, or None if not found
+        """
+        pass
+
+    @abstractmethod
+    def get_recipe_short_id(self, recipe_name: str) -> Optional[str]:
+        """
+        Get the short ID of a recipe by name.
+
+        Args:
+            recipe_name: Name of the recipe
+
+        Returns:
+            Optional[str]: Recipe short ID if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    def edit_recipe_by_short_id(
+        self,
+        short_id: str,
+        name: Optional[str] = None,
+        instructions: Optional[str] = None,
+        time_minutes: Optional[int] = None,
+        ingredients: Optional[List[Dict[str, Any]]] = None,
+    ) -> tuple[bool, str]:
+        """
+        Edit an existing recipe by short ID with detailed error messages.
+
+        Args:
+            short_id: Short ID of the recipe to edit (e.g., "R123A")
+            name: New name for the recipe (optional)
+            instructions: Updated cooking instructions (optional)
+            time_minutes: Updated time required (optional)
+            ingredients: Updated list of ingredient dictionaries (optional)
+
+        Returns:
+            tuple[bool, str]: (Success status, detailed message)
         """
         pass
 

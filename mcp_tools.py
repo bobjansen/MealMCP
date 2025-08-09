@@ -130,6 +130,56 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         },
     },
     {
+        "name": "edit_recipe_by_id",
+        "description": "Edit an existing recipe by short ID with improved error messages. Allows partial updates and recipe renaming. Short IDs are human-friendly (e.g., R123A).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_id": {
+                    "type": "string",
+                    "description": "Short ID of the recipe to edit (e.g., R123A)",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "New name for the recipe (optional)",
+                },
+                "instructions": {
+                    "type": "string",
+                    "description": "Updated cooking instructions (optional)",
+                },
+                "time_minutes": {
+                    "type": "integer",
+                    "description": "Updated preparation time (optional)",
+                },
+                "ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "quantity": {"type": "number"},
+                            "unit": {"type": "string"},
+                        },
+                        "required": ["name", "quantity", "unit"],
+                    },
+                    "description": "Updated list of ingredients (optional)",
+                },
+            },
+            "required": ["recipe_id"],
+        },
+    },
+    {
+        "name": "get_recipe_id",
+        "description": "Get the short ID of a recipe by name for precise editing",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipe_name": {"type": "string", "description": "Name of the recipe"}
+            },
+            "required": ["recipe_name"],
+        },
+    },
+    {
         "name": "execute_recipe",
         "description": "Execute a recipe by removing required ingredients from pantry",
         "inputSchema": {
@@ -415,6 +465,8 @@ def get_tools_by_category() -> Dict[str, List[str]]:
             "get_recipe",
             "get_all_recipes",
             "edit_recipe",
+            "edit_recipe_by_id",
+            "get_recipe_id",
             "execute_recipe",
         ],
         "Pantry Management": ["get_pantry_contents", "manage_pantry_item"],

@@ -27,6 +27,8 @@ class MCPToolRouter:
             "get_user_profile": self._get_user_profile,
             "add_recipe": self._add_recipe,
             "edit_recipe": self._edit_recipe,
+            "edit_recipe_by_id": self._edit_recipe_by_id,
+            "get_recipe_id": self._get_recipe_id,
             "get_all_recipes": self._get_all_recipes,
             "get_recipe": self._get_recipe,
             "get_pantry_contents": self._get_pantry_contents,
@@ -136,7 +138,7 @@ class MCPToolRouter:
 
     def _add_recipe(self, arguments: Dict[str, Any], pantry_manager) -> Dict[str, Any]:
         """Add a new recipe."""
-        success = pantry_manager.add_recipe(
+        success, recipe_id = pantry_manager.add_recipe(
             name=arguments["name"],
             instructions=arguments["instructions"],
             time_minutes=arguments["time_minutes"],
@@ -144,7 +146,12 @@ class MCPToolRouter:
         )
 
         if success:
-            return {"status": "success", "message": t("Recipe added successfully")}
+            return {
+                "status": "success",
+                "message": t("Recipe added successfully"),
+                "recipe_id": recipe_id,
+                "recipe_name": arguments["name"],
+            }
         else:
             return {"status": "error", "message": t("Failed to add recipe")}
 
@@ -175,6 +182,55 @@ class MCPToolRouter:
                 "status": "error",
                 "message": f"Failed to update recipe '{recipe_name}'",
             }
+
+    def _edit_recipe_by_id(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Edit an existing recipe by short ID with improved error handling."""
+        recipe_id = arguments["recipe_id"]
+
+        # Extract optional fields
+        name = arguments.get("name")
+        instructions = arguments.get("instructions")
+        time_minutes = arguments.get("time_minutes")
+        ingredients = arguments.get("ingredients")
+
+        # Check if at least one field is provided for update
+        if all(
+            field is None for field in [name, instructions, time_minutes, ingredients]
+        ):
+            return {
+                "status": "error",
+                "message": "At least one field (name, instructions, time_minutes, or ingredients) must be provided for update",
+            }
+
+        # Call the improved edit method with detailed error handling
+        success, message = pantry_manager.edit_recipe_by_short_id(
+            short_id=recipe_id,
+            name=name,
+            instructions=instructions,
+            time_minutes=time_minutes,
+            ingredients=ingredients,
+        )
+
+        return {"status": "success" if success else "error", "message": message}
+
+    def _get_recipe_id(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Get the short ID of a recipe by name."""
+        recipe_name = arguments["recipe_name"]
+
+        recipe_id = pantry_manager.get_recipe_short_id(recipe_name)
+
+        if recipe_id:
+            return {
+                "status": "success",
+                "recipe_name": recipe_name,
+                "recipe_id": recipe_id,
+            }
+        else:
+            return {"status": "error", "message": f"Recipe '{recipe_name}' not found"}
 
     def _get_all_recipes(
         self, arguments: Dict[str, Any], pantry_manager

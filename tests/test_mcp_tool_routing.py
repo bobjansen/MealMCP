@@ -40,7 +40,7 @@ class TestMCPToolRouter:
             {"name": "Test Recipe", "time_minutes": 30, "ingredients": []}
         ]
         mock_pm.get_pantry_contents.return_value = {"flour": {"cups": 2}}
-        mock_pm.add_recipe.return_value = True
+        mock_pm.add_recipe.return_value = (True, "R123A")
         mock_pm.add_item.return_value = True
         mock_pm.remove_item.return_value = True
         mock_pm.add_preference.return_value = True
@@ -457,7 +457,7 @@ class TestMCPErrorHandling:
         """Test input sanitization and validation."""
         router = MCPToolRouter()
         mock_pm = Mock()
-        mock_pm.add_recipe.return_value = True
+        mock_pm.add_recipe.return_value = (True, "R456B")
 
         # Test various potentially problematic inputs
         problematic_inputs = [
