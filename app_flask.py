@@ -1,23 +1,23 @@
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    jsonify,
-    session,
-)
-from functools import wraps
-from pantry_manager_factory import create_pantry_manager
-from pantry_manager_shared import SharedPantryManager
-from web_auth_simple import WebUserManager
-from constants import UNITS
-from i18n import t, set_lang
-from datetime import date, timedelta, datetime
 import json
 import os
 import secrets
+from functools import wraps
+from i18n import t, set_lang
+from flask import (
+    Flask,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+from constants import UNITS
+from datetime import date, timedelta, datetime
+from pantry_manager_factory import create_pantry_manager
+from pantry_manager_shared import SharedPantryManager
+from web_auth_simple import WebUserManager
 
 # Generate secret key if not provided
 secret_key = os.getenv("FLASK_SECRET_KEY")

@@ -1,14 +1,14 @@
 """
-MCP Tool Router - Centralized tool dispatch to eliminate duplication.
+MCP Tool Router - Centralized tool dispatch
 """
 
 import json
 import logging
-from typing import Dict, Any, Optional, Callable
 from datetime import datetime, timedelta
+from i18n import t
+from typing import Dict, Any, Optional, Callable
 from constants import UNITS
 from mcp_tools import MCP_TOOLS
-from i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class MCPToolRouter:
     def _edit_recipe_by_id(
         self, arguments: Dict[str, Any], pantry_manager
     ) -> Dict[str, Any]:
-        """Edit an existing recipe by short ID with improved error handling."""
+        """Edit an existing recipe by short ID."""
         recipe_id = arguments["recipe_id"]
 
         # Extract optional fields
