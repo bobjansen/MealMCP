@@ -1,116 +1,28 @@
 import sqlite3
+from db_schema_definitions import SINGLE_USER_SCHEMAS, SINGLE_USER_INDEXES, SINGLE_USER_DEFAULTS
 
 
-def setup_database(
-    db_path="pantry.db",
-):  # Connect to SQLite database (or create it if it doesn't exist)
+def setup_database(db_path="pantry.db"):
+    """
+    Set up SQLite database for single-user mode using centralized schema definitions.
+    
+    Args:
+        db_path: Path to the SQLite database file
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Create Ingredients table
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS Ingredients (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            default_unit TEXT NOT NULL
-        )
-    """
-    )
+    # Create all tables using centralized schema definitions
+    for table_name, schema in SINGLE_USER_SCHEMAS.items():
+        cursor.execute(schema)
 
-    # Create PantryTransactions table with foreign key to Ingredients
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS PantryTransactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            transaction_type TEXT NOT NULL,  -- 'addition' or 'removal'
-            ingredient_id INTEGER NOT NULL,
-            quantity REAL NOT NULL,
-            unit TEXT NOT NULL,
-            transaction_date TEXT NOT NULL,
-            notes TEXT,
-            FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
-        )
-    """
-    )
+    # Create indexes
+    for index_sql in SINGLE_USER_INDEXES:
+        cursor.execute(index_sql)
 
-    # Create Recipes table
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS Recipes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            short_id TEXT NOT NULL UNIQUE,
-            name TEXT NOT NULL,
-            instructions TEXT NOT NULL,
-            time_minutes INTEGER NOT NULL,
-            rating INTEGER DEFAULT NULL CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
-            created_date TEXT NOT NULL,
-            last_modified TEXT NOT NULL
-        )
-    """
-    )
-
-    # Create Preferences table
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS Preferences (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category TEXT NOT NULL,  -- e.g., 'dietary', 'allergy', 'dislike', 'like'
-            item TEXT NOT NULL,      -- e.g., 'vegetarian', 'peanuts', 'mushrooms'
-            level TEXT NOT NULL,     -- e.g., 'required', 'preferred', 'avoid'
-            notes TEXT,
-            created_date TEXT NOT NULL,
-            UNIQUE(category, item)
-        )
-    """
-    )
-
-    # Create RecipeIngredients junction table
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS RecipeIngredients (
-            recipe_id INTEGER NOT NULL,
-            ingredient_id INTEGER NOT NULL,
-            quantity REAL NOT NULL,
-            unit TEXT NOT NULL,
-            PRIMARY KEY (recipe_id, ingredient_id),
-            FOREIGN KEY (recipe_id) REFERENCES Recipes(id),
-            FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
-        )
-    """
-    )
-
-    # Create MealPlan table for linking dates to recipes
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS MealPlan (
-            meal_date TEXT PRIMARY KEY,
-            recipe_id INTEGER NOT NULL,
-            FOREIGN KEY (recipe_id) REFERENCES Recipes(id)
-        )
-        """
-    )
-
-    # Create HouseholdCharacteristics table for user household information
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS HouseholdCharacteristics (
-            id INTEGER PRIMARY KEY,
-            adults INTEGER DEFAULT 2,
-            children INTEGER DEFAULT 0,
-            notes TEXT,
-            updated_date TEXT NOT NULL
-        )
-        """
-    )
-
-    # Insert default household characteristics if none exist
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO HouseholdCharacteristics (id, adults, children, updated_date)
-        VALUES (1, 2, 0, datetime('now'))
-        """
-    )
+    # Insert default data
+    for default_sql in SINGLE_USER_DEFAULTS:
+        cursor.execute(default_sql)
 
     # Commit changes and close the connection
     conn.commit()
