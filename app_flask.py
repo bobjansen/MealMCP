@@ -3,6 +3,7 @@ import os
 import secrets
 from functools import wraps
 from i18n import t, set_lang
+import markdown
 from flask import (
     Flask,
     flash,
@@ -117,6 +118,19 @@ def strftime_filter(date_str, format="%A"):
         return date_obj.strftime(format)
     except:
         return date_str
+
+
+@app.template_filter("markdown")
+def markdown_filter(text):
+    """Convert markdown text to HTML."""
+    if not text:
+        return ""
+    try:
+        md = markdown.Markdown(extensions=["nl2br", "fenced_code"])
+        return md.convert(text)
+    except Exception as e:
+        # Fallback to simple line break conversion if markdown fails
+        return text.replace("\n", "<br>")
 
 
 # Authentication routes

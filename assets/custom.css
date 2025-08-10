@@ -36,3 +36,32 @@
     font-size: 0.9rem;
     line-height: 1.4;
 }
+
+.recipe-markdown code {
+    background-color: #f8f9fa;
+    color: #e83e8c;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-family: monospace;
+}
+
+.recipe-markdown strong {
+    font-weight: 600;
+    color: #495057;
+}
+
+.recipe-markdown ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.recipe-markdown ol li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.recipe-markdown p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
