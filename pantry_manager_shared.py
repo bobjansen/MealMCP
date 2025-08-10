@@ -328,7 +328,7 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    DELETE FROM preferences 
+                    DELETE FROM preferences
                     WHERE id = {ph} AND user_id = {ph}
                 """,
                     (preference_id, self.user_id),
@@ -380,7 +380,7 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    SELECT id FROM ingredients 
+                    SELECT id FROM ingredients
                     WHERE name = {ph} AND user_id = {ph}
                 """,
                     (name, self.user_id),
@@ -569,7 +569,7 @@ class SharedPantryManager(PantryManager):
                 placeholders = ", ".join([ph] * len(item_names))
                 cursor.execute(
                     f"""
-                    SELECT name, id FROM ingredients 
+                    SELECT name, id FROM ingredients
                     WHERE user_id = {ph} AND name IN ({placeholders})
                 """,
                     (self.user_id, *item_names),
@@ -997,65 +997,33 @@ class SharedPantryManager(PantryManager):
             return None
 
     def get_all_recipes(self) -> List[Dict[str, Any]]:
-        """Get all recipes from the database for the current user."""
+        """Get lightweight list of all recipes from the database for the current user."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
-                # Single query with JOIN to get all recipe data and ingredients including short IDs
                 cursor.execute(
                     f"""
-                    SELECT 
-                        r.short_id, r.name, r.instructions, r.time_minutes, r.rating,
-                        r.created_date, r.last_modified,
-                        i.name as ingredient_name, ri.quantity, ri.unit
-                    FROM recipes r
-                    LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-                    LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-                    WHERE r.user_id = {ph}
-                    ORDER BY r.name, i.name
-                """,
+                    SELECT short_id, name, rating
+                    FROM recipes
+                    WHERE user_id = {ph}
+                    ORDER BY name
+                    """,
                     (self.user_id,),
                 )
 
-                # Group results by recipe
-                recipes = {}
-                for row in cursor.fetchall():
-                    recipe_short_id = str(row[0])
-                    recipe_name = row[1]
-                    if recipe_short_id not in recipes:
-                        recipes[recipe_short_id] = {
-                            "short_id": recipe_short_id,
-                            "name": recipe_name,
-                            "instructions": row[2],
-                            "time_minutes": row[3],
-                            "rating": float(row[4]) if row[4] is not None else None,
-                            "created_date": (
-                                row[5].isoformat()
-                                if isinstance(row[5], datetime)
-                                else row[5]
-                            ),
-                            "last_modified": (
-                                row[6].isoformat()
-                                if isinstance(row[6], datetime)
-                                else row[6]
-                            ),
-                            "ingredients": [],
+                recipes = []
+                for short_id, name, rating in cursor.fetchall():
+                    recipes.append(
+                        {
+                            "short_id": short_id,
+                            "name": name,
+                            "rating": float(rating) if rating is not None else None,
                         }
+                    )
 
-                    if row[7]:  # Has ingredients
-                        recipes[recipe_short_id]["ingredients"].append(
-                            {
-                                "name": row[7],
-                                "quantity": (
-                                    float(row[8]) if row[8] is not None else 0.0
-                                ),
-                                "unit": row[9],
-                            }
-                        )
-
-                return list(recipes.values())
+                return recipes
         except Exception as e:
             print(f"Error getting all recipes: {e}")
             return []
@@ -1102,7 +1070,7 @@ class SharedPantryManager(PantryManager):
                 # Check if recipe exists for this user
                 cursor.execute(
                     f"""
-                    SELECT id FROM recipes 
+                    SELECT id FROM recipes
                     WHERE name = {ph} AND user_id = {ph}
                 """,
                     (name, self.user_id),
@@ -1271,8 +1239,8 @@ class SharedPantryManager(PantryManager):
                 # Get recipe details by short_id within user scope
                 cursor.execute(
                     f"""
-                    SELECT id, short_id, name, instructions, time_minutes, rating, created_date, last_modified 
-                    FROM recipes 
+                    SELECT id, short_id, name, instructions, time_minutes, rating, created_date, last_modified
+                    FROM recipes
                     WHERE short_id = {ph} AND user_id = {ph}
                     """,
                     (short_id, self.user_id),
@@ -1336,7 +1304,7 @@ class SharedPantryManager(PantryManager):
                 ph = self._get_placeholder()
                 cursor.execute(
                     f"""
-                    SELECT short_id FROM recipes 
+                    SELECT short_id FROM recipes
                     WHERE name = {ph} AND user_id = {ph}
                     """,
                     (recipe_name, self.user_id),
@@ -1511,7 +1479,7 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    SELECT id FROM recipes 
+                    SELECT id FROM recipes
                     WHERE name = {ph} AND user_id = {ph}
                 """,
                     (recipe_name, self.user_id),
@@ -1528,7 +1496,7 @@ class SharedPantryManager(PantryManager):
                         f"""
                         INSERT INTO meal_plan (user_id, meal_date, recipe_id)
                         VALUES ({ph}, {ph}, {ph})
-                        ON CONFLICT (user_id, meal_date) 
+                        ON CONFLICT (user_id, meal_date)
                         DO UPDATE SET recipe_id = EXCLUDED.recipe_id
                     """,
                         (self.user_id, meal_date, recipe_id),

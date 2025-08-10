@@ -147,7 +147,7 @@ The following tools are currently available through the MCP interface (as define
 **Recipe Management:**
 - `add_recipe(name, instructions, time_minutes, ingredients)`: Add a new recipe to the database
 - `get_recipe(recipe_name)`: Get detailed information about a specific recipe
-- `get_all_recipes()`: Get all recipes with basic information
+- `get_all_recipes()`: Get lightweight list of all recipes (name, short_id, rating only)
 - `edit_recipe(recipe_name, field, new_value)`: Edit an existing recipe
 - `execute_recipe(recipe_name)`: Execute recipe by removing required ingredients from pantry
 

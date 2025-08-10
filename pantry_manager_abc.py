@@ -233,10 +233,10 @@ class PantryManager(ABC):
     @abstractmethod
     def get_all_recipes(self) -> List[Dict[str, Any]]:
         """
-        Get all recipes from the database.
+        Get lightweight list of all recipes from the database.
 
         Returns:
-            List[Dict[str, Any]]: List of all recipes with their details
+            List[Dict[str, Any]]: List of recipes with name, short_id, and rating only
         """
         pass
 

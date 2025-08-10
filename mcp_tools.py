@@ -88,7 +88,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "get_all_recipes",
-        "description": "Get all recipes with basic information",
+        "description": "Get lightweight list of all recipes (name, short_id, rating only). Use get_recipe for full details.",
         "inputSchema": {
             "type": "object",
             "properties": {},

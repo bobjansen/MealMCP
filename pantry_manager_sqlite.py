@@ -659,21 +659,27 @@ class SQLitePantryManager(PantryManager):
 
     def get_all_recipes(self) -> List[Dict[str, Any]]:
         """
-        Get all recipes from the database.
+        Get lightweight list of all recipes from the database.
 
         Returns:
-            List[Dict[str, Any]]: List of all recipes with their details including short IDs
+            List[Dict[str, Any]]: List of recipes with name, short_id, and rating only
         """
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT short_id, name FROM Recipes ORDER BY name")
-                recipes = []
+                cursor.execute(
+                    """
+                    SELECT short_id, name, rating 
+                    FROM Recipes 
+                    ORDER BY name
+                    """
+                )
 
-                for short_id, name in cursor.fetchall():
-                    recipe = self.get_recipe_by_short_id(short_id)
-                    if recipe:
-                        recipes.append(recipe)
+                recipes = []
+                for short_id, name, rating in cursor.fetchall():
+                    recipes.append(
+                        {"short_id": short_id, "name": name, "rating": rating}
+                    )
 
                 return recipes
         except Exception as e:
