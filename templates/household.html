@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('Household Units') }} - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <h1 class="mb-4"><i class="fas fa-home"></i> {{ t('Household Units') }}</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label" for="volume_unit">{{ t('Preferred Volume Unit') }}</label>
+                <select class="form-select" id="volume_unit" name="volume_unit">
+                    {% for u in volume_units %}
+                    <option value="{{ u }}" {% if u == preferred_units.volume %}selected{% endif %}>{{ u }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="weight_unit">{{ t('Preferred Weight Unit') }}</label>
+                <select class="form-select" id="weight_unit" name="weight_unit">
+                    {% for u in weight_units %}
+                    <option value="{{ u }}" {% if u == preferred_units.weight %}selected{% endif %}>{{ u }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="count_unit">{{ t('Preferred Count Unit') }}</label>
+                <select class="form-select" id="count_unit" name="count_unit">
+                    {% for u in count_units %}
+                    <option value="{{ u }}" {% if u == preferred_units.count %}selected{% endif %}>{{ u }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> {{ t('Update Preferred Units') }}
+            </button>
+            <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary ms-2">
+                <i class="fas fa-arrow-left"></i> {{ t('Back to Profile') }}
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

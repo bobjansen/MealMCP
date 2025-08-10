@@ -402,6 +402,40 @@ def delete_unit():
     return redirect(url_for("units_management"))
 
 
+# Household preferred units
+@app.route("/household", methods=["GET", "POST"])
+@requires_auth
+def household():
+    """Manage preferred units for the current household."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+
+    if request.method == "POST":
+        volume_unit = request.form.get("volume_unit")
+        weight_unit = request.form.get("weight_unit")
+        count_unit = request.form.get("count_unit")
+        if user_pantry.set_preferred_units(volume_unit, weight_unit, count_unit):
+            flash("Preferred units updated successfully!", "success")
+        else:
+            flash("Error updating preferred units.", "error")
+        return redirect(url_for("household"))
+
+    units = user_pantry.list_units()
+    volume_units = [u["name"] for u in units if u["base_unit"] == "ml"]
+    weight_units = [u["name"] for u in units if u["base_unit"] == "g"]
+    count_units = [u["name"] for u in units if u["base_unit"] == "count"]
+    preferred_units = user_pantry.get_preferred_units()
+    return render_template(
+        "household.html",
+        volume_units=volume_units,
+        weight_units=weight_units,
+        count_units=count_units,
+        preferred_units=preferred_units,
+    )
+
+
 @app.route("/")
 def index():
     """Main dashboard or landing page."""
