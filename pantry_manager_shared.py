@@ -1805,7 +1805,8 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    SELECT household_adults, household_children, preferred_language
+                    SELECT household_adults, household_children, preferred_language,
+                           preferred_volume_unit, preferred_weight_unit, preferred_count_unit
                     FROM users
                     WHERE id = {ph}
                     """,
@@ -1813,11 +1814,16 @@ class SharedPantryManager(PantryManager):
                 )
                 result = cursor.fetchone()
                 if result:
-                    adults, children, language = result
+                    adults, children, language, vol, weight, count = result
                     return {
                         "adults": adults or 2,
                         "children": children or 0,
                         "notes": f"Language preference: {language or 'en'}",
+                        "preferred_units": {
+                            "volume": vol or "Milliliter",
+                            "weight": weight or "Gram",
+                            "count": count or "Piece",
+                        },
                         "updated_date": datetime.now().isoformat(),
                     }
                 else:
@@ -1827,6 +1833,11 @@ class SharedPantryManager(PantryManager):
                         "children": 0,
                         "notes": "",
                         "updated_date": datetime.now().isoformat(),
+                        "preferred_units": {
+                            "volume": "Milliliter",
+                            "weight": "Gram",
+                            "count": "Piece",
+                        },
                     }
         except Exception as e:
             print(f"Error getting household characteristics: {e}")
@@ -1835,6 +1846,11 @@ class SharedPantryManager(PantryManager):
                 "children": 0,
                 "notes": "",
                 "updated_date": datetime.now().isoformat(),
+                "preferred_units": {
+                    "volume": "Milliliter",
+                    "weight": "Gram",
+                    "count": "Piece",
+                },
             }
 
     def set_household_characteristics(
@@ -1879,3 +1895,51 @@ class SharedPantryManager(PantryManager):
         except Exception as e:
             print(f"Error setting household characteristics: {e}")
             return False
+
+    @safe_execute("get preferred units", default_return={"volume": "Milliliter", "weight": "Gram", "count": "Piece"})
+    def get_preferred_units(self) -> Dict[str, str]:
+        """Get preferred units for the household."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            ph = self._get_placeholder()
+            cursor.execute(
+                f"""
+                SELECT preferred_volume_unit, preferred_weight_unit, preferred_count_unit
+                FROM users
+                WHERE id = {ph}
+                """,
+                (self.user_id,),
+            )
+            result = cursor.fetchone()
+            if result:
+                vol, weight, count = result
+                return {
+                    "volume": vol or "Milliliter",
+                    "weight": weight or "Gram",
+                    "count": count or "Piece",
+                }
+            return {"volume": "Milliliter", "weight": "Gram", "count": "Piece"}
+
+    @safe_execute("set preferred units", default_return=False)
+    def set_preferred_units(
+        self, volume_unit: str, weight_unit: str, count_unit: str
+    ) -> bool:
+        """Set preferred units for the household."""
+        validate_required_params(
+            volume_unit=volume_unit, weight_unit=weight_unit, count_unit=count_unit
+        )
+        volume_unit = self._validate_unit(volume_unit)
+        weight_unit = self._validate_unit(weight_unit)
+        count_unit = self._validate_unit(count_unit)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            ph = self._get_placeholder()
+            cursor.execute(
+                f"""
+                UPDATE users
+                SET preferred_volume_unit = {ph}, preferred_weight_unit = {ph}, preferred_count_unit = {ph}
+                WHERE id = {ph}
+                """,
+                (volume_unit, weight_unit, count_unit, self.user_id),
+            )
+            return cursor.rowcount > 0

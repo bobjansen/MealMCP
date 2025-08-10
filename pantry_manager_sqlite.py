@@ -1209,6 +1209,7 @@ class SQLitePantryManager(PantryManager):
 
         return grocery_list
 
+
     def get_household_characteristics(self) -> Dict[str, Any]:
         """Get household characteristics including number of adults and children."""
         try:
@@ -1216,19 +1217,24 @@ class SQLitePantryManager(PantryManager):
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    SELECT adults, children, notes, updated_date
+                    SELECT adults, children, notes, updated_date, volume_unit, weight_unit, count_unit
                     FROM HouseholdCharacteristics
                     WHERE id = 1
-                    """
+                    """,
                 )
                 result = cursor.fetchone()
                 if result:
-                    adults, children, notes, updated_date = result
+                    adults, children, notes, updated_date, volume, weight, count = result
                     return {
                         "adults": adults,
                         "children": children,
                         "notes": notes or "",
                         "updated_date": updated_date,
+                        "preferred_units": {
+                            "volume": volume or "Milliliter",
+                            "weight": weight or "Gram",
+                            "count": count or "Piece",
+                        },
                     }
                 else:
                     # Return default values if no record exists
@@ -1237,6 +1243,11 @@ class SQLitePantryManager(PantryManager):
                         "children": 0,
                         "notes": "",
                         "updated_date": datetime.now().isoformat(),
+                        "preferred_units": {
+                            "volume": "Milliliter",
+                            "weight": "Gram",
+                            "count": "Piece",
+                        },
                     }
         except Exception as e:
             print(f"Error getting household characteristics: {e}")
@@ -1245,6 +1256,11 @@ class SQLitePantryManager(PantryManager):
                 "children": 0,
                 "notes": "",
                 "updated_date": datetime.now().isoformat(),
+                "preferred_units": {
+                    "volume": "Milliliter",
+                    "weight": "Gram",
+                    "count": "Piece",
+                },
             }
 
     def set_household_characteristics(
@@ -1263,13 +1279,78 @@ class SQLitePantryManager(PantryManager):
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    INSERT OR REPLACE INTO HouseholdCharacteristics
-                    (id, adults, children, notes, updated_date)
-                    VALUES (1, ?, ?, ?, datetime('now'))
+                    UPDATE HouseholdCharacteristics
+                    SET adults = ?, children = ?, notes = ?, updated_date = datetime('now')
+                    WHERE id = 1
                     """,
                     (adults, children, notes),
                 )
+                if cursor.rowcount == 0:
+                    cursor.execute(
+                        """
+                        INSERT INTO HouseholdCharacteristics
+                        (id, adults, children, notes, updated_date, volume_unit, weight_unit, count_unit)
+                        VALUES (1, ?, ?, ?, datetime('now'), 'Milliliter', 'Gram', 'Piece')
+                        """,
+                        (adults, children, notes),
+                    )
                 return True
         except Exception as e:
             print(f"Error setting household characteristics: {e}")
+            return False
+
+    def get_preferred_units(self) -> Dict[str, str]:
+        """Get preferred units for the household."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT volume_unit, weight_unit, count_unit
+                    FROM HouseholdCharacteristics
+                    WHERE id = 1
+                    """,
+                )
+                result = cursor.fetchone()
+                if result:
+                    volume, weight, count = result
+                    return {
+                        "volume": volume or "Milliliter",
+                        "weight": weight or "Gram",
+                        "count": count or "Piece",
+                    }
+        except Exception as e:
+            print(f"Error getting preferred units: {e}")
+        return {"volume": "Milliliter", "weight": "Gram", "count": "Piece"}
+
+    def set_preferred_units(
+        self, volume_unit: str, weight_unit: str, count_unit: str
+    ) -> bool:
+        """Set preferred units for the household."""
+        validate_required_params(
+            volume_unit=volume_unit, weight_unit=weight_unit, count_unit=count_unit
+        )
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE HouseholdCharacteristics
+                    SET volume_unit = ?, weight_unit = ?, count_unit = ?, updated_date = datetime('now')
+                    WHERE id = 1
+                    """,
+                    (volume_unit, weight_unit, count_unit),
+                )
+                if cursor.rowcount == 0:
+                    cursor.execute(
+                        """
+                        INSERT INTO HouseholdCharacteristics
+                        (id, adults, children, notes, updated_date, volume_unit, weight_unit, count_unit)
+                        VALUES (1, 2, 0, '', datetime('now'), ?, ?, ?)
+                        """,
+                        (volume_unit, weight_unit, count_unit),
+                    )
+                return True
+        except Exception as e:
+            print(f"Error setting preferred units: {e}")
             return False

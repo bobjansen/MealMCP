@@ -81,6 +81,9 @@ SINGLE_USER_SCHEMAS = {
             adults INTEGER DEFAULT 2,
             children INTEGER DEFAULT 0,
             notes TEXT,
+            volume_unit TEXT DEFAULT 'Milliliter',
+            weight_unit TEXT DEFAULT 'Gram',
+            count_unit TEXT DEFAULT 'Piece',
             updated_date TEXT NOT NULL
         )
     """,
@@ -98,7 +101,10 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             preferred_language VARCHAR(10) DEFAULT 'en',
             household_id INTEGER REFERENCES users(id),
             household_adults INTEGER DEFAULT 2,
-            household_children INTEGER DEFAULT 0
+            household_children INTEGER DEFAULT 0,
+            preferred_volume_unit VARCHAR(50) DEFAULT 'Milliliter',
+            preferred_weight_unit VARCHAR(50) DEFAULT 'Gram',
+            preferred_count_unit VARCHAR(50) DEFAULT 'Piece'
         )
     """,
     "household_invites": """
@@ -203,7 +209,10 @@ MULTI_USER_SQLITE_SCHEMAS = {
             preferred_language TEXT DEFAULT 'en',
             household_id INTEGER REFERENCES users(id),
             household_adults INTEGER DEFAULT 2,
-            household_children INTEGER DEFAULT 0
+            household_children INTEGER DEFAULT 0,
+            preferred_volume_unit TEXT DEFAULT 'Milliliter',
+            preferred_weight_unit TEXT DEFAULT 'Gram',
+            preferred_count_unit TEXT DEFAULT 'Piece'
         )
     """,
     "household_invites": """

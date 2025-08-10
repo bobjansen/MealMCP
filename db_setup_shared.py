@@ -79,6 +79,34 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
             except Exception:
                 pass
 
+            # Add preferred unit columns if they don't exist
+            try:
+                cursor.execute(
+                    "ALTER TABLE users ADD COLUMN preferred_volume_unit VARCHAR(50) DEFAULT 'Milliliter'"
+                )
+            except psycopg2.errors.DuplicateColumn:
+                pass
+            except Exception:
+                pass
+
+            try:
+                cursor.execute(
+                    "ALTER TABLE users ADD COLUMN preferred_weight_unit VARCHAR(50) DEFAULT 'Gram'"
+                )
+            except psycopg2.errors.DuplicateColumn:
+                pass
+            except Exception:
+                pass
+
+            try:
+                cursor.execute(
+                    "ALTER TABLE users ADD COLUMN preferred_count_unit VARCHAR(50) DEFAULT 'Piece'"
+                )
+            except psycopg2.errors.DuplicateColumn:
+                pass
+            except Exception:
+                pass
+
             # Create indexes for better performance
             for index_sql in MULTI_USER_POSTGRESQL_INDEXES:
                 cursor.execute(index_sql)
@@ -118,6 +146,27 @@ def _setup_sqlite_shared(db_path: str) -> bool:
         try:
             cursor.execute(
                 "ALTER TABLE users ADD COLUMN household_children INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN preferred_volume_unit TEXT DEFAULT 'Milliliter'"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN preferred_weight_unit TEXT DEFAULT 'Gram'"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        try:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN preferred_count_unit TEXT DEFAULT 'Piece'"
             )
         except sqlite3.OperationalError:
             pass  # Column already exists

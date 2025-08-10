@@ -434,3 +434,32 @@ class PantryManager(ABC):
             bool: True if successful, False otherwise
         """
         pass
+
+    # Preferred Units
+    @abstractmethod
+    def get_preferred_units(self) -> Dict[str, str]:
+        """
+        Get preferred measurement units for the household.
+
+        Returns:
+            Dict[str, str]: Mapping of measurement type ('volume', 'weight', 'count')
+            to preferred unit names.
+        """
+        pass
+
+    @abstractmethod
+    def set_preferred_units(
+        self, volume_unit: str, weight_unit: str, count_unit: str
+    ) -> bool:
+        """
+        Set preferred measurement units for the household.
+
+        Args:
+            volume_unit: Preferred volume unit name
+            weight_unit: Preferred weight unit name
+            count_unit: Preferred count unit name
+
+        Returns:
+            bool: True if the update was successful, False otherwise
+        """
+        pass
