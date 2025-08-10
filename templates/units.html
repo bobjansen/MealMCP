@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Units Management - Meal Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-ruler-combined"></i> {{ t('Units Management') }}</h1>
+            <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> {{ t('Back to Profile') }}
+            </a>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-lg-6">
+                <!-- Add/Edit Unit Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-plus-circle"></i> {{ t('Add Custom Unit') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('add_unit') }}">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">{{ t('Unit Name') }}</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       placeholder="{{ t('e.g., Pot of honey, Large can') }}" required>
+                                <small class="form-text text-muted">{{ t('Choose a descriptive name for your custom unit') }}</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="base_unit" class="form-label">{{ t('Base Unit') }}</label>
+                                <select class="form-select" id="base_unit" name="base_unit" required>
+                                    <option value="">{{ t('Select base unit type...') }}</option>
+                                    <option value="ml">{{ t('Volume (ml)') }}</option>
+                                    <option value="g">{{ t('Weight (g)') }}</option>
+                                    <option value="count">{{ t('Count') }}</option>
+                                </select>
+                                <small class="form-text text-muted">{{ t('The type of measurement this unit represents') }}</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="size" class="form-label">{{ t('Size') }}</label>
+                                <input type="number" class="form-control" id="size" name="size" 
+                                       step="0.001" min="0.001" placeholder="1.0" required>
+                                <small class="form-text text-muted">{{ t('How many base units this custom unit contains') }}</small>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> {{ t('Add Unit') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <!-- Unit Examples Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-lightbulb"></i> {{ t('Examples') }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>{{ t('Volume Examples') }}:</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li><code>Pot of honey</code> → Base: ml, Size: 350</li>
+                            <li><code>Wine bottle</code> → Base: ml, Size: 750</li>
+                            <li><code>Can of tomatoes</code> → Base: ml, Size: 400</li>
+                        </ul>
+                        
+                        <h6>{{ t('Weight Examples') }}:</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li><code>Bag of flour</code> → Base: g, Size: 1000</li>
+                            <li><code>Stick of butter</code> → Base: g, Size: 115</li>
+                            <li><code>Package of cheese</code> → Base: g, Size: 200</li>
+                        </ul>
+                        
+                        <h6>{{ t('Count Examples') }}:</h6>
+                        <ul class="list-unstyled">
+                            <li><code>Dozen</code> → Base: count, Size: 12</li>
+                            <li><code>Pack of 6</code> → Base: count, Size: 6</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Units List -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> {{ t('Your Units') }}
+                    <span class="badge bg-secondary ms-2">{{ units|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if units %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>{{ t('Unit Name') }}</th>
+                                    <th>{{ t('Base Unit') }}</th>
+                                    <th>{{ t('Size') }}</th>
+                                    <th>{{ t('Equivalent') }}</th>
+                                    <th>{{ t('Actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for unit in units %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ unit.name }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ unit.base_unit }}</span>
+                                    </td>
+                                    <td>
+                                        {{ "%.3f"|format(unit.size) }}
+                                    </td>
+                                    <td class="text-muted">
+                                        1 {{ unit.name }} = {{ "%.3f"|format(unit.size) }} 
+                                        {% if unit.base_unit == 'ml' %}{{ t('ml') }}
+                                        {% elif unit.base_unit == 'g' %}{{ t('g') }}
+                                        {% elif unit.base_unit == 'count' %}{{ t('pieces') }}
+                                        {% else %}{{ unit.base_unit }}{% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" data-bs-target="#editModal"
+                                                data-name="{{ unit.name }}" 
+                                                data-base-unit="{{ unit.base_unit }}" 
+                                                data-size="{{ unit.size }}">
+                                            <i class="fas fa-edit"></i> {{ t('Edit') }}
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                                data-name="{{ unit.name }}">
+                                            <i class="fas fa-trash"></i> {{ t('Delete') }}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-ruler-combined fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">{{ t('No custom units yet') }}</h5>
+                        <p class="text-muted">{{ t('Add your first custom unit using the form above!') }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Unit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ t('Edit Unit') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_unit') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">{{ t('Unit Name') }}</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_base_unit" class="form-label">{{ t('Base Unit') }}</label>
+                        <select class="form-select" id="edit_base_unit" name="base_unit" required>
+                            <option value="ml">{{ t('Volume (ml)') }}</option>
+                            <option value="g">{{ t('Weight (g)') }}</option>
+                            <option value="count">{{ t('Count') }}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_size" class="form-label">{{ t('Size') }}</label>
+                        <input type="number" class="form-control" id="edit_size" name="size" 
+                               step="0.001" min="0.001" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        {{ t('Cancel') }}
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {{ t('Update Unit') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Unit Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ t('Delete Unit') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>{{ t('Are you sure you want to delete the unit') }} "<span id="delete_unit_name"></span>"?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    {{ t('This action cannot be undone. The unit will only be deleted if it is not being used in any pantry transactions.') }}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    {{ t('Cancel') }}
+                </button>
+                <form method="POST" action="{{ url_for('delete_unit') }}" class="d-inline">
+                    <input type="hidden" id="delete_unit_input" name="name">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> {{ t('Delete Unit') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Handle edit modal
+const editModal = document.getElementById('editModal');
+editModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const name = button.getAttribute('data-name');
+    const baseUnit = button.getAttribute('data-base-unit');
+    const size = button.getAttribute('data-size');
+    
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_base_unit').value = baseUnit;
+    document.getElementById('edit_size').value = size;
+});
+
+// Handle delete modal
+const deleteModal = document.getElementById('deleteModal');
+deleteModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const name = button.getAttribute('data-name');
+    
+    document.getElementById('delete_unit_name').textContent = name;
+    document.getElementById('delete_unit_input').value = name;
+});
+</script>
+{% endblock %}

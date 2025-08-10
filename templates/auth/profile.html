@@ -74,6 +74,19 @@
             </div>
         </div>
 
+        <!-- Units Management Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-ruler-combined"></i> {{ t('Units Management') }}</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">{{ t('Manage your custom measurement units for recipes and pantry items') }}</p>
+                <a href="{{ url_for('units_management') }}" class="btn btn-primary">
+                    <i class="fas fa-cogs"></i> {{ t('Manage Units') }}
+                </a>
+            </div>
+        </div>
+
         <!-- Change Password Card -->
         <div class="card">
             <div class="card-header">

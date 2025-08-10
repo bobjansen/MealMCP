@@ -296,6 +296,28 @@ class SharedPantryManager(PantryManager):
             )
             return True
 
+    @safe_execute("delete unit", default_return=False)
+    def delete_unit(self, name: str) -> bool:
+        """Delete a custom measurement unit."""
+        validate_required_params(name=name)
+        placeholder = self._get_placeholder()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # Check if unit is used in transactions before deleting
+            cursor.execute(
+                f"SELECT COUNT(*) FROM pantry_transactions WHERE user_id = {placeholder} AND unit = {placeholder}",
+                (self.user_id, name),
+            )
+            if cursor.fetchone()[0] > 0:
+                return False  # Cannot delete unit that's being used
+
+            # Delete the unit
+            cursor.execute(
+                f"DELETE FROM units WHERE user_id = {placeholder} AND name = {placeholder}",
+                (self.user_id, name),
+            )
+            return cursor.rowcount > 0
+
     def add_ingredient(self, name: str, default_unit: str) -> bool:
         """Add a new ingredient to the database."""
         # Validate inputs

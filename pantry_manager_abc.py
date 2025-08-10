@@ -33,6 +33,11 @@ class PantryManager(ABC):
         """Add or update a measurement unit for the user."""
         pass
 
+    @abstractmethod
+    def delete_unit(self, name: str) -> bool:
+        """Delete a custom measurement unit."""
+        pass
+
     # Ingredient Management
     @abstractmethod
     def add_ingredient(self, name: str, default_unit: str) -> bool:

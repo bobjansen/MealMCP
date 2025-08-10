@@ -50,10 +50,7 @@ class SQLitePantryManager(PantryManager):
             if cursor.fetchone()[0] == 0:
                 cursor.executemany(
                     "INSERT INTO Units (name, base_unit, size) VALUES (?, ?, ?)",
-                    [
-                        (u["name"], u["base_unit"], u["size"])
-                        for u in DEFAULT_UNITS
-                    ],
+                    [(u["name"], u["base_unit"], u["size"]) for u in DEFAULT_UNITS],
                 )
 
     @safe_execute("list units", default_return=[])
@@ -80,6 +77,23 @@ class SQLitePantryManager(PantryManager):
                 (name, base_unit, size),
             )
             return True
+
+    @safe_execute("delete unit", default_return=False)
+    def delete_unit(self, name: str) -> bool:
+        """Delete a custom measurement unit."""
+        validate_required_params(name=name)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # Check if unit is used in transactions before deleting
+            cursor.execute(
+                "SELECT COUNT(*) FROM PantryTransactions WHERE unit = ?", (name,)
+            )
+            if cursor.fetchone()[0] > 0:
+                return False  # Cannot delete unit that's being used
+
+            # Delete the unit
+            cursor.execute("DELETE FROM Units WHERE name = ?", (name,))
+            return cursor.rowcount > 0
 
     @safe_execute("add ingredient", default_return=False)
     def add_ingredient(self, name: str, default_unit: str) -> bool:

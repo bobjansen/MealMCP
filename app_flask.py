@@ -297,6 +297,76 @@ def change_language():
     return redirect(url_for("profile"))
 
 
+# Units Management Routes
+@app.route("/units")
+@requires_auth
+def units_management():
+    """Units management page."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+
+    units = user_pantry.list_units()
+    return render_template("units.html", units=units)
+
+
+@app.route("/units/add", methods=["POST"])
+@requires_auth
+def add_unit():
+    """Add or update a custom unit."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+
+    name = request.form.get("name", "").strip()
+    base_unit = request.form.get("base_unit", "").strip()
+    size = request.form.get("size", "").strip()
+
+    if not all([name, base_unit, size]):
+        flash("Please fill in all fields.", "error")
+        return redirect(url_for("units_management"))
+
+    try:
+        size_float = float(size)
+        if size_float <= 0:
+            flash("Size must be a positive number.", "error")
+            return redirect(url_for("units_management"))
+    except ValueError:
+        flash("Size must be a valid number.", "error")
+        return redirect(url_for("units_management"))
+
+    if user_pantry.set_unit(name, base_unit, size_float):
+        flash(f"Unit '{name}' added/updated successfully!", "success")
+    else:
+        flash(f"Failed to add/update unit '{name}'.", "error")
+
+    return redirect(url_for("units_management"))
+
+
+@app.route("/units/delete", methods=["POST"])
+@requires_auth
+def delete_unit():
+    """Delete a custom unit."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Unit name is required.", "error")
+        return redirect(url_for("units_management"))
+
+    if user_pantry.delete_unit(name):
+        flash(f"Unit '{name}' deleted successfully!", "success")
+    else:
+        flash(f"Cannot delete unit '{name}' - it may be in use or not exist.", "error")
+
+    return redirect(url_for("units_management"))
+
+
 @app.route("/")
 def index():
     """Main dashboard or landing page."""
