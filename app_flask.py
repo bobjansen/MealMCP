@@ -1,7 +1,10 @@
 import json
 import os
 import secrets
+import logging
+import traceback
 from functools import wraps
+from pathlib import Path
 from i18n import t, set_lang
 import markdown
 from flask import (
@@ -19,12 +22,84 @@ from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
 from web_auth_simple import WebUserManager
 
+
+# Set up comprehensive Flask logging
+def setup_flask_logging():
+    """Set up detailed Flask application logging."""
+    # Get log directory and file from environment
+    log_dir = os.getenv("FLASK_LOG_DIR", "logs")
+    log_file = os.getenv("FLASK_LOG_FILE", "flask_app.log")
+
+    # Ensure log directory exists
+    Path(log_dir).mkdir(exist_ok=True)
+    log_path = Path(log_dir) / log_file
+
+    # Create file handler for Flask logs
+    file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+
+    # Create detailed formatter
+    formatter = logging.Formatter(
+        fmt="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    file_handler.setFormatter(formatter)
+
+    # Configure Flask app logger
+    flask_logger = logging.getLogger("werkzeug")
+    flask_logger.setLevel(logging.DEBUG)
+    flask_logger.addHandler(file_handler)
+
+    # Configure our app logger
+    app_logger = logging.getLogger("app_flask")
+    app_logger.setLevel(logging.DEBUG)
+    app_logger.addHandler(file_handler)
+
+    # Add console handler for development
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    console_handler.setFormatter(console_formatter)
+    app_logger.addHandler(console_handler)
+
+    return log_path
+
+
+# Set up logging
+FLASK_LOG_PATH = setup_flask_logging()
+logger = logging.getLogger("app_flask")
+
+
+def log_error_with_context(error: Exception, context: str, extra_info: dict = None):
+    """Log error with full context and traceback."""
+    try:
+        tb_str = traceback.format_exc()
+        error_msg = f"Flask Error in {context}: {str(error)}"
+
+        if extra_info:
+            extra_msg = "\nExtra context: " + json.dumps(
+                extra_info, indent=2, default=str
+            )
+            error_msg += extra_msg
+
+        error_msg += f"\n\nFull traceback:\n{tb_str}"
+        logger.error(error_msg)
+        logger.info(f"Error logged to: {FLASK_LOG_PATH}")
+
+    except Exception as log_error:
+        # Fallback logging
+        logger.error(f"Failed to log error properly: {log_error}")
+        logger.error(f"Original error in {context}: {error}")
+
+
 # Generate secret key if not provided
 secret_key = os.getenv("FLASK_SECRET_KEY")
 if not secret_key:
     secret_key = secrets.token_urlsafe(32)
     os.environ["FLASK_SECRET_KEY"] = secret_key
-    print(f"Generated Flask secret key: {secret_key}")
+    logger.info(f"Generated Flask secret key")
+else:
+    logger.info("Using existing Flask secret key")
 
 
 app = Flask(__name__, static_folder="assets")
@@ -76,6 +151,21 @@ def get_current_user_pantry():
 @app.before_request
 def set_language():
     """Set language before each request."""
+    # Log incoming request for debugging
+    if (
+        request.endpoint
+        and request.endpoint.startswith("pantry")
+        or request.path.startswith("/pantry")
+    ):
+        logger.info(
+            f"Incoming request: {request.method} {request.path} from {request.remote_addr}"
+        )
+        logger.info(f"Request headers: {dict(request.headers)}")
+        if request.method == "POST" and request.form:
+            # Log form data but be careful with sensitive information
+            form_data = dict(request.form)
+            logger.info(f"Form data keys: {list(form_data.keys())}")
+
     if backend == "sqlite":
         # For SQLite mode, use session language
         session_lang = session.get("language", "en")
@@ -546,44 +636,184 @@ def pantry_view():
 @requires_auth
 def add_pantry_item():
     """Add item to pantry."""
-    user_pantry = get_current_user_pantry()
-    if not user_pantry:
-        flash("Unable to access your data. Please try logging in again.", "error")
-        return redirect(url_for("logout"))
+    # Log incoming request details
+    request_info = {
+        "method": request.method,
+        "form_data": dict(request.form),
+        "user_id": session.get("user_id"),
+        "username": session.get("username"),
+        "backend": backend,
+        "endpoint": "/pantry/add",
+    }
+    logger.info(f"Pantry add request started: {json.dumps(request_info, indent=2)}")
 
-    item_name = request.form.get("item_name")
-    quantity = float(request.form.get("quantity", 0))
-    unit = request.form.get("unit")
-    notes = request.form.get("notes", "")
+    try:
+        user_pantry = get_current_user_pantry()
+        if not user_pantry:
+            logger.error("Failed to get user pantry in add_pantry_item")
+            flash("Unable to access your data. Please try logging in again.", "error")
+            return redirect(url_for("logout"))
 
-    if user_pantry.add_item(item_name, quantity, unit, notes):
-        flash(f"Added {quantity} {unit} of {item_name} to pantry!", "success")
-    else:
-        flash("Error adding item to pantry.", "error")
+        # Extract and validate form data
+        item_name = request.form.get("item_name")
+        quantity_str = request.form.get("quantity", "0")
+        unit = request.form.get("unit")
+        notes = request.form.get("notes", "")
 
-    return redirect(url_for("pantry_view"))
+        logger.info(
+            f"Extracted form data - item_name: '{item_name}', quantity: '{quantity_str}', unit: '{unit}', notes: '{notes}'"
+        )
+
+        # Validate required fields
+        if not item_name or not item_name.strip():
+            logger.warning("Empty item name provided")
+            flash("Item name is required.", "error")
+            return redirect(url_for("pantry_view"))
+
+        if not unit or not unit.strip():
+            logger.warning("Empty unit provided")
+            flash("Unit is required.", "error")
+            return redirect(url_for("pantry_view"))
+
+        # Parse and validate quantity
+        try:
+            quantity = float(quantity_str)
+            if quantity <= 0:
+                logger.warning(f"Invalid quantity provided: {quantity}")
+                flash("Quantity must be greater than 0.", "error")
+                return redirect(url_for("pantry_view"))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to parse quantity '{quantity_str}': {e}")
+            flash("Please enter a valid number for quantity.", "error")
+            return redirect(url_for("pantry_view"))
+
+        logger.info(
+            f"Attempting to add item: name='{item_name}', quantity={quantity}, unit='{unit}', notes='{notes}'"
+        )
+
+        # Attempt to add the item
+        success = user_pantry.add_item(item_name, quantity, unit, notes)
+
+        if success:
+            logger.info(
+                f"Successfully added {quantity} {unit} of {item_name} to pantry"
+            )
+            flash(f"Added {quantity} {unit} of {item_name} to pantry!", "success")
+        else:
+            logger.error(
+                f"Failed to add item to pantry - add_item returned False for: name='{item_name}', quantity={quantity}, unit='{unit}'"
+            )
+            flash("Error adding item to pantry.", "error")
+
+        return redirect(url_for("pantry_view"))
+
+    except Exception as e:
+        log_error_with_context(
+            e,
+            "add_pantry_item",
+            {
+                "form_data": dict(request.form),
+                "user_session": {
+                    "user_id": session.get("user_id"),
+                    "username": session.get("username"),
+                },
+                "backend": backend,
+            },
+        )
+        flash("An unexpected error occurred while adding the item.", "error")
+        return redirect(url_for("pantry_view"))
 
 
 @app.route("/pantry/remove", methods=["POST"])
 @requires_auth
 def remove_pantry_item():
     """Remove item from pantry."""
-    user_pantry = get_current_user_pantry()
-    if not user_pantry:
-        flash("Unable to access your data. Please try logging in again.", "error")
-        return redirect(url_for("logout"))
+    # Log incoming request details
+    request_info = {
+        "method": request.method,
+        "form_data": dict(request.form),
+        "user_id": session.get("user_id"),
+        "username": session.get("username"),
+        "backend": backend,
+        "endpoint": "/pantry/remove",
+    }
+    logger.info(f"Pantry remove request started: {json.dumps(request_info, indent=2)}")
 
-    item_name = request.form.get("item_name")
-    quantity = float(request.form.get("quantity", 0))
-    unit = request.form.get("unit")
-    notes = request.form.get("notes", "")
+    try:
+        user_pantry = get_current_user_pantry()
+        if not user_pantry:
+            logger.error("Failed to get user pantry in remove_pantry_item")
+            flash("Unable to access your data. Please try logging in again.", "error")
+            return redirect(url_for("logout"))
 
-    if user_pantry.remove_item(item_name, quantity, unit, notes):
-        flash(f"Removed {quantity} {unit} of {item_name} from pantry!", "success")
-    else:
-        flash("Error removing item from pantry.", "error")
+        # Extract and validate form data
+        item_name = request.form.get("item_name")
+        quantity_str = request.form.get("quantity", "0")
+        unit = request.form.get("unit")
+        notes = request.form.get("notes", "")
 
-    return redirect(url_for("pantry_view"))
+        logger.info(
+            f"Extracted form data - item_name: '{item_name}', quantity: '{quantity_str}', unit: '{unit}', notes: '{notes}'"
+        )
+
+        # Validate required fields
+        if not item_name or not item_name.strip():
+            logger.warning("Empty item name provided")
+            flash("Item name is required.", "error")
+            return redirect(url_for("pantry_view"))
+
+        if not unit or not unit.strip():
+            logger.warning("Empty unit provided")
+            flash("Unit is required.", "error")
+            return redirect(url_for("pantry_view"))
+
+        # Parse and validate quantity
+        try:
+            quantity = float(quantity_str)
+            if quantity <= 0:
+                logger.warning(f"Invalid quantity provided: {quantity}")
+                flash("Quantity must be greater than 0.", "error")
+                return redirect(url_for("pantry_view"))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to parse quantity '{quantity_str}': {e}")
+            flash("Please enter a valid number for quantity.", "error")
+            return redirect(url_for("pantry_view"))
+
+        logger.info(
+            f"Attempting to remove item: name='{item_name}', quantity={quantity}, unit='{unit}', notes='{notes}'"
+        )
+
+        # Attempt to remove the item
+        success = user_pantry.remove_item(item_name, quantity, unit, notes)
+
+        if success:
+            logger.info(
+                f"Successfully removed {quantity} {unit} of {item_name} from pantry"
+            )
+            flash(f"Removed {quantity} {unit} of {item_name} from pantry!", "success")
+        else:
+            logger.error(
+                f"Failed to remove item from pantry - remove_item returned False for: name='{item_name}', quantity={quantity}, unit='{unit}'"
+            )
+            flash("Error removing item from pantry.", "error")
+
+        return redirect(url_for("pantry_view"))
+
+    except Exception as e:
+        log_error_with_context(
+            e,
+            "remove_pantry_item",
+            {
+                "form_data": dict(request.form),
+                "user_session": {
+                    "user_id": session.get("user_id"),
+                    "username": session.get("username"),
+                },
+                "backend": backend,
+            },
+        )
+        flash("An unexpected error occurred while removing the item.", "error")
+        return redirect(url_for("pantry_view"))
 
 
 @app.route("/recipes")
