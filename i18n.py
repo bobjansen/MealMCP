@@ -303,6 +303,11 @@ TRANSLATIONS = {
         "Error updating household size.": "Error updating household size.",
         "Current household:": "Current household:",
         "Comprehensive user profiles for personalized meal planning": "Comprehensive user profiles for personalized meal planning",
+        "Grocery Overview": "Grocery Overview",
+        "ingredients missing": "ingredients missing",
+        "Need to buy:": "Need to buy:",
+        "All ingredients available!": "All ingredients available!",
+        "In pantry:": "In pantry:",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -600,6 +605,11 @@ TRANSLATIONS = {
         "Error updating household size.": "Fout bij bijwerken huishoudgrootte.",
         "Current household:": "Huidig huishouden:",
         "Comprehensive user profiles for personalized meal planning": "Uitgebreide gebruikersprofielen voor gepersonaliseerde maaltijdplanning",
+        "Grocery Overview": "Boodschappen Overzicht",
+        "ingredients missing": "ingrediënten ontbreken",
+        "Need to buy:": "Moet kopen:",
+        "All ingredients available!": "Alle ingrediënten beschikbaar!",
+        "In pantry:": "In voorraad:",
     },
 }
 

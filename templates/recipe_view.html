@@ -21,7 +21,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h2 class="mb-0">{{ recipe.name }}</h2>
                     <div class="btn-group">
-                        <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}" 
+                        <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}"
                            class="btn btn-outline-primary">
                             <i class="fas fa-edit"></i> {{ t('Edit Recipe') }}
                         </a>
@@ -74,6 +74,45 @@
     </div>
 
     <div class="col-lg-4">
+        <!-- Grocery Overview Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-shopping-cart"></i> {{ t('Grocery Overview') }}</h6>
+            </div>
+            <div class="card-body">
+                {% if missing_ingredients %}
+                    <div class="alert alert-warning py-2 mb-3">
+                        <small><i class="fas fa-exclamation-triangle"></i> {{ missing_ingredients|length }} {{ t('ingredients missing') }}</small>
+                    </div>
+                    <h6 class="text-danger mb-2">{{ t('Need to buy:') }}</h6>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for ingredient in missing_ingredients %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-0">
+                            <span class="small">{{ ingredient.name }}</span>
+                            <span class="badge bg-danger rounded-pill">{{ ingredient.missing }} {{ ingredient.unit }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-success py-2 mb-3">
+                        <small><i class="fas fa-check-circle"></i> {{ t('All ingredients available!') }}</small>
+                    </div>
+                {% endif %}
+
+                {% if available_ingredients %}
+                    <h6 class="text-success mb-2">{{ t('In pantry:') }}</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for ingredient in available_ingredients %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-0">
+                            <span class="small">{{ ingredient.name }}</span>
+                            <span class="badge bg-success rounded-pill">{{ ingredient.available }} {{ ingredient.unit }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Rating Card -->
         <div class="card mb-3">
             <div class="card-header">
@@ -106,7 +145,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}" 
+                    <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}"
                        class="btn btn-outline-primary">
                         <i class="fas fa-edit"></i> {{ t('Edit Recipe') }}
                     </a>

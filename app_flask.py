@@ -452,7 +452,43 @@ def view_recipe(recipe_name):
     if not recipe:
         flash("Recipe not found.", "error")
         return redirect(url_for("recipes"))
-    return render_template("recipe_view.html", recipe=recipe)
+
+    # Calculate missing ingredients
+    missing_ingredients = []
+    available_ingredients = []
+
+    for ingredient in recipe["ingredients"]:
+        needed_quantity = ingredient["quantity"]
+        available_quantity = user_pantry.get_item_quantity(
+            ingredient["name"], ingredient["unit"]
+        )
+
+        if available_quantity < needed_quantity:
+            missing_ingredients.append(
+                {
+                    "name": ingredient["name"],
+                    "needed": needed_quantity,
+                    "available": available_quantity,
+                    "missing": needed_quantity - available_quantity,
+                    "unit": ingredient["unit"],
+                }
+            )
+        else:
+            available_ingredients.append(
+                {
+                    "name": ingredient["name"],
+                    "needed": needed_quantity,
+                    "available": available_quantity,
+                    "unit": ingredient["unit"],
+                }
+            )
+
+    return render_template(
+        "recipe_view.html",
+        recipe=recipe,
+        missing_ingredients=missing_ingredients,
+        available_ingredients=available_ingredients,
+    )
 
 
 @app.route("/recipes/add")
