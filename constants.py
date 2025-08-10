@@ -4,43 +4,27 @@ Centralized location for all constant values used throughout the application.
 """
 
 # Measurement Units
-VOLUME_UNITS_IMPERIAL = [
-    "Teaspoon",
-    "Tablespoon",
-    "Fluid ounce",
-    "Cup",
-    "Pint",
-    "Quart",
-    "Gallon",
-]
-
-VOLUME_UNITS_METRIC = [
-    "Milliliter",
-    "Liter",
-]
-
-WEIGHT_UNITS_IMPERIAL = [
-    "Ounce",
-    "Pound",
-]
-
-WEIGHT_UNITS_METRIC = [
-    "Gram",
-    "Kilogram",
-]
-
-COUNT_UNITS = [
-    "Piece",
+# Each unit includes a base measurement type and its size expressed
+# in that base unit. These provide sensible defaults for new users.
+DEFAULT_UNITS = [
+    {"name": "Teaspoon", "base_unit": "ml", "size": 5.0},
+    {"name": "Tablespoon", "base_unit": "ml", "size": 15.0},
+    {"name": "Fluid ounce", "base_unit": "ml", "size": 30.0},
+    {"name": "Cup", "base_unit": "ml", "size": 240.0},
+    {"name": "Pint", "base_unit": "ml", "size": 473.0},
+    {"name": "Quart", "base_unit": "ml", "size": 946.0},
+    {"name": "Gallon", "base_unit": "ml", "size": 3785.0},
+    {"name": "Milliliter", "base_unit": "ml", "size": 1.0},
+    {"name": "Liter", "base_unit": "ml", "size": 1000.0},
+    {"name": "Ounce", "base_unit": "g", "size": 28.35},
+    {"name": "Pound", "base_unit": "g", "size": 453.59},
+    {"name": "Gram", "base_unit": "g", "size": 1.0},
+    {"name": "Kilogram", "base_unit": "g", "size": 1000.0},
+    {"name": "Piece", "base_unit": "count", "size": 1.0},
 ]
 
 # Combined units list for backwards compatibility
-UNITS = (
-    VOLUME_UNITS_IMPERIAL
-    + VOLUME_UNITS_METRIC
-    + WEIGHT_UNITS_IMPERIAL
-    + WEIGHT_UNITS_METRIC
-    + COUNT_UNITS
-)
+UNITS = [u["name"] for u in DEFAULT_UNITS]
 
 # Preference Categories
 PREFERENCE_CATEGORIES = {"dietary", "allergy", "like", "dislike", "cuisine", "other"}

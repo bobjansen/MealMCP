@@ -7,7 +7,6 @@ import logging
 from datetime import datetime, timedelta
 from i18n import t
 from typing import Dict, Any, Optional, Callable
-from constants import UNITS
 from mcp_tools import MCP_TOOLS
 from error_utils import safe_execute, validate_required_params
 
@@ -69,7 +68,13 @@ class MCPToolRouter:
     # Tool implementations
     def _list_units(self, arguments: Dict[str, Any], pantry_manager) -> Dict[str, Any]:
         """List all units of measurement."""
-        return {"status": "success", "units": UNITS}
+        if pantry_manager is not None:
+            units = pantry_manager.list_units()
+        else:
+            from constants import DEFAULT_UNITS
+
+            units = DEFAULT_UNITS
+        return {"status": "success", "units": units}
 
     def _get_user_profile(
         self, arguments: Dict[str, Any], pantry_manager

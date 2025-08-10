@@ -4,6 +4,7 @@ Aligned with the actual tools implemented in mcp_server.py
 """
 
 from typing import List, Dict, Any
+from constants import DEFAULT_UNITS
 
 # Current MCP tools (23 total) matching mcp_server.py implementation
 MCP_TOOLS: List[Dict[str, Any]] = [
@@ -435,6 +436,11 @@ MCP_TOOLS: List[Dict[str, Any]] = [
         },
     },
 ]
+
+
+def list_units() -> List[Dict[str, Any]]:
+    """List default measurement units."""
+    return DEFAULT_UNITS
 
 
 def get_tool_by_name(tool_name: str) -> Dict[str, Any]:

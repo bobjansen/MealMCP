@@ -21,6 +21,7 @@ from constants import (
     MAX_NOTES_LENGTH,
     MAX_QUANTITY_VALUE,
     MAX_TIME_MINUTES,
+    DEFAULT_UNITS,
 )
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
 
@@ -58,6 +59,12 @@ class SharedPantryManager(PantryManager):
                     "password": parsed.password,
                 }
             )
+
+        try:
+            self._initialize_units()
+        except Exception:
+            # Defer database errors until operations are attempted
+            pass
 
     # Input Validation Methods
     def _validate_string(
@@ -228,6 +235,66 @@ class SharedPantryManager(PantryManager):
     def _get_placeholder(self) -> str:
         """Get the parameter placeholder for the current database."""
         return "%s" if self.backend == "postgresql" else "?"
+
+    def _initialize_units(self) -> None:
+        """Ensure units table exists and user has default units."""
+        placeholder = self._get_placeholder()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS units (
+                    id {'SERIAL PRIMARY KEY' if self.backend == 'postgresql' else 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    name {'VARCHAR(255)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
+                    base_unit {'VARCHAR(20)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
+                    size REAL NOT NULL,
+                    UNIQUE(user_id, name)
+                )
+                """
+            )
+            cursor.execute(
+                f"SELECT COUNT(*) FROM units WHERE user_id = {placeholder}",
+                (self.user_id,),
+            )
+            if cursor.fetchone()[0] == 0:
+                cursor.executemany(
+                    f"INSERT INTO units (user_id, name, base_unit, size) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})",
+                    [
+                        (self.user_id, u["name"], u["base_unit"], u["size"])
+                        for u in DEFAULT_UNITS
+                    ],
+                )
+
+    @safe_execute("list units", default_return=[])
+    def list_units(self) -> List[Dict[str, Any]]:
+        placeholder = self._get_placeholder()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"SELECT name, base_unit, size FROM units WHERE user_id = {placeholder}",
+                (self.user_id,),
+            )
+            return [
+                {"name": name, "base_unit": base_unit, "size": size}
+                for name, base_unit, size in cursor.fetchall()
+            ]
+
+    @safe_execute("set unit", default_return=False)
+    def set_unit(self, name: str, base_unit: str, size: float) -> bool:
+        validate_required_params(name=name, base_unit=base_unit, size=size)
+        placeholder = self._get_placeholder()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"""
+                INSERT INTO units (user_id, name, base_unit, size)
+                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})
+                ON CONFLICT(user_id, name) DO UPDATE SET base_unit=excluded.base_unit, size=excluded.size
+                """,
+                (self.user_id, name, base_unit, size),
+            )
+            return True
 
     def add_ingredient(self, name: str, default_unit: str) -> bool:
         """Add a new ingredient to the database."""

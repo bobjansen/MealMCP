@@ -115,6 +115,19 @@ class TestPantryManager(unittest.TestCase):
         except:
             pass
 
+    def test_unit_customization(self):
+        """Units should be customizable per user."""
+        # Ensure default units exist
+        units = self.pantry.list_units()
+        self.assertTrue(any(u["name"] == "Cup" for u in units))
+
+        # Add a custom unit
+        self.pantry.set_unit("Pot of honey", "ml", 350)
+        units = self.pantry.list_units()
+        pot = next((u for u in units if u["name"] == "Pot of honey"), None)
+        self.assertIsNotNone(pot)
+        self.assertEqual(pot["size"], 350)
+
     def test_add_ingredient(self):
         """Test adding a new ingredient"""
         success = self.pantry.add_ingredient("flour", "g")
