@@ -54,6 +54,15 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
             # Add household columns to existing users table if they don't exist
             try:
                 cursor.execute(
+                    "ALTER TABLE users ADD COLUMN household_id INTEGER REFERENCES users(id)"
+                )
+            except psycopg2.errors.DuplicateColumn:
+                pass
+            except Exception:
+                pass
+
+            try:
+                cursor.execute(
                     "ALTER TABLE users ADD COLUMN household_adults INTEGER DEFAULT 2"
                 )
             except psycopg2.errors.DuplicateColumn:
@@ -92,6 +101,13 @@ def _setup_sqlite_shared(db_path: str) -> bool:
             cursor.execute(schema)
 
         # Add household columns to existing users table if they don't exist
+        try:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN household_id INTEGER REFERENCES users(id)"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         try:
             cursor.execute(
                 "ALTER TABLE users ADD COLUMN household_adults INTEGER DEFAULT 2"

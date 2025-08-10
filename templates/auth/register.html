@@ -77,6 +77,15 @@
                                 <small class="form-text text-muted">{{ t('Choose your preferred language for the interface') }}</small>
                             </div>
 
+                            <div class="mb-3">
+                                <label for="household_username" class="form-label">
+                                    <i class="fas fa-home"></i> {{ t('Household Username (optional)') }}
+                                </label>
+                                <input type="text" class="form-control" id="household_username" name="household_username"
+                                       placeholder="{{ t('Enter existing household username') }}">
+                                <small class="form-text text-muted">{{ t('Leave blank to create a new household') }}</small>
+                            </div>
+
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-success">
                                     <i class="fas fa-user-plus"></i> {{ t('Create Account') }}

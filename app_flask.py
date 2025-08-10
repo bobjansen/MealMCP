@@ -62,10 +62,13 @@ def get_current_user_pantry():
     # Set language based on user preference
     set_lang(user_info.get("preferred_language", "en"))
 
-    # Use SharedPantryManager with user_id scoping for PostgreSQL
+    # Determine household owner id - defaults to user's own id
+    household_id = user_info.get("household_id") or user_info["id"]
+
+    # Use SharedPantryManager scoped to household id for PostgreSQL
     return SharedPantryManager(
         connection_string=connection_string,
-        user_id=user_info["id"],
+        user_id=household_id,
         backend="postgresql",
     )
 
@@ -192,6 +195,7 @@ def register():
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
         language = request.form.get("language", "en")
+        household_username = request.form.get("household_username") or None
 
         if not all([username, email, password, confirm_password]):
             flash("Please fill in all fields.", "error")
@@ -204,7 +208,9 @@ def register():
         if language not in ["en", "nl"]:
             language = "en"  # Default to English if invalid language
 
-        success, message = auth_manager.create_user(username, email, password, language)
+        success, message = auth_manager.create_user(
+            username, email, password, language, household_username
+        )
 
         if success:
             flash("Account created successfully! Please log in.", "success")

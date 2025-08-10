@@ -31,9 +31,23 @@ class WebUserManager:
             print(f"Error initializing shared database: {e}")
 
     def create_user(
-        self, username: str, email: str, password: str, language: str = "en"
+        self,
+        username: str,
+        email: str,
+        password: str,
+        language: str = "en",
+        household_username: Optional[str] = None,
     ) -> Tuple[bool, str]:
-        """Create a new user account."""
+        """Create a new user account.
+
+        Args:
+            username: desired username for this account
+            email: user email
+            password: plaintext password
+            language: preferred language code
+            household_username: optional username of an existing account whose pantry
+                data should be shared with this user
+        """
         if self.backend == "sqlite":
             return False, "User registration not available in SQLite mode"
 
@@ -53,14 +67,27 @@ class WebUserManager:
         try:
             password_hash = generate_password_hash(password)
 
+            household_id = None
+            if household_username:
+                with psycopg2.connect(self.connection_string) as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT id FROM users WHERE username = %s", (household_username,)
+                        )
+                        result = cursor.fetchone()
+                        if result:
+                            household_id = result[0]
+                        else:
+                            return False, "Household account not found"
+
             with psycopg2.connect(self.connection_string) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO users (username, email, password_hash, preferred_language)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO users (username, email, password_hash, preferred_language, household_id)
+                        VALUES (%s, %s, %s, %s, %s)
                     """,
-                        (username, email, password_hash, language),
+                        (username, email, password_hash, language, household_id),
                     )
 
             return True, "User created successfully"
@@ -148,7 +175,7 @@ class WebUserManager:
                     cursor.execute(
                         """
                         SELECT id, username, email, created_at, is_active, preferred_language,
-                               household_adults, household_children
+                               household_adults, household_children, household_id
                         FROM users WHERE id = %s AND is_active = TRUE
                     """,
                         (user_id,),
@@ -165,6 +192,7 @@ class WebUserManager:
                             "preferred_language": user[5] or "en",
                             "household_adults": user[6] or 2,
                             "household_children": user[7] or 0,
+                            "household_id": user[8],
                         }
         except Exception as e:
             print(f"Error getting user: {e}")
