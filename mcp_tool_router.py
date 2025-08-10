@@ -9,6 +9,7 @@ from i18n import t
 from typing import Dict, Any, Optional, Callable
 from constants import UNITS
 from mcp_tools import MCP_TOOLS
+from error_utils import safe_execute, validate_required_params
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +139,16 @@ class MCPToolRouter:
 
     def _add_recipe(self, arguments: Dict[str, Any], pantry_manager) -> Dict[str, Any]:
         """Add a new recipe."""
+        try:
+            validate_required_params(
+                name=arguments.get("name"),
+                instructions=arguments.get("instructions"),
+                time_minutes=arguments.get("time_minutes"),
+                ingredients=arguments.get("ingredients"),
+            )
+        except ValueError as e:
+            return {"status": "error", "message": f"Invalid parameters: {str(e)}"}
+
         success, recipe_id = pantry_manager.add_recipe(
             name=arguments["name"],
             instructions=arguments["instructions"],

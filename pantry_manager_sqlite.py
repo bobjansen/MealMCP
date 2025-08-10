@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
 from short_id_utils import ShortIDGenerator
+from error_utils import safe_execute, validate_required_params
 
 
 class SQLitePantryManager(PantryManager):
@@ -25,6 +26,7 @@ class SQLitePantryManager(PantryManager):
         conn.isolation_level = None  # Enable autocommit mode
         return conn
 
+    @safe_execute("add ingredient", default_return=False)
     def add_ingredient(self, name: str, default_unit: str) -> bool:
         """
         Add a new ingredient to the database.
@@ -36,21 +38,20 @@ class SQLitePantryManager(PantryManager):
         Returns:
             bool: True if successful, False otherwise
         """
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    INSERT INTO Ingredients (name, default_unit)
-                    VALUES (?, ?)
-                    """,
-                    (name, default_unit),
-                )
-                return True
-        except Exception as e:
-            print(f"Error adding ingredient: {e}")
-            return False
+        validate_required_params(name=name, default_unit=default_unit)
 
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO Ingredients (name, default_unit)
+                VALUES (?, ?)
+                """,
+                (name, default_unit),
+            )
+            return True
+
+    @safe_execute("add preference", default_return=False)
     def add_preference(
         self, category: str, item: str, level: str, notes: str = None
     ) -> bool:
@@ -65,31 +66,21 @@ class SQLitePantryManager(PantryManager):
 
         Returns:
             bool: True if successful, False otherwise
-
-        Raises:
-            ValueError: If category, item, or level is empty
         """
-        if not category or not item or not level:
-            raise ValueError("Category, item, and level are required")
+        validate_required_params(category=category, item=item, level=level)
 
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    INSERT INTO Preferences (category, item, level, notes, created_date)
-                    VALUES (?, ?, ?, ?, datetime('now'))
-                    """,
-                    (category, item, level, notes),
-                )
-                return True
-        except sqlite3.IntegrityError as e:
-            print(f"Error adding preference: {e}")
-            return False
-        except Exception as e:
-            print(f"Error adding preference: {e}")
-            return False
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO Preferences (category, item, level, notes, created_date)
+                VALUES (?, ?, ?, ?, datetime('now'))
+                """,
+                (category, item, level, notes),
+            )
+            return True
 
+    @safe_execute("update preference", default_return=False)
     def update_preference(
         self, preference_id: int, level: str, notes: str = None
     ) -> bool:
@@ -103,73 +94,64 @@ class SQLitePantryManager(PantryManager):
 
         Returns:
             bool: True if successful, False otherwise
-
-        Raises:
-            ValueError: If level is empty
         """
-        if not level:
-            raise ValueError("Level is required")
+        validate_required_params(level=level)
+        if preference_id is None or preference_id <= 0:
+            raise ValueError("Valid preference_id is required")
 
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    UPDATE Preferences
-                    SET level = ?, notes = ?
-                    WHERE id = ?
-                    """,
-                    (level, notes, preference_id),
-                )
-                return cursor.rowcount > 0
-        except Exception as e:
-            print(f"Error updating preference: {e}")
-            return False
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE Preferences
+                SET level = ?, notes = ?
+                WHERE id = ?
+                """,
+                (level, notes, preference_id),
+            )
+            return cursor.rowcount > 0
 
+    @safe_execute("delete preference", default_return=False)
     def delete_preference(self, preference_id: int) -> bool:
         """Delete a food preference by ID."""
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM Preferences WHERE id = ?", (preference_id,))
-                return cursor.rowcount > 0
-        except Exception as e:
-            print(f"Error deleting preference: {e}")
-            return False
+        if preference_id is None or preference_id <= 0:
+            raise ValueError("Valid preference_id is required")
 
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Preferences WHERE id = ?", (preference_id,))
+            return cursor.rowcount > 0
+
+    @safe_execute("get preferences", default_return=[])
     def get_preferences(self) -> List[Dict[str, Any]]:
         """Get all food preferences."""
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    SELECT id, category, item, level, notes, created_date
-                    FROM Preferences
-                    ORDER BY id
-                    """
-                )
-                columns = [col[0] for col in cursor.description]
-                return [dict(zip(columns, row)) for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"Error getting preferences: {e}")
-            return []
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, category, item, level, notes, created_date
+                FROM Preferences
+                ORDER BY id
+                """
+            )
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+    @safe_execute("get ingredient ID", default_return=None)
     def get_ingredient_id(self, name: str) -> Optional[int]:
         """Get the ID of an ingredient by name."""
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT id FROM Ingredients WHERE name = ?",
-                    (name,),
-                )
-                result = cursor.fetchone()
-                return result[0] if result else None
-        except Exception as e:
-            print(f"Error getting ingredient ID: {e}")
-            return None
+        validate_required_params(name=name)
 
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM Ingredients WHERE name = ?",
+                (name,),
+            )
+            result = cursor.fetchone()
+            return result[0] if result else None
+
+    @safe_execute("add pantry item", default_return=False)
     def add_item(
         self, item_name: str, quantity: float, unit: str, notes: Optional[str] = None
     ) -> bool:
@@ -185,35 +167,35 @@ class SQLitePantryManager(PantryManager):
         Returns:
             bool: True if successful, False otherwise
         """
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
+        validate_required_params(item_name=item_name, unit=unit)
+        if quantity <= 0:
+            raise ValueError("Quantity must be positive")
 
-                # Get or create the ingredient
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Get or create the ingredient
+            ingredient_id = self.get_ingredient_id(item_name)
+            if ingredient_id is None:
+                self.add_ingredient(item_name, unit)
                 ingredient_id = self.get_ingredient_id(item_name)
-                if ingredient_id is None:
-                    self.add_ingredient(item_name, unit)
-                    ingredient_id = self.get_ingredient_id(item_name)
 
-                cursor.execute(
-                    """
-                    INSERT INTO PantryTransactions
-                    (transaction_type, ingredient_id, quantity, unit, transaction_date, notes)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        "addition",
-                        ingredient_id,
-                        quantity,
-                        unit,
-                        datetime.now().isoformat(),
-                        notes,
-                    ),
-                )
-                return True
-        except Exception as e:
-            print(f"Error adding item: {e}")
-            return False
+            cursor.execute(
+                """
+                INSERT INTO PantryTransactions
+                (transaction_type, ingredient_id, quantity, unit, transaction_date, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "addition",
+                    ingredient_id,
+                    quantity,
+                    unit,
+                    datetime.now().isoformat(),
+                    notes,
+                ),
+            )
+            return True
 
     def remove_item(
         self, item_name: str, quantity: float, unit: str, notes: Optional[str] = None

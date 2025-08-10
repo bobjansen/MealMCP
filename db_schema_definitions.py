@@ -12,7 +12,6 @@ SINGLE_USER_SCHEMAS = {
             default_unit TEXT NOT NULL
         )
     """,
-    
     "pantry_transactions": """
         CREATE TABLE IF NOT EXISTS PantryTransactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +24,6 @@ SINGLE_USER_SCHEMAS = {
             FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
         )
     """,
-    
     "recipes": """
         CREATE TABLE IF NOT EXISTS Recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +36,6 @@ SINGLE_USER_SCHEMAS = {
             last_modified TEXT NOT NULL
         )
     """,
-    
     "preferences": """
         CREATE TABLE IF NOT EXISTS Preferences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +47,6 @@ SINGLE_USER_SCHEMAS = {
             UNIQUE(category, item)
         )
     """,
-    
     "recipe_ingredients": """
         CREATE TABLE IF NOT EXISTS RecipeIngredients (
             recipe_id INTEGER NOT NULL,
@@ -62,7 +58,6 @@ SINGLE_USER_SCHEMAS = {
             FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
         )
     """,
-    
     "meal_plan": """
         CREATE TABLE IF NOT EXISTS MealPlan (
             meal_date TEXT PRIMARY KEY,
@@ -70,7 +65,6 @@ SINGLE_USER_SCHEMAS = {
             FOREIGN KEY (recipe_id) REFERENCES Recipes(id)
         )
     """,
-    
     "household_characteristics": """
         CREATE TABLE IF NOT EXISTS HouseholdCharacteristics (
             id INTEGER PRIMARY KEY,
@@ -79,7 +73,7 @@ SINGLE_USER_SCHEMAS = {
             notes TEXT,
             updated_date TEXT NOT NULL
         )
-    """
+    """,
 }
 
 MULTI_USER_POSTGRESQL_SCHEMAS = {
@@ -96,7 +90,6 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             household_children INTEGER DEFAULT 0
         )
     """,
-    
     "ingredients": """
         CREATE TABLE IF NOT EXISTS ingredients (
             id SERIAL PRIMARY KEY,
@@ -107,7 +100,6 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             UNIQUE(user_id, name)
         )
     """,
-    
     "preferences": """
         CREATE TABLE IF NOT EXISTS preferences (
             id SERIAL PRIMARY KEY,
@@ -120,7 +112,6 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             UNIQUE(user_id, category, item)
         )
     """,
-    
     "pantry_transactions": """
         CREATE TABLE IF NOT EXISTS pantry_transactions (
             id SERIAL PRIMARY KEY,
@@ -133,7 +124,6 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             notes TEXT
         )
     """,
-    
     "recipes": """
         CREATE TABLE IF NOT EXISTS recipes (
             id SERIAL PRIMARY KEY,
@@ -148,7 +138,6 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             UNIQUE(user_id, short_id)
         )
     """,
-    
     "recipe_ingredients": """
         CREATE TABLE IF NOT EXISTS recipe_ingredients (
             id SERIAL PRIMARY KEY,
@@ -158,7 +147,6 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             unit VARCHAR(50) NOT NULL
         )
     """,
-    
     "meal_plan": """
         CREATE TABLE IF NOT EXISTS meal_plan (
             id SERIAL PRIMARY KEY,
@@ -167,7 +155,7 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
             UNIQUE(user_id, meal_date)
         )
-    """
+    """,
 }
 
 MULTI_USER_SQLITE_SCHEMAS = {
@@ -184,7 +172,6 @@ MULTI_USER_SQLITE_SCHEMAS = {
             household_children INTEGER DEFAULT 0
         )
     """,
-    
     "ingredients": """
         CREATE TABLE IF NOT EXISTS ingredients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,7 +182,6 @@ MULTI_USER_SQLITE_SCHEMAS = {
             UNIQUE(user_id, name)
         )
     """,
-    
     "preferences": """
         CREATE TABLE IF NOT EXISTS preferences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,7 +194,6 @@ MULTI_USER_SQLITE_SCHEMAS = {
             UNIQUE(user_id, category, item)
         )
     """,
-    
     "pantry_transactions": """
         CREATE TABLE IF NOT EXISTS pantry_transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,7 +206,6 @@ MULTI_USER_SQLITE_SCHEMAS = {
             notes TEXT
         )
     """,
-    
     "recipes": """
         CREATE TABLE IF NOT EXISTS recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,7 +220,6 @@ MULTI_USER_SQLITE_SCHEMAS = {
             UNIQUE(user_id, short_id)
         )
     """,
-    
     "recipe_ingredients": """
         CREATE TABLE IF NOT EXISTS recipe_ingredients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -246,7 +229,6 @@ MULTI_USER_SQLITE_SCHEMAS = {
             unit TEXT NOT NULL
         )
     """,
-    
     "meal_plan": """
         CREATE TABLE IF NOT EXISTS meal_plan (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -255,7 +237,7 @@ MULTI_USER_SQLITE_SCHEMAS = {
             recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
             UNIQUE(user_id, meal_date)
         )
-    """
+    """,
 }
 
 # Performance indexes for each schema type
@@ -272,7 +254,9 @@ MULTI_USER_POSTGRESQL_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_date ON meal_plan(user_id, meal_date)",
 ]
 
-MULTI_USER_SQLITE_INDEXES = MULTI_USER_POSTGRESQL_INDEXES  # Same indexes work for SQLite
+MULTI_USER_SQLITE_INDEXES = (
+    MULTI_USER_POSTGRESQL_INDEXES  # Same indexes work for SQLite
+)
 
 # Default data to insert
 SINGLE_USER_DEFAULTS = [

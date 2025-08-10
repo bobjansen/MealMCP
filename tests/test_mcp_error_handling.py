@@ -129,9 +129,8 @@ class TestMCPErrorHandling:
             {"item_name": "test_item", "quantity": -5, "unit": "cups"},
             pantry,
         )
-        # TODO: Business logic should validate negative quantities
-        # Currently accepts negative values, but should probably reject them
-        assert result["status"] == "success"  # Documents current behavior
+        # Business logic correctly validates negative quantities
+        assert result["status"] == "error"  # Negative quantities should be rejected
 
         # Extremely large values
         result = test_server.tool_router.call_tool(

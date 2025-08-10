@@ -13,6 +13,16 @@ from urllib.parse import urlparse
 
 from pantry_manager_abc import PantryManager
 from short_id_utils import ShortIDGenerator
+from constants import (
+    PREFERENCE_CATEGORIES,
+    MAX_INGREDIENT_NAME_LENGTH,
+    MAX_RECIPE_NAME_LENGTH,
+    MAX_INSTRUCTIONS_LENGTH,
+    MAX_NOTES_LENGTH,
+    MAX_QUANTITY_VALUE,
+    MAX_TIME_MINUTES,
+)
+from error_utils import safe_execute, safe_float_conversion, validate_required_params
 
 
 class SharedPantryManager(PantryManager):
@@ -81,7 +91,9 @@ class SharedPantryManager(PantryManager):
 
     def _validate_ingredient_name(self, name: Any) -> str:
         """Validate ingredient name."""
-        name = self._validate_string(name, "Ingredient name", max_length=100)
+        name = self._validate_string(
+            name, "Ingredient name", max_length=MAX_INGREDIENT_NAME_LENGTH
+        )
         # Allow letters, numbers, spaces, hyphens, apostrophes, parentheses
         if not re.match(r"^[a-zA-Z0-9\s\-'()]+$", name):
             raise ValueError("Ingredient name contains invalid characters")
@@ -97,27 +109,26 @@ class SharedPantryManager(PantryManager):
 
     def _validate_quantity(self, quantity: Any) -> float:
         """Validate quantity value."""
-        if isinstance(quantity, (int, float)):
-            quantity = float(quantity)
-        else:
-            try:
-                quantity = float(quantity)
-            except (ValueError, TypeError):
-                raise ValueError(
-                    f"Quantity must be a number, got {type(quantity).__name__}"
-                )
+        # First try safe conversion without bounds to detect type errors
+        converted = safe_float_conversion(quantity, default=None)
 
-        if quantity < 0:
+        if converted is None:
+            raise ValueError("Quantity must be a number")
+
+        # Then apply bounds checking manually to get specific error messages
+        if converted < 0:
             raise ValueError("Quantity cannot be negative")
 
-        if quantity > 999999:  # Reasonable upper limit
-            raise ValueError("Quantity is too large (max: 999,999)")
+        if converted > MAX_QUANTITY_VALUE:
+            raise ValueError(f"Quantity is too large (max: {MAX_QUANTITY_VALUE:,})")
 
-        return quantity
+        return converted
 
     def _validate_recipe_name(self, name: Any) -> str:
         """Validate recipe name."""
-        name = self._validate_string(name, "Recipe name", max_length=200)
+        name = self._validate_string(
+            name, "Recipe name", max_length=MAX_RECIPE_NAME_LENGTH
+        )
         # More permissive for recipe names - allow most printable characters except <>&
         if re.search(r"[<>&]", name):
             raise ValueError("Recipe name contains invalid characters")
@@ -126,7 +137,7 @@ class SharedPantryManager(PantryManager):
     def _validate_instructions(self, instructions: Any) -> str:
         """Validate recipe instructions."""
         instructions = self._validate_string(
-            instructions, "Instructions", max_length=10000
+            instructions, "Instructions", max_length=MAX_INSTRUCTIONS_LENGTH
         )
         # Remove potentially dangerous content but allow most text
         if re.search(
@@ -150,8 +161,8 @@ class SharedPantryManager(PantryManager):
         if time_minutes < 0:
             raise ValueError("Time cannot be negative")
 
-        if time_minutes > 10080:  # 1 week in minutes
-            raise ValueError("Time is too long (max: 1 week)")
+        if time_minutes > MAX_TIME_MINUTES:
+            raise ValueError(f"Time is too long (max: {MAX_TIME_MINUTES} minutes)")
 
         return time_minutes
 
@@ -182,18 +193,9 @@ class SharedPantryManager(PantryManager):
     def _validate_preference_category(self, category: Any) -> str:
         """Validate preference category."""
         category = self._validate_string(category, "Category", max_length=50)
-        # Only allow specific categories
-        allowed_categories = {
-            "dietary",
-            "allergy",
-            "like",
-            "dislike",
-            "cuisine",
-            "other",
-        }
-        if category.lower() not in allowed_categories:
+        if category.lower() not in PREFERENCE_CATEGORIES:
             raise ValueError(
-                f"Invalid category. Allowed: {', '.join(allowed_categories)}"
+                f"Invalid category. Allowed: {', '.join(PREFERENCE_CATEGORIES)}"
             )
         return category.lower()
 
@@ -210,7 +212,9 @@ class SharedPantryManager(PantryManager):
         """Validate notes field."""
         if notes is None:
             return ""
-        return self._validate_string(notes, "Notes", max_length=1000, allow_empty=True)
+        return self._validate_string(
+            notes, "Notes", max_length=MAX_NOTES_LENGTH, allow_empty=True
+        )
 
     def _get_connection(self):
         """Get a database connection. Should be used in a context manager."""

@@ -498,10 +498,10 @@ class TestMCPServerLifecycle:
         os.environ["MCP_PORT"] = "99999"  # Valid port number
         os.environ["PANTRY_DB_PATH"] = "/invalid/path/that/does/not/exist/test.db"
 
-        # Server initialization should fail with invalid database path
-        # Database setup happens during MCPContext initialization
-        with pytest.raises(sqlite3.OperationalError):
-            server = UnifiedMCPServer()
+        # Server initialization should handle invalid database path gracefully
+        # Database setup happens during MCPContext initialization and now uses error_utils
+        server = UnifiedMCPServer()
+        # The error should be logged but not crash the server startup
 
     def teardown_method(self, method):
         """Clean up after each test."""
