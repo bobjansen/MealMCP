@@ -133,6 +133,25 @@ def markdown_filter(text):
         return text.replace("\n", "<br>")
 
 
+@app.template_filter("shortdatetime")
+def short_datetime_filter(timestamp_str):
+    """Format ISO timestamp as '17:36 at 25-12-2025'."""
+    if not timestamp_str:
+        return ""
+    try:
+        # Parse the ISO timestamp string
+        if isinstance(timestamp_str, str):
+            dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        else:
+            dt = timestamp_str
+
+        # Format as 'HH:MM at DD-MM-YYYY'
+        return dt.strftime("%H:%M at %d-%m-%Y")
+    except Exception:
+        # Fallback to original string if parsing fails
+        return str(timestamp_str)
+
+
 # Authentication routes
 @app.route("/login", methods=["GET", "POST"])
 def login():

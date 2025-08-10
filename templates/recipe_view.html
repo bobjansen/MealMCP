@@ -66,8 +66,8 @@
             </div>
             <div class="card-footer text-muted">
                 <small>
-                    {{ t('Created') }}: {{ recipe.created_date }}<br>
-                    {{ t('Last modified') }}: {{ recipe.last_modified }}
+                    {{ t('Created') }}: {{ recipe.created_date|shortdatetime }}<br>
+                    {{ t('Last modified') }}: {{ recipe.last_modified|shortdatetime }}
                 </small>
             </div>
         </div>
