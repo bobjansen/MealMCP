@@ -616,6 +616,48 @@ class SharedPantryManager(PantryManager):
             print(f"Error getting item quantity: {e}")
             return 0.0
 
+    def get_total_item_quantity(self, item_name: str, unit: str) -> float:
+        """Get total quantity of an item across all units converted to the specified unit for the current user."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                ingredient_id = self.get_ingredient_id(item_name)
+                if ingredient_id is None:
+                    return 0.0
+
+                cursor.execute(
+                    f"SELECT base_unit, size FROM units WHERE user_id = {ph} AND name = {ph}",
+                    (self.user_id, unit),
+                )
+                target = cursor.fetchone()
+                if not target:
+                    return self.get_item_quantity(item_name, unit)
+                target_base, target_size = target
+
+                cursor.execute(
+                    f"""
+                    SELECT t.unit, u.base_unit, u.size,
+                           SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
+                    FROM pantry_transactions t
+                    JOIN units u ON t.unit = u.name AND u.user_id = t.user_id
+                    WHERE t.user_id = {ph} AND t.ingredient_id = {ph}
+                    GROUP BY t.unit, u.base_unit, u.size
+                    """,
+                    (self.user_id, ingredient_id),
+                )
+
+                total_base = 0.0
+                for unit_name, base_unit, size, qty in cursor.fetchall():
+                    if base_unit == target_base and qty:
+                        total_base += qty * size
+
+                return total_base / target_size
+        except Exception as e:
+            print(f"Error getting total item quantity: {e}")
+            return 0.0
+
     def get_multiple_item_quantities(
         self, items: List[tuple[str, str]]
     ) -> Dict[tuple[str, str], float]:
@@ -1239,7 +1281,7 @@ class SharedPantryManager(PantryManager):
             missing_ingredients = []
             for ingredient in recipe["ingredients"]:
                 needed_quantity = ingredient["quantity"]
-                available_quantity = self.get_item_quantity(
+                available_quantity = self.get_total_item_quantity(
                     ingredient["name"], ingredient["unit"]
                 )
 

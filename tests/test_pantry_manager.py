@@ -128,6 +128,16 @@ class TestPantryManager(unittest.TestCase):
         self.assertIsNotNone(pot)
         self.assertEqual(pot["size"], 350)
 
+    def test_total_item_quantity_conversion(self):
+        """Quantities should be converted across units with the same base unit."""
+        self.pantry.set_unit("Pot of honey", "ml", 350)
+        self.pantry.add_item("honey", 1, "Pot of honey")
+
+        qty_tbsp = self.pantry.get_total_item_quantity("honey", "Tablespoon")
+        self.assertAlmostEqual(qty_tbsp, 350 / 15, places=2)
+        qty_ml = self.pantry.get_total_item_quantity("honey", "Milliliter")
+        self.assertAlmostEqual(qty_ml, 350, places=2)
+
     def test_add_ingredient(self):
         """Test adding a new ingredient"""
         success = self.pantry.add_ingredient("flour", "g")
