@@ -96,6 +96,7 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE,
             preferred_language VARCHAR(10) DEFAULT 'en',
+            household_id INTEGER REFERENCES users(id),
             household_adults INTEGER DEFAULT 2,
             household_children INTEGER DEFAULT 0
         )
@@ -191,6 +192,7 @@ MULTI_USER_SQLITE_SCHEMAS = {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT 1,
             preferred_language TEXT DEFAULT 'en',
+            household_id INTEGER REFERENCES users(id),
             household_adults INTEGER DEFAULT 2,
             household_children INTEGER DEFAULT 0
         )
