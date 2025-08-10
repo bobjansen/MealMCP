@@ -145,8 +145,10 @@ def short_datetime_filter(timestamp_str):
         else:
             dt = timestamp_str
 
-        # Format as 'HH:MM at DD-MM-YYYY'
-        return dt.strftime("%H:%M at %d-%m-%Y")
+        # Format as 'HH:MM at DD-MM-YYYY' with localized 'at'
+        time_part = dt.strftime("%H:%M")
+        date_part = dt.strftime("%d-%m-%Y")
+        return f"{time_part} {t('at')} {date_part}"
     except Exception:
         # Fallback to original string if parsing fails
         return str(timestamp_str)

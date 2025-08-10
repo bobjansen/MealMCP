@@ -308,6 +308,7 @@ TRANSLATIONS = {
         "Need to buy:": "Need to buy:",
         "All ingredients available!": "All ingredients available!",
         "In pantry:": "In pantry:",
+        "at": "at",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -610,6 +611,7 @@ TRANSLATIONS = {
         "Need to buy:": "Moet kopen:",
         "All ingredients available!": "Alle ingrediënten beschikbaar!",
         "In pantry:": "In voorraad:",
+        "at": "om",
     },
 }
 
