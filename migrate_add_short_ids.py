@@ -12,7 +12,7 @@ import sys
 import sqlite3
 import argparse
 from pathlib import Path
-from short_id_utils import ShortIDGenerator
+from short_id_utils import generate_short_id
 
 try:
     import psycopg2
@@ -53,7 +53,7 @@ def migrate_sqlite_short_ids(db_path: str) -> bool:
                 f"Generating short IDs for {len(recipes_without_short_ids)} existing recipes..."
             )
             for recipe_id, recipe_name in recipes_without_short_ids:
-                short_id = ShortIDGenerator.generate(recipe_id)
+                short_id = generate_short_id(recipe_id)
                 cursor.execute(
                     "UPDATE Recipes SET short_id = ? WHERE id = ?",
                     (short_id, recipe_id),
@@ -112,7 +112,7 @@ def migrate_postgresql_short_ids(connection_string: str) -> bool:
                 f"Generating short IDs for {len(recipes_without_short_ids)} existing recipes..."
             )
             for recipe_id, recipe_name in recipes_without_short_ids:
-                short_id = ShortIDGenerator.generate(recipe_id)
+                short_id = generate_short_id(recipe_id)
                 cursor.execute(
                     "UPDATE recipes SET short_id = %s WHERE id = %s",
                     (short_id, recipe_id),

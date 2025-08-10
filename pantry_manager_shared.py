@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from pantry_manager_abc import PantryManager
-from short_id_utils import ShortIDGenerator
+from short_id_utils import generate_short_id, parse_short_id
 from constants import (
     PREFERENCE_CATEGORIES,
     MAX_INGREDIENT_NAME_LENGTH,
@@ -709,7 +709,7 @@ class SharedPantryManager(PantryManager):
                 )
                 user_recipe_count = cursor.fetchone()[0]
                 next_user_recipe_id = user_recipe_count + 1
-                short_id = ShortIDGenerator.generate(next_user_recipe_id)
+                short_id = generate_short_id(next_user_recipe_id)
 
                 if self.backend == "postgresql":
                     now = datetime.now()
@@ -1113,7 +1113,7 @@ class SharedPantryManager(PantryManager):
     def get_recipe_by_short_id(self, short_id: str) -> Optional[Dict[str, Any]]:
         """Get a recipe and its ingredients by short ID for the current user."""
         # Validate short ID format
-        if not ShortIDGenerator.is_valid(short_id):
+        if parse_short_id(short_id) is None:
             return None
 
         try:
@@ -1210,7 +1210,7 @@ class SharedPantryManager(PantryManager):
     ) -> tuple[bool, str]:
         """Edit an existing recipe by short ID with detailed error messages for the current user."""
         # Validate short ID format
-        if not ShortIDGenerator.is_valid(short_id):
+        if parse_short_id(short_id) is None:
             return (
                 False,
                 f"Invalid short ID format: '{short_id}'. Expected format: R123A",

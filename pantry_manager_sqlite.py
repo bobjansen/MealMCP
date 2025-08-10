@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
-from short_id_utils import ShortIDGenerator
+from short_id_utils import generate_short_id, parse_short_id
 from error_utils import safe_execute, validate_required_params
 
 
@@ -354,7 +354,7 @@ class SQLitePantryManager(PantryManager):
                 next_id = cursor.fetchone()[0]
 
                 # Generate short ID from the predicted next ID
-                short_id = ShortIDGenerator.generate(next_id)
+                short_id = generate_short_id(next_id)
 
                 cursor.execute(
                     """
@@ -712,7 +712,7 @@ class SQLitePantryManager(PantryManager):
     def get_recipe_by_short_id(self, short_id: str) -> Optional[Dict[str, Any]]:
         """Get a recipe and its ingredients by short ID."""
         # Validate short ID format
-        numeric_id = ShortIDGenerator.parse(short_id)
+        numeric_id = parse_short_id(short_id)
         if numeric_id is None:
             return None
 
@@ -796,7 +796,7 @@ class SQLitePantryManager(PantryManager):
     ) -> tuple[bool, str]:
         """Edit an existing recipe by short ID with detailed error messages."""
         # Validate short ID format
-        numeric_id = ShortIDGenerator.parse(short_id)
+        numeric_id = parse_short_id(short_id)
         if numeric_id is None:
             return (
                 False,
