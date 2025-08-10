@@ -480,7 +480,7 @@ def view_recipe(recipe_name):
 
     for ingredient in recipe["ingredients"]:
         needed_quantity = ingredient["quantity"]
-        available_quantity = user_pantry.get_item_quantity(
+        available_quantity = user_pantry.get_total_item_quantity(
             ingredient["name"], ingredient["unit"]
         )
 

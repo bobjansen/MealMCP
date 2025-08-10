@@ -178,6 +178,11 @@ class PantryManager(ABC):
         pass
 
     @abstractmethod
+    def get_total_item_quantity(self, item_name: str, unit: str) -> float:
+        """Get total quantity of an item across all units converted to the specified unit."""
+        pass
+
+    @abstractmethod
     def get_pantry_contents(self) -> Dict[str, Dict[str, float]]:
         """
         Get the current contents of the pantry.
