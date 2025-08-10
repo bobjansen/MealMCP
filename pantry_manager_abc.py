@@ -299,7 +299,7 @@ class PantryManager(ABC):
         Get a recipe and its ingredients by short ID.
 
         Args:
-            short_id: Short ID of the recipe (e.g., "R123A")
+            short_id: Short ID of the recipe (e.g., "R1F")
 
         Returns:
             Optional[Dict[str, Any]]: Recipe details including ingredients, or None if not found
@@ -332,7 +332,7 @@ class PantryManager(ABC):
         Edit an existing recipe by short ID with detailed error messages.
 
         Args:
-            short_id: Short ID of the recipe to edit (e.g., "R123A")
+            short_id: Short ID of the recipe to edit (e.g., "R1F")
             name: New name for the recipe (optional)
             instructions: Updated cooking instructions (optional)
             time_minutes: Updated time required (optional)

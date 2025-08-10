@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""
-Migration script to add short_id field to existing recipes and generate short IDs.
-This should be run on databases that were created before short ID support was added.
+"""Migration script to add database-generated short_id field to existing recipes.
+
+Short IDs are now computed directly by the database from the primary key, so this
+script simply adds the generated column when migrating older databases.
 
 Usage:
     python migrate_add_short_ids.py [database_path]
@@ -12,7 +13,6 @@ import sys
 import sqlite3
 import argparse
 from pathlib import Path
-from short_id_utils import generate_short_id
 
 try:
     import psycopg2
@@ -23,7 +23,7 @@ except ImportError:
 
 
 def migrate_sqlite_short_ids(db_path: str) -> bool:
-    """Add short_id field to SQLite database and generate short IDs for existing recipes."""
+    """Add generated short_id field to SQLite database if missing."""
     print(f"Migrating SQLite database: {db_path}")
 
     if not Path(db_path).exists():
@@ -42,25 +42,11 @@ def migrate_sqlite_short_ids(db_path: str) -> bool:
             print("✓ short_id column already exists in Recipes table")
         else:
             print("Adding short_id column to Recipes table...")
-            cursor.execute("ALTER TABLE Recipes ADD COLUMN short_id TEXT UNIQUE")
-
-        # Get all recipes that don't have short IDs yet
-        cursor.execute("SELECT id, name FROM Recipes WHERE short_id IS NULL")
-        recipes_without_short_ids = cursor.fetchall()
-
-        if recipes_without_short_ids:
-            print(
-                f"Generating short IDs for {len(recipes_without_short_ids)} existing recipes..."
+            cursor.execute(
+                "ALTER TABLE Recipes ADD COLUMN short_id TEXT GENERATED ALWAYS AS ("
+                "'R' || hex(id) || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', (id % 36) + 1, 1)"
+                ") STORED UNIQUE"
             )
-            for recipe_id, recipe_name in recipes_without_short_ids:
-                short_id = generate_short_id(recipe_id)
-                cursor.execute(
-                    "UPDATE Recipes SET short_id = ? WHERE id = ?",
-                    (short_id, recipe_id),
-                )
-                print(f"  Recipe '{recipe_name}' -> {short_id}")
-        else:
-            print("✓ All recipes already have short IDs")
 
         conn.commit()
         conn.close()
@@ -77,7 +63,7 @@ def migrate_sqlite_short_ids(db_path: str) -> bool:
 
 
 def migrate_postgresql_short_ids(connection_string: str) -> bool:
-    """Add short_id field to PostgreSQL database and generate short IDs for existing recipes."""
+    """Add generated short_id field to PostgreSQL database if missing."""
     if not PSYCOPG2_AVAILABLE:
         print("ERROR: psycopg2 not available for PostgreSQL migration")
         return False
@@ -101,25 +87,11 @@ def migrate_postgresql_short_ids(connection_string: str) -> bool:
             print("✓ short_id column already exists in recipes table")
         else:
             print("Adding short_id column to recipes table...")
-            cursor.execute("ALTER TABLE recipes ADD COLUMN short_id VARCHAR(10) UNIQUE")
-
-        # Get all recipes that don't have short IDs yet
-        cursor.execute("SELECT id, name FROM recipes WHERE short_id IS NULL")
-        recipes_without_short_ids = cursor.fetchall()
-
-        if recipes_without_short_ids:
-            print(
-                f"Generating short IDs for {len(recipes_without_short_ids)} existing recipes..."
+            cursor.execute(
+                "ALTER TABLE recipes ADD COLUMN short_id TEXT GENERATED ALWAYS AS ("
+                "'R' || upper(to_hex(id)) || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', (id % 36) + 1, 1)"
+                ") STORED"
             )
-            for recipe_id, recipe_name in recipes_without_short_ids:
-                short_id = generate_short_id(recipe_id)
-                cursor.execute(
-                    "UPDATE recipes SET short_id = %s WHERE id = %s",
-                    (short_id, recipe_id),
-                )
-                print(f"  Recipe '{recipe_name}' -> {short_id}")
-        else:
-            print("✓ All recipes already have short IDs")
 
         conn.commit()
         conn.close()
@@ -155,11 +127,7 @@ def main():
     print("Recipe Database Short ID Migration Script")
     print("========================================")
     print()
-    print("This script adds short_id field to existing recipes and generates")
-    print("human-friendly short IDs like R123A for recipe identification.")
-    print(
-        "NOTE: This system no longer uses UUIDs - short IDs are the primary ID system."
-    )
+    print("This script adds a generated short_id column to existing recipes.")
     print()
 
     if args.postgresql:

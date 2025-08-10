@@ -16,7 +16,7 @@ class TestShortIDUtils:
 
     def test_generate_and_parse_valid_ids(self):
         """Test generating and parsing valid short IDs."""
-        test_cases = [1, 10, 123, 1000, 9999, 46655]  # 46655 = ZZZ in base36
+        test_cases = [1, 10, 255, 256, 4096]
 
         for test_id in test_cases:
             short_id = generate_short_id(test_id)
@@ -28,37 +28,15 @@ class TestShortIDUtils:
             assert isinstance(short_id, str), "Generated ID should be a string"
             assert len(short_id) >= 2, "Short ID should have at least 2 characters"
 
-    def test_invalid_checksum_detection(self):
-        """Test that invalid checksums are properly detected."""
-        test_cases = [123, 1000, 9999]
-
-        for test_id in test_cases:
-            short_id = generate_short_id(test_id)
-
-            if len(short_id) > 2:
-                # Create invalid checksum by changing last character
-                invalid_id = (
-                    short_id[:-1] + "X" if short_id[-1] != "X" else short_id[:-1] + "Y"
-                )
-
-                invalid_parsed = parse_short_id(invalid_id)
-                is_valid = is_valid_short_id(invalid_id)
-
-                assert (
-                    invalid_parsed is None
-                ), f"Invalid ID {invalid_id} should parse to None"
-                assert is_valid is False, f"Invalid ID {invalid_id} should not be valid"
-
     def test_edge_cases(self):
         """Test edge cases and invalid inputs."""
         edge_cases = [
-            ("", None),
-            ("R", None),
-            ("RX", None),
-            ("RXYZ", None),
-            ("invalid", None),
-            ("r123x", None),  # lowercase should be invalid
-            ("R123X", None),  # assuming this is invalid based on the original test
+            ("", None),  # empty string
+            ("R", None),  # missing body and checksum
+            ("RZ", None),  # missing checksum and invalid body
+            ("RF", None),  # missing checksum for body 'F'
+            ("R1G", None),  # wrong checksum for id 1
+            ("invalid", None),  # not in short id format
         ]
 
         for case, expected in edge_cases:
@@ -85,7 +63,7 @@ class TestShortIDUtils:
         invalid_inputs = [0, -1, -100]
 
         for invalid_id in invalid_inputs:
-            with pytest.raises((ValueError, AssertionError)):
+            with pytest.raises(ValueError):
                 generate_short_id(invalid_id)
 
     def test_uniqueness_of_generated_ids(self):

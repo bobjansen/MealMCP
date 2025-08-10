@@ -27,7 +27,9 @@ SINGLE_USER_SCHEMAS = {
     "recipes": """
         CREATE TABLE IF NOT EXISTS Recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            short_id TEXT NOT NULL UNIQUE,
+            short_id TEXT GENERATED ALWAYS AS (
+                'R' || hex(id) || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', (id % 36) + 1, 1)
+            ) STORED UNIQUE,
             name TEXT NOT NULL,
             instructions TEXT NOT NULL,
             time_minutes INTEGER NOT NULL,
@@ -127,7 +129,9 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
     "recipes": """
         CREATE TABLE IF NOT EXISTS recipes (
             id SERIAL PRIMARY KEY,
-            short_id VARCHAR(10) NOT NULL,
+            short_id TEXT GENERATED ALWAYS AS (
+                'R' || upper(to_hex(id)) || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', (id % 36) + 1, 1)
+            ) STORED,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             name VARCHAR(255) NOT NULL,
             instructions TEXT NOT NULL,
@@ -209,7 +213,9 @@ MULTI_USER_SQLITE_SCHEMAS = {
     "recipes": """
         CREATE TABLE IF NOT EXISTS recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            short_id TEXT NOT NULL,
+            short_id TEXT GENERATED ALWAYS AS (
+                'R' || hex(id) || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', (id % 36) + 1, 1)
+            ) STORED,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
             instructions TEXT NOT NULL,

@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
-from short_id_utils import generate_short_id, parse_short_id
+from short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
 
 
@@ -349,22 +349,16 @@ class SQLitePantryManager(PantryManager):
                 cursor = conn.cursor()
                 now = datetime.now().isoformat()
 
-                # Strategy: Get the next recipe ID by querying the current max ID
-                cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM Recipes")
-                next_id = cursor.fetchone()[0]
-
-                # Generate short ID from the predicted next ID
-                short_id = generate_short_id(next_id)
-
                 cursor.execute(
                     """
                     INSERT INTO Recipes
-                    (short_id, name, instructions, time_minutes, created_date, last_modified)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    (name, instructions, time_minutes, created_date, last_modified)
+                    VALUES (?, ?, ?, ?, ?)
+                    RETURNING id, short_id
                     """,
-                    (short_id, name, instructions, time_minutes, now, now),
+                    (name, instructions, time_minutes, now, now),
                 )
-                recipe_id = cursor.lastrowid
+                recipe_id, short_id = cursor.fetchone()
 
                 # Add ingredients
                 for ingredient in ingredients:
@@ -858,8 +852,7 @@ class SQLitePantryManager(PantryManager):
     def get_recipe_by_short_id(self, short_id: str) -> Optional[Dict[str, Any]]:
         """Get a recipe and its ingredients by short ID."""
         # Validate short ID format
-        numeric_id = parse_short_id(short_id)
-        if numeric_id is None:
+        if parse_short_id(short_id) is None:
             return None
 
         try:
@@ -867,8 +860,8 @@ class SQLitePantryManager(PantryManager):
                 cursor = conn.cursor()
                 # Get recipe details
                 cursor.execute(
-                    "SELECT id, short_id, name, instructions, time_minutes, rating, created_date, last_modified FROM Recipes WHERE id = ?",
-                    (numeric_id,),
+                    "SELECT id, short_id, name, instructions, time_minutes, rating, created_date, last_modified FROM Recipes WHERE short_id = ?",
+                    (short_id,),
                 )
                 recipe_row = cursor.fetchone()
                 if not recipe_row:
@@ -942,11 +935,10 @@ class SQLitePantryManager(PantryManager):
     ) -> tuple[bool, str]:
         """Edit an existing recipe by short ID with detailed error messages."""
         # Validate short ID format
-        numeric_id = parse_short_id(short_id)
-        if numeric_id is None:
+        if parse_short_id(short_id) is None:
             return (
                 False,
-                f"Invalid short ID format: '{short_id}'. Expected format: R123A",
+                f"Invalid short ID format: '{short_id}'. Expected format: R1F",
             )
 
         try:
@@ -955,7 +947,7 @@ class SQLitePantryManager(PantryManager):
 
                 # Check if recipe exists
                 cursor.execute(
-                    "SELECT id, name FROM Recipes WHERE id = ?", (numeric_id,)
+                    "SELECT id, name FROM Recipes WHERE short_id = ?", (short_id,)
                 )
                 result = cursor.fetchone()
                 if not result:

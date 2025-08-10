@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from pantry_manager_abc import PantryManager
-from short_id_utils import generate_short_id, parse_short_id
+from short_id_utils import parse_short_id
 from constants import (
     PREFERENCE_CATEGORIES,
     MAX_INGREDIENT_NAME_LENGTH,
@@ -702,26 +702,16 @@ class SharedPantryManager(PantryManager):
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
-                # Generate user-scoped short ID based on user's recipe count
-                cursor.execute(
-                    f"SELECT COUNT(*) FROM recipes WHERE user_id = {ph}",
-                    (self.user_id,),
-                )
-                user_recipe_count = cursor.fetchone()[0]
-                next_user_recipe_id = user_recipe_count + 1
-                short_id = generate_short_id(next_user_recipe_id)
-
                 if self.backend == "postgresql":
                     now = datetime.now()
                     cursor.execute(
                         f"""
                         INSERT INTO recipes
-                        (short_id, user_id, name, instructions, time_minutes, created_date, last_modified)
-                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
-                        RETURNING id
-                    """,
+                        (user_id, name, instructions, time_minutes, created_date, last_modified)
+                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                        RETURNING id, short_id
+                        """,
                         (
-                            short_id,
                             self.user_id,
                             name,
                             instructions,
@@ -730,17 +720,17 @@ class SharedPantryManager(PantryManager):
                             now,
                         ),
                     )
-                    recipe_id = cursor.fetchone()[0]
+                    recipe_id, short_id = cursor.fetchone()
                 else:
                     now = datetime.now().isoformat()
                     cursor.execute(
                         f"""
                         INSERT INTO recipes
-                        (short_id, user_id, name, instructions, time_minutes, created_date, last_modified)
-                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
-                    """,
+                        (user_id, name, instructions, time_minutes, created_date, last_modified)
+                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                        RETURNING id, short_id
+                        """,
                         (
-                            short_id,
                             self.user_id,
                             name,
                             instructions,
@@ -749,7 +739,7 @@ class SharedPantryManager(PantryManager):
                             now,
                         ),
                     )
-                    recipe_id = cursor.lastrowid
+                    recipe_id, short_id = cursor.fetchone()
 
                 # Add ingredients (use validated ingredients)
                 for ingredient in validated_ingredients:
@@ -1328,7 +1318,7 @@ class SharedPantryManager(PantryManager):
         if parse_short_id(short_id) is None:
             return (
                 False,
-                f"Invalid short ID format: '{short_id}'. Expected format: R123A",
+                f"Invalid short ID format: '{short_id}'. Expected format: R1F",
             )
 
         try:
