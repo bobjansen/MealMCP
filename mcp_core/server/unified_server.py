@@ -22,12 +22,68 @@ import sys
 import json
 import logging
 import asyncio
+import traceback
 from typing import Any, Dict, List, Optional, Union, Callable
 from datetime import datetime, date
+from pathlib import Path
 
-# Configure logging early
-logging.basicConfig(level=logging.INFO)
+
+# Configure logging early with file handler for tracebacks
+def setup_error_logging():
+    """Set up comprehensive error logging with traceback support."""
+    # Get log file path from environment or use default
+    log_dir = os.getenv("MCP_LOG_DIR", "logs")
+    log_file = os.getenv("MCP_ERROR_LOG", "mcp_errors.log")
+
+    # Ensure log directory exists
+    Path(log_dir).mkdir(exist_ok=True)
+    log_path = Path(log_dir) / log_file
+
+    # Create file handler for errors
+    file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+    file_handler.setLevel(logging.ERROR)
+
+    # Create detailed formatter with timestamp
+    formatter = logging.Formatter(
+        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s\n%(pathname)s:%(lineno)d in %(funcName)s()",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    file_handler.setFormatter(formatter)
+
+    # Set up console logging
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    console_handler.setFormatter(console_formatter)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    return log_path
+
+
+# Set up logging and get the log file path
+ERROR_LOG_PATH = setup_error_logging()
 logger = logging.getLogger(__name__)
+
+
+def log_error_with_traceback(error: Exception, context: str = ""):
+    """Log error with full traceback to file."""
+    try:
+        tb_str = traceback.format_exc()
+        error_msg = f"Error in {context}: {str(error)}\n\nFull traceback:\n{tb_str}"
+        logger.error(error_msg)
+        logger.info(f"Error details written to: {ERROR_LOG_PATH}")
+    except Exception as log_error:
+        # Fallback if logging itself fails
+        print(f"Failed to log error: {log_error}", file=sys.stderr)
+        print(f"Original error: {error}", file=sys.stderr)
+
 
 # Core imports
 from .context import MCPContext
@@ -505,7 +561,7 @@ class UnifiedMCPServer:
                     }
 
             except Exception as e:
-                logger.error(f"Error handling MCP request: {e}")
+                log_error_with_traceback(e, "MCP request handling")
                 return {
                     "jsonrpc": "2.0",
                     "id": data.get("id") if "data" in locals() else None,
@@ -531,7 +587,7 @@ class UnifiedMCPServer:
                         logger.info("SSE connection cancelled")
                         return
                     except Exception as e:
-                        logger.error(f"SSE error: {e}")
+                        log_error_with_traceback(e, "Server-Sent Events")
                         yield f'data: {{"type": "error", "message": "{str(e)}"}}\n\n'
                         return
 
@@ -571,7 +627,7 @@ class UnifiedMCPServer:
                 result = self.oauth.register_client(client_data)
                 return JSONResponse(content=result, status_code=201)
             except Exception as e:
-                logger.error(f"Client registration error: {e}")
+                log_error_with_traceback(e, "OAuth client registration")
                 return JSONResponse(
                     content={
                         "error": "invalid_client_metadata",
@@ -610,7 +666,7 @@ class UnifiedMCPServer:
                 return HTMLResponse(content=login_form_html)
 
             except Exception as e:
-                logger.error(f"Authorization error: {e}")
+                log_error_with_traceback(e, "OAuth authorization")
                 return HTMLResponse(
                     content=f"<html><body><h2>Authorization Error</h2><p>{str(e)}</p></body></html>",
                     status_code=500,
@@ -647,7 +703,7 @@ class UnifiedMCPServer:
                 )
 
             except Exception as e:
-                logger.error(f"Authorization handling error: {e}")
+                log_error_with_traceback(e, "OAuth authorization handling")
                 return self.oauth_handler.create_error_redirect(
                     redirect_uri, "access_denied", str(e), state
                 )
@@ -676,7 +732,7 @@ class UnifiedMCPServer:
                     raise ValueError(f"Unsupported grant_type: {grant_type}")
 
             except Exception as e:
-                logger.error(f"Token exchange error: {e}")
+                log_error_with_traceback(e, "OAuth token exchange")
                 return JSONResponse(
                     content={"error": "invalid_request", "error_description": str(e)},
                     status_code=400,
@@ -711,7 +767,7 @@ class UnifiedMCPServer:
                     )
 
             except Exception as e:
-                logger.error(f"User registration error: {e}")
+                log_error_with_traceback(e, "OAuth user registration")
                 return HTMLResponse(
                     content=generate_error_page("Registration failed"), status_code=500
                 )
@@ -741,5 +797,5 @@ class UnifiedMCPServer:
         except KeyboardInterrupt:
             logger.info("Server shutdown requested")
         except Exception as e:
-            logger.error(f"Server error: {e}")
+            log_error_with_traceback(e, "Server startup/runtime")
             sys.exit(1)

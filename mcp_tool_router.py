@@ -4,6 +4,7 @@ MCP Tool Router - Centralized tool dispatch
 
 import json
 import logging
+import traceback
 from datetime import datetime, timedelta
 from i18n import t
 from typing import Dict, Any, Optional, Callable
@@ -11,6 +12,18 @@ from mcp_tools import MCP_TOOLS
 from error_utils import safe_execute, validate_required_params
 
 logger = logging.getLogger(__name__)
+
+
+def log_tool_error(error: Exception, tool_name: str, context: str = ""):
+    """Log tool error with full traceback."""
+    try:
+        tb_str = traceback.format_exc()
+        error_msg = f"Error in tool '{tool_name}' {context}: {str(error)}\n\nFull traceback:\n{tb_str}"
+        logger.error(error_msg)
+    except Exception as log_error:
+        # Fallback if logging itself fails
+        logger.error(f"Failed to log tool error: {log_error}")
+        logger.error(f"Original error in {tool_name}: {error}")
 
 
 class MCPToolRouter:
@@ -58,7 +71,7 @@ class MCPToolRouter:
         try:
             return self.tools[tool_name](arguments, pantry_manager)
         except Exception as e:
-            logger.error(f"Error calling tool {tool_name}: {e}")
+            log_tool_error(e, tool_name, "during execution")
             return {"status": "error", "message": f"Tool execution failed: {str(e)}"}
 
     def get_available_tools(self) -> list:
@@ -137,6 +150,7 @@ class MCPToolRouter:
             return {"status": "success", "data": profile_data}
 
         except Exception as e:
+            log_tool_error(e, "get_user_profile", "getting profile data")
             return {
                 "status": "error",
                 "message": f"Error getting user profile: {str(e)}",
