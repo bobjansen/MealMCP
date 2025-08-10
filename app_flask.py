@@ -189,27 +189,28 @@ def register():
     if backend == "sqlite":
         return redirect(url_for("index"))
 
+    invite_code = request.args.get("invite_code", "")
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
         language = request.form.get("language", "en")
-        household_username = request.form.get("household_username") or None
+        invite_code = request.form.get("invite_code", "")
 
         if not all([username, email, password, confirm_password]):
             flash("Please fill in all fields.", "error")
-            return render_template("auth/register.html")
+            return render_template("auth/register.html", invite_code=invite_code)
 
         if password != confirm_password:
             flash("Passwords do not match.", "error")
-            return render_template("auth/register.html")
+            return render_template("auth/register.html", invite_code=invite_code)
 
         if language not in ["en", "nl"]:
             language = "en"  # Default to English if invalid language
 
         success, message = auth_manager.create_user(
-            username, email, password, language, household_username
+            username, email, password, language, invite_code or None
         )
 
         if success:
@@ -217,8 +218,9 @@ def register():
             return redirect(url_for("login"))
         else:
             flash(message, "error")
+            return render_template("auth/register.html", invite_code=invite_code)
 
-    return render_template("auth/register.html")
+    return render_template("auth/register.html", invite_code=invite_code)
 
 
 @app.route("/logout")
@@ -239,6 +241,33 @@ def profile():
 
     user_info = auth_manager.get_user_by_id(session["user_id"])
     return render_template("auth/profile.html", user=user_info)
+
+
+@app.route("/invite", methods=["GET", "POST"])
+@requires_auth
+def invite():
+    """Allow household owners to invite others via email."""
+    if backend == "sqlite":
+        return redirect(url_for("index"))
+
+    user_info = auth_manager.get_user_by_id(session["user_id"])
+    if user_info.get("household_id") != user_info["id"]:
+        flash("Only household owners can send invites.", "error")
+        return redirect(url_for("profile"))
+
+    if request.method == "POST":
+        email = request.form.get("email")
+        if not email:
+            flash("Please provide an email address.", "error")
+            return render_template("auth/invite.html")
+
+        secret = auth_manager.create_household_invite(user_info["id"], email)
+        if secret:
+            flash("Invite sent!", "success")
+        else:
+            flash("Error sending invite.", "error")
+
+    return render_template("auth/invite.html")
 
 
 @app.route("/change-password", methods=["POST"])

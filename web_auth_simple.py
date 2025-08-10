@@ -1,7 +1,9 @@
 import os
 import secrets
+import smtplib
 from typing import Dict, Optional, Tuple
 import psycopg2
+from flask import url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from db_setup_shared import setup_shared_database
 
@@ -36,7 +38,7 @@ class WebUserManager:
         email: str,
         password: str,
         language: str = "en",
-        household_username: Optional[str] = None,
+        invite_code: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """Create a new user account.
 
@@ -45,8 +47,7 @@ class WebUserManager:
             email: user email
             password: plaintext password
             language: preferred language code
-            household_username: optional username of an existing account whose pantry
-                data should be shared with this user
+            invite_code: optional secret code to join an existing household
         """
         if self.backend == "sqlite":
             return False, "User registration not available in SQLite mode"
@@ -67,28 +68,41 @@ class WebUserManager:
         try:
             password_hash = generate_password_hash(password)
 
-            household_id = None
-            if household_username:
-                with psycopg2.connect(self.connection_string) as conn:
-                    with conn.cursor() as cursor:
-                        cursor.execute(
-                            "SELECT id FROM users WHERE username = %s", (household_username,)
-                        )
-                        result = cursor.fetchone()
-                        if result:
-                            household_id = result[0]
-                        else:
-                            return False, "Household account not found"
-
             with psycopg2.connect(self.connection_string) as conn:
                 with conn.cursor() as cursor:
+                    household_id = None
+                    if invite_code:
+                        cursor.execute(
+                            "SELECT owner_id, email FROM household_invites WHERE secret = %s",
+                            (invite_code,),
+                        )
+                        invite = cursor.fetchone()
+                        if not invite:
+                            return False, "Invalid invite code"
+                        owner_id, invited_email = invite
+                        if invited_email and invited_email.lower() != email.lower():
+                            return False, "Invite email mismatch"
+                        household_id = owner_id
+                        cursor.execute(
+                            "DELETE FROM household_invites WHERE secret = %s",
+                            (invite_code,),
+                        )
+
                     cursor.execute(
                         """
                         INSERT INTO users (username, email, password_hash, preferred_language, household_id)
-                        VALUES (%s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s) RETURNING id
                     """,
                         (username, email, password_hash, language, household_id),
                     )
+                    user_id = cursor.fetchone()[0]
+                    if household_id is None:
+                        cursor.execute(
+                            "UPDATE users SET household_id = %s WHERE id = %s",
+                            (user_id, user_id),
+                        )
+
+                conn.commit()
 
             return True, "User created successfully"
 
@@ -163,6 +177,55 @@ class WebUserManager:
                     return cursor.fetchone() is not None
         except:
             return False
+
+    def create_household_invite(self, owner_id: int, email: str) -> Optional[str]:
+        """Create an invite for a household and email the secret to the recipient."""
+        if self.backend == "sqlite":
+            return None
+
+        secret = secrets.token_urlsafe(16)
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO household_invites (owner_id, email, secret)
+                        VALUES (%s, %s, %s)
+                        """,
+                        (owner_id, email, secret),
+                    )
+
+            self._send_invite_email(email, secret)
+            return secret
+        except Exception as e:
+            print(f"Error creating household invite: {e}")
+            return None
+
+    def _send_invite_email(self, to_email: str, secret: str) -> None:
+        """Send an invite email with the household secret."""
+        smtp_server = os.getenv("SMTP_SERVER")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_password = os.getenv("SMTP_PASSWORD")
+        sender = os.getenv("EMAIL_SENDER", smtp_user)
+
+        if not smtp_server or not smtp_user or not smtp_password:
+            print("SMTP configuration missing, invite email not sent")
+            return
+
+        link = url_for("register", invite_code=secret, _external=True)
+        message = (
+            "Subject: MealMCP Household Invite\n\n"
+            f"Click the link to join the household: {link}\n\n"
+            f"Or use this code: {secret}"
+        )
+        try:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(sender, [to_email], message)
+        except Exception as e:
+            print(f"Error sending invite email: {e}")
 
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
         """Get user information by ID."""

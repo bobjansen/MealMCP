@@ -101,6 +101,15 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             household_children INTEGER DEFAULT 0
         )
     """,
+    "household_invites": """
+        CREATE TABLE IF NOT EXISTS household_invites (
+            id SERIAL PRIMARY KEY,
+            owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            email VARCHAR(120) NOT NULL,
+            secret VARCHAR(128) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """,
     "units": """
         CREATE TABLE IF NOT EXISTS units (
             id SERIAL PRIMARY KEY,
@@ -197,6 +206,15 @@ MULTI_USER_SQLITE_SCHEMAS = {
             household_children INTEGER DEFAULT 0
         )
     """,
+    "household_invites": """
+        CREATE TABLE IF NOT EXISTS household_invites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            email TEXT NOT NULL,
+            secret TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """,
     "units": """
         CREATE TABLE IF NOT EXISTS units (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -289,6 +307,8 @@ MULTI_USER_POSTGRESQL_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_pantry_transactions_ingredient_unit ON pantry_transactions(user_id, ingredient_id, unit)",
     "CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id)",
     "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_date ON meal_plan(user_id, meal_date)",
+    "CREATE INDEX IF NOT EXISTS idx_household_invites_secret ON household_invites(secret)",
+    "CREATE INDEX IF NOT EXISTS idx_household_invites_owner_id ON household_invites(owner_id)",
 ]
 
 MULTI_USER_SQLITE_INDEXES = (
