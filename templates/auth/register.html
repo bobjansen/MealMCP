@@ -78,12 +78,13 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="household_username" class="form-label">
-                                    <i class="fas fa-home"></i> {{ t('Household Username (optional)') }}
+                                <label for="invite_code" class="form-label">
+                                    <i class="fas fa-key"></i> {{ t('Invite Code (optional)') }}
                                 </label>
-                                <input type="text" class="form-control" id="household_username" name="household_username"
-                                       placeholder="{{ t('Enter existing household username') }}">
-                                <small class="form-text text-muted">{{ t('Leave blank to create a new household') }}</small>
+                                <input type="text" class="form-control" id="invite_code" name="invite_code"
+                                       value="{{ invite_code }}"
+                                       placeholder="{{ t('Enter your invite code') }}">
+                                <small class="form-text text-muted">{{ t('Leave blank to start a new household') }}</small>
                             </div>
 
                             <div class="d-grid">
