@@ -17,6 +17,29 @@ from db_schema_definitions import (
 from error_utils import safe_execute
 
 
+def _add_column_if_not_exists(
+    cursor, table: str, column: str, column_def: str, dialect: str
+) -> None:
+    """Add a column to a table if it doesn't already exist."""
+    if dialect == "postgres":
+        cursor.execute(
+            """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = %s AND column_name = %s
+            """,
+            (table, column),
+        )
+        exists = cursor.fetchone() is not None
+    elif dialect == "sqlite":
+        cursor.execute(f"PRAGMA table_info({table})")
+        exists = any(row[1] == column for row in cursor.fetchall())
+    else:
+        raise ValueError(f"Unsupported dialect: {dialect}")
+
+    if not exists:
+        _execute_with_reporting(cursor, f"ALTER TABLE {table} ADD COLUMN {column_def}")
+
+
 def _execute_with_reporting(
     cursor, sql: str, ignore_exceptions: Iterable[Type[BaseException]] = ()
 ) -> None:
@@ -72,43 +95,19 @@ def _setup_postgresql_shared(connection_string: str) -> bool:
             for _, schema in MULTI_USER_POSTGRESQL_SCHEMAS.items():
                 _execute_with_reporting(cursor, schema)
 
-            # Add household columns to existing users table if they don't exist
-            _execute_with_reporting(
-                cursor,
-                "ALTER TABLE users ADD COLUMN household_id INTEGER REFERENCES users(id)",
-                ignore_exceptions=(psycopg2.errors.DuplicateColumn,),
-            )
-
-            _execute_with_reporting(
-                cursor,
-                "ALTER TABLE users ADD COLUMN household_adults INTEGER DEFAULT 2",
-                ignore_exceptions=(psycopg2.errors.DuplicateColumn,),
-            )
-
-            _execute_with_reporting(
-                cursor,
-                "ALTER TABLE users ADD COLUMN household_children INTEGER DEFAULT 0",
-                ignore_exceptions=(psycopg2.errors.DuplicateColumn,),
-            )
-
-            # Add preferred unit columns if they don't exist
-            _execute_with_reporting(
-                cursor,
-                "ALTER TABLE users ADD COLUMN preferred_volume_unit VARCHAR(50) DEFAULT 'Milliliter'",
-                ignore_exceptions=(psycopg2.errors.DuplicateColumn,),
-            )
-
-            _execute_with_reporting(
-                cursor,
-                "ALTER TABLE users ADD COLUMN preferred_weight_unit VARCHAR(50) DEFAULT 'Gram'",
-                ignore_exceptions=(psycopg2.errors.DuplicateColumn,),
-            )
-
-            _execute_with_reporting(
-                cursor,
-                "ALTER TABLE users ADD COLUMN preferred_count_unit VARCHAR(50) DEFAULT 'Piece'",
-                ignore_exceptions=(psycopg2.errors.DuplicateColumn,),
-            )
+            # Add additional columns to existing users table if they don't exist
+            columns_to_add = [
+                ("household_id", "INTEGER REFERENCES users(id)"),
+                ("household_adults", "INTEGER DEFAULT 2"),
+                ("household_children", "INTEGER DEFAULT 0"),
+                ("preferred_volume_unit", "VARCHAR(50) DEFAULT 'Milliliter'"),
+                ("preferred_weight_unit", "VARCHAR(50) DEFAULT 'Gram'"),
+                ("preferred_count_unit", "VARCHAR(50) DEFAULT 'Piece'"),
+            ]
+            for column, definition in columns_to_add:
+                _add_column_if_not_exists(
+                    cursor, "users", column, definition, dialect="postgres"
+                )
 
             # Create indexes for better performance
             for index_sql in MULTI_USER_POSTGRESQL_INDEXES:
@@ -131,42 +130,19 @@ def _setup_sqlite_shared(db_path: str) -> bool:
         for _, schema in MULTI_USER_SQLITE_SCHEMAS.items():
             _execute_with_reporting(cursor, schema)
 
-        # Add household columns to existing users table if they don't exist
-        _execute_with_reporting(
-            cursor,
-            "ALTER TABLE users ADD COLUMN household_id INTEGER REFERENCES users(id)",
-            ignore_exceptions=(sqlite3.OperationalError,),
-        )
-
-        _execute_with_reporting(
-            cursor,
-            "ALTER TABLE users ADD COLUMN household_adults INTEGER DEFAULT 2",
-            ignore_exceptions=(sqlite3.OperationalError,),
-        )
-
-        _execute_with_reporting(
-            cursor,
-            "ALTER TABLE users ADD COLUMN household_children INTEGER DEFAULT 0",
-            ignore_exceptions=(sqlite3.OperationalError,),
-        )
-
-        _execute_with_reporting(
-            cursor,
-            "ALTER TABLE users ADD COLUMN preferred_volume_unit TEXT DEFAULT 'Milliliter'",
-            ignore_exceptions=(sqlite3.OperationalError,),
-        )
-
-        _execute_with_reporting(
-            cursor,
-            "ALTER TABLE users ADD COLUMN preferred_weight_unit TEXT DEFAULT 'Gram'",
-            ignore_exceptions=(sqlite3.OperationalError,),
-        )
-
-        _execute_with_reporting(
-            cursor,
-            "ALTER TABLE users ADD COLUMN preferred_count_unit TEXT DEFAULT 'Piece'",
-            ignore_exceptions=(sqlite3.OperationalError,),
-        )
+        # Add additional columns to existing users table if they don't exist
+        columns_to_add = [
+            ("household_id", "INTEGER REFERENCES users(id)"),
+            ("household_adults", "INTEGER DEFAULT 2"),
+            ("household_children", "INTEGER DEFAULT 0"),
+            ("preferred_volume_unit", "TEXT DEFAULT 'Milliliter'"),
+            ("preferred_weight_unit", "TEXT DEFAULT 'Gram'"),
+            ("preferred_count_unit", "TEXT DEFAULT 'Piece'"),
+        ]
+        for column, definition in columns_to_add:
+            _add_column_if_not_exists(
+                cursor, "users", column, definition, dialect="sqlite"
+            )
 
         # Create indexes for better performance
         for index_sql in MULTI_USER_SQLITE_INDEXES:
