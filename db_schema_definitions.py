@@ -5,6 +5,14 @@ This module provides common schema definitions to avoid duplication.
 
 # Table schemas as dictionaries to enable reuse
 SINGLE_USER_SCHEMAS = {
+    "units": """
+        CREATE TABLE IF NOT EXISTS Units (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            base_unit TEXT NOT NULL,
+            size REAL NOT NULL
+        )
+    """,
     "ingredients": """
         CREATE TABLE IF NOT EXISTS Ingredients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,6 +100,17 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             household_children INTEGER DEFAULT 0
         )
     """,
+    "units": """
+        CREATE TABLE IF NOT EXISTS units (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            name VARCHAR(255) NOT NULL,
+            base_unit VARCHAR(20) NOT NULL,
+            size REAL NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name)
+        )
+    """,
     "ingredients": """
         CREATE TABLE IF NOT EXISTS ingredients (
             id SERIAL PRIMARY KEY,
@@ -174,6 +193,16 @@ MULTI_USER_SQLITE_SCHEMAS = {
             preferred_language TEXT DEFAULT 'en',
             household_adults INTEGER DEFAULT 2,
             household_children INTEGER DEFAULT 0
+        )
+    """,
+    "units": """
+        CREATE TABLE IF NOT EXISTS units (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            base_unit TEXT NOT NULL,
+            size REAL NOT NULL,
+            UNIQUE(user_id, name)
         )
     """,
     "ingredients": """

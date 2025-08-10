@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from pantry_manager_abc import PantryManager
 from short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
+from constants import DEFAULT_UNITS
 
 
 class SQLitePantryManager(PantryManager):
@@ -19,12 +20,66 @@ class SQLitePantryManager(PantryManager):
             **kwargs: Additional configuration options (ignored for SQLite)
         """
         self.db_path = connection_string
+        try:
+            self._initialize_units()
+        except Exception:
+            # Defer database errors until actual operations
+            pass
 
     def _get_connection(self):
         """Get a database connection. Should be used in a context manager."""
         conn = sqlite3.connect(self.db_path)
         conn.isolation_level = None  # Enable autocommit mode
         return conn
+
+    def _initialize_units(self) -> None:
+        """Populate units table with defaults if empty."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS Units (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    base_unit TEXT NOT NULL,
+                    size REAL NOT NULL
+                )
+                """
+            )
+            cursor.execute("SELECT COUNT(*) FROM Units")
+            if cursor.fetchone()[0] == 0:
+                cursor.executemany(
+                    "INSERT INTO Units (name, base_unit, size) VALUES (?, ?, ?)",
+                    [
+                        (u["name"], u["base_unit"], u["size"])
+                        for u in DEFAULT_UNITS
+                    ],
+                )
+
+    @safe_execute("list units", default_return=[])
+    def list_units(self) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, base_unit, size FROM Units")
+            return [
+                {"name": name, "base_unit": base_unit, "size": size}
+                for name, base_unit, size in cursor.fetchall()
+            ]
+
+    @safe_execute("set unit", default_return=False)
+    def set_unit(self, name: str, base_unit: str, size: float) -> bool:
+        validate_required_params(name=name, base_unit=base_unit, size=size)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO Units (name, base_unit, size)
+                VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET base_unit=excluded.base_unit, size=excluded.size
+                """,
+                (name, base_unit, size),
+            )
+            return True
 
     @safe_execute("add ingredient", default_return=False)
     def add_ingredient(self, name: str, default_unit: str) -> bool:

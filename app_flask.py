@@ -14,7 +14,6 @@ from flask import (
     session,
     url_for,
 )
-from constants import UNITS
 from datetime import date, timedelta, datetime
 from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
@@ -398,8 +397,9 @@ def pantry_view():
 
     contents = user_pantry.get_pantry_contents()
     transactions = user_pantry.get_transaction_history()
+    units = [u["name"] for u in user_pantry.list_units()]
     return render_template(
-        "pantry.html", contents=contents, transactions=transactions, units=UNITS
+        "pantry.html", contents=contents, transactions=transactions, units=units
     )
 
 
@@ -516,7 +516,12 @@ def view_recipe(recipe_name):
 @requires_auth
 def add_recipe_form():
     """Show add recipe form."""
-    return render_template("recipe_add.html", units=UNITS)
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+    units = [u["name"] for u in user_pantry.list_units()]
+    return render_template("recipe_add.html", units=units)
 
 
 @app.route("/recipes/add", methods=["POST"])
@@ -569,7 +574,8 @@ def edit_recipe_form(recipe_name):
     if not recipe:
         flash("Recipe not found.", "error")
         return redirect(url_for("recipes"))
-    return render_template("recipe_edit.html", recipe=recipe, units=UNITS)
+    units = [u["name"] for u in user_pantry.list_units()]
+    return render_template("recipe_edit.html", recipe=recipe, units=units)
 
 
 @app.route("/recipes/edit/<recipe_name>", methods=["POST"])

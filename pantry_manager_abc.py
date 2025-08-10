@@ -22,6 +22,17 @@ class PantryManager(ABC):
         """
         pass
 
+    # Unit Management
+    @abstractmethod
+    def list_units(self) -> List[Dict[str, Any]]:
+        """List all measurement units available to the user."""
+        pass
+
+    @abstractmethod
+    def set_unit(self, name: str, base_unit: str, size: float) -> bool:
+        """Add or update a measurement unit for the user."""
+        pass
+
     # Ingredient Management
     @abstractmethod
     def add_ingredient(self, name: str, default_unit: str) -> bool:

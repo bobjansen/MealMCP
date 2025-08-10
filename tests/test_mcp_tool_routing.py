@@ -49,6 +49,7 @@ class TestMCPToolRouter:
             "adults": 2,
             "children": 0,
         }
+        mock_pm.list_units.return_value = [{"name": "Cup", "base_unit": "ml", "size": 240.0}]
         mock_pm.set_meal_plan.return_value = True
         mock_pm.get_meal_plan.return_value = {"2024-01-01": "Test Recipe"}
         mock_pm.get_grocery_list.return_value = {"milk": {"liters": 1}}
