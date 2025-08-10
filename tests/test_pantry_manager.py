@@ -246,6 +246,94 @@ class TestPantryManager(unittest.TestCase):
         self.assertEqual(saved_recipe["time_minutes"], recipe["time_minutes"])
         self.assertEqual(len(saved_recipe["ingredients"]), len(recipe["ingredients"]))
 
+    def test_recipe_fuzzy_matching(self):
+        """Test fuzzy matching functionality in get_recipe"""
+        # Create a recipe with a specific name
+        recipe = {
+            "name": "Grilled Chicken Breast with Herbs",
+            "instructions": "Season chicken with herbs and grill until cooked through",
+            "time_minutes": 25,
+            "ingredients": [
+                {"name": "chicken breast", "quantity": 2, "unit": "pieces"},
+                {"name": "olive oil", "quantity": 2, "unit": "tbsp"},
+                {"name": "mixed herbs", "quantity": 1, "unit": "tsp"},
+            ],
+        }
+
+        success, recipe_id = self.pantry.add_recipe(**recipe)
+        self.assertTrue(success)
+        self.assertIsNotNone(recipe_id)
+
+        # Test exact match (should still work)
+        exact_match = self.pantry.get_recipe("Grilled Chicken Breast with Herbs")
+        self.assertIsNotNone(exact_match)
+        self.assertEqual(exact_match["name"], recipe["name"])
+
+        # Test partial match
+        partial_match = self.pantry.get_recipe("Grilled Chicken")
+        self.assertIsNotNone(partial_match)
+        self.assertEqual(partial_match["name"], recipe["name"])
+
+        # Test case insensitive match
+        case_match = self.pantry.get_recipe("grilled chicken breast")
+        self.assertIsNotNone(case_match)
+        self.assertEqual(case_match["name"], recipe["name"])
+
+        # Test substring match
+        substring_match = self.pantry.get_recipe("Chicken")
+        self.assertIsNotNone(substring_match)
+        self.assertEqual(substring_match["name"], recipe["name"])
+
+        # Test with herbs keyword
+        herbs_match = self.pantry.get_recipe("Herbs")
+        self.assertIsNotNone(herbs_match)
+        self.assertEqual(herbs_match["name"], recipe["name"])
+
+        # Test non-matching query
+        no_match = self.pantry.get_recipe("Pizza Margherita")
+        self.assertIsNone(no_match)
+
+        # Test empty string
+        empty_match = self.pantry.get_recipe("")
+        self.assertIsNone(empty_match)
+
+        # Add another recipe to test preference for shorter matches
+        recipe2 = {
+            "name": "Chicken Salad",
+            "instructions": "Mix chicken with vegetables",
+            "time_minutes": 15,
+            "ingredients": [
+                {"name": "cooked chicken", "quantity": 200, "unit": "g"},
+                {"name": "lettuce", "quantity": 100, "unit": "g"},
+            ],
+        }
+
+        success2, recipe_id2 = self.pantry.add_recipe(**recipe2)
+        self.assertTrue(success2)
+
+        # When searching for "Chicken", should return the shorter match first
+        chicken_search = self.pantry.get_recipe("Chicken")
+        self.assertIsNotNone(chicken_search)
+        # Should prefer "Chicken Salad" (shorter) over "Grilled Chicken Breast with Herbs"
+        self.assertEqual(chicken_search["name"], "Chicken Salad")
+
+        # Test advanced word-based matching
+        word_search = self.pantry.get_recipe("Grilled Herbs")
+        self.assertIsNotNone(word_search)
+        self.assertEqual(word_search["name"], "Grilled Chicken Breast with Herbs")
+
+        # Test word order independence
+        reversed_search = self.pantry.get_recipe("Herbs Chicken")
+        self.assertIsNotNone(reversed_search)
+        self.assertEqual(reversed_search["name"], "Grilled Chicken Breast with Herbs")
+
+        # Test single character typo tolerance
+        typo_search = self.pantry.get_recipe("Chickn")  # Missing 'e'
+        self.assertIsNotNone(typo_search)
+        self.assertEqual(
+            typo_search["name"], "Chicken Salad"
+        )  # Shorter match preferred
+
     def test_get_all_recipes(self):
         """Test retrieving all recipes"""
         # Add multiple recipes

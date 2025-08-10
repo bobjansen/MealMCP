@@ -16,8 +16,9 @@ from mcp_core.auth.oauth_server import OAuthServer
 @contextmanager
 def setup_server(allowed_uris):
     """Create OAuthServer with temporary database populated with allowed URIs."""
-    with patch.object(OAuthServer, "init_database"), patch.object(
-        OAuthServer, "_load_tokens_from_db"
+    with (
+        patch.object(OAuthServer, "init_database"),
+        patch.object(OAuthServer, "_load_tokens_from_db"),
     ):
         server = OAuthServer(use_postgresql=False)
 

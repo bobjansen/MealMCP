@@ -394,7 +394,7 @@ class SQLitePantryManager(PantryManager):
 
     def get_recipe(self, recipe_name: str) -> Optional[Dict[str, Any]]:
         """
-        Get a recipe and its ingredients by name.
+        Get a recipe and its ingredients by name with fuzzy matching.
 
         Args:
             recipe_name: Name of the recipe to retrieve
@@ -402,34 +402,174 @@ class SQLitePantryManager(PantryManager):
         Returns:
             Optional[Dict[str, Any]]: Recipe details including ingredients, or None if not found
         """
+        if not recipe_name or not recipe_name.strip():
+            return None
+
+        search_term = recipe_name.strip()
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
+
+                # Strategy 1: Exact match
                 cursor.execute(
                     """
                     SELECT
-                        r.id,
-                        r.instructions,
-                        r.time_minutes,
-                        r.rating,
-                        r.created_date,
-                        r.last_modified
+                        r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                        r.created_date, r.last_modified, 1 as match_score
                     FROM Recipes r
                     WHERE r.name = ?
                     """,
-                    (recipe_name,),
+                    (search_term,),
                 )
                 recipe = cursor.fetchone()
+
+                # Strategy 2: Case-insensitive exact match
+                if not recipe:
+                    cursor.execute(
+                        """
+                        SELECT
+                            r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                            r.created_date, r.last_modified, 2 as match_score
+                        FROM Recipes r
+                        WHERE LOWER(r.name) = LOWER(?)
+                        """,
+                        (search_term,),
+                    )
+                    recipe = cursor.fetchone()
+
+                # Strategy 3: Word-based matching - all words in search term appear in recipe name
+                if not recipe:
+                    search_words = [
+                        w.lower() for w in search_term.split() if len(w) > 2
+                    ]
+                    if search_words:
+                        word_conditions = " AND ".join(
+                            ["LOWER(r.name) LIKE ?" for _ in search_words]
+                        )
+                        word_params = [f"%{word}%" for word in search_words]
+
+                        cursor.execute(
+                            f"""
+                            SELECT
+                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.created_date, r.last_modified, 3 as match_score
+                            FROM Recipes r
+                            WHERE {word_conditions}
+                            ORDER BY LENGTH(r.name) ASC
+                            LIMIT 1
+                            """,
+                            word_params,
+                        )
+                        recipe = cursor.fetchone()
+
+                # Strategy 4: Any word in search term appears in recipe name
+                if not recipe:
+                    search_words = [
+                        w.lower() for w in search_term.split() if len(w) > 2
+                    ]
+                    if search_words:
+                        word_conditions = " OR ".join(
+                            ["LOWER(r.name) LIKE ?" for _ in search_words]
+                        )
+                        word_params = [f"%{word}%" for word in search_words]
+
+                        cursor.execute(
+                            f"""
+                            SELECT
+                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.created_date, r.last_modified, 4 as match_score
+                            FROM Recipes r
+                            WHERE {word_conditions}
+                            ORDER BY LENGTH(r.name) ASC
+                            LIMIT 1
+                            """,
+                            word_params,
+                        )
+                        recipe = cursor.fetchone()
+
+                # Strategy 5: Substring match (fallback)
+                if not recipe:
+                    cursor.execute(
+                        """
+                        SELECT
+                            r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                            r.created_date, r.last_modified, 5 as match_score
+                        FROM Recipes r
+                        WHERE LOWER(r.name) LIKE LOWER(?)
+                        ORDER BY LENGTH(r.name) ASC
+                        LIMIT 1
+                        """,
+                        (f"%{search_term}%",),
+                    )
+                    recipe = cursor.fetchone()
+
+                # Strategy 6: Character-level fuzzy matching for typos
+                if not recipe and len(search_term) >= 4:
+                    # Generate various character-level variations
+                    variations = []
+                    term = search_term.lower()
+
+                    # Missing character variations
+                    for i in range(len(term)):
+                        if len(term) > 3:  # Don't make words too short
+                            variations.append(f"%{term[:i] + term[i+1:]}%")
+
+                    # Extra character variations (search within the term)
+                    if len(term) > 4:
+                        variations.append(f"%{term[1:]}%")  # Remove first char
+                        variations.append(f"%{term[:-1]}%")  # Remove last char
+                        if len(term) > 5:
+                            variations.append(
+                                f"%{term[1:-1]}%"
+                            )  # Remove first and last
+
+                    # Character substitution (common patterns)
+                    common_typos = {
+                        "i": "e",
+                        "e": "i",
+                        "a": "e",
+                        "e": "a",
+                        "tion": "sion",
+                        "sion": "tion",
+                    }
+
+                    for old, new in common_typos.items():
+                        if old in term:
+                            variations.append(f"%{term.replace(old, new)}%")
+
+                    if variations:
+                        # Create OR conditions for all variations
+                        or_conditions = " OR ".join(
+                            ["LOWER(r.name) LIKE ?" for _ in variations]
+                        )
+
+                        cursor.execute(
+                            f"""
+                            SELECT
+                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.created_date, r.last_modified, 6 as match_score
+                            FROM Recipes r
+                            WHERE {or_conditions}
+                            ORDER BY LENGTH(r.name) ASC
+                            LIMIT 1
+                            """,
+                            variations,
+                        )
+                        recipe = cursor.fetchone()
+
                 if not recipe:
                     return None
 
                 (
                     recipe_id,
+                    actual_name,
                     instructions,
                     time_minutes,
                     rating,
                     created_date,
                     last_modified,
+                    match_score,
                 ) = recipe
 
                 # Get ingredients
@@ -451,7 +591,7 @@ class SQLitePantryManager(PantryManager):
                 ]
 
                 return {
-                    "name": recipe_name,
+                    "name": actual_name,
                     "instructions": instructions,
                     "time_minutes": time_minutes,
                     "rating": rating,
