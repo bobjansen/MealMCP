@@ -20,10 +20,10 @@
                 <p class="card-text">
                     <i class="fas fa-clock"></i> {{ recipe.time_minutes }} {{ t('minutes') }}
                 </p>
-                {% if recipe.rating %}
+                {% if recipe.rating and recipe.rating > 0 %}
                 <p class="card-text">
                     <i class="fas fa-star text-warning"></i>
-                    {% for i in range(recipe.rating) %}★{% endfor %}{% for i in range(5 - recipe.rating) %}☆{% endfor %}
+                    {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
                     ({{ recipe.rating }}/5)
                 </p>
                 {% else %}

@@ -39,9 +39,9 @@
                     </div>
                     <div class="col-md-6">
                         <h6><i class="fas fa-star"></i> {{ t('Rating') }}</h6>
-                        {% if recipe.rating %}
+                        {% if recipe.rating and recipe.rating > 0 %}
                         <p>
-                            {% for i in range(recipe.rating) %}★{% endfor %}{% for i in range(5 - recipe.rating) %}☆{% endfor %}
+                            {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
                             ({{ recipe.rating }}/5)
                         </p>
                         {% else %}

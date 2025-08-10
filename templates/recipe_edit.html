@@ -34,8 +34,8 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Current Rating</label>
                             <div class="form-control-plaintext">
-                                {% if recipe.rating %}
-                                    {% for i in range(recipe.rating) %}★{% endfor %}{% for i in range(5 - recipe.rating) %}☆{% endfor %}
+                                {% if recipe.rating and recipe.rating > 0 %}
+                                    {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
                                     ({{ recipe.rating }}/5)
                                 {% else %}
                                     <span class="text-muted">Not rated</span>
