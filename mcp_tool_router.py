@@ -37,6 +37,10 @@ class MCPToolRouter:
         """Register all available MCP tools."""
         self.tools = {
             "list_units": self._list_units,
+            "add_custom_unit": self._add_custom_unit,
+            "delete_custom_unit": self._delete_custom_unit,
+            "get_preferred_units": self._get_preferred_units,
+            "set_preferred_units": self._set_preferred_units,
             "get_user_profile": self._get_user_profile,
             "add_recipe": self._add_recipe,
             "edit_recipe": self._edit_recipe,
@@ -88,6 +92,168 @@ class MCPToolRouter:
 
             units = DEFAULT_UNITS
         return {"status": "success", "units": units}
+
+    def _add_custom_unit(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Add or update a custom measurement unit."""
+        try:
+            name = arguments.get("name")
+            base_unit = arguments.get("base_unit")
+            size = arguments.get("size")
+
+            if not all([name, base_unit]) or size is None:
+                return {
+                    "status": "error",
+                    "message": "Missing required parameters: name, base_unit, and size",
+                }
+
+            if base_unit not in ["ml", "g", "count"]:
+                return {
+                    "status": "error",
+                    "message": "base_unit must be one of: ml, g, count",
+                }
+
+            if size <= 0:
+                return {"status": "error", "message": "size must be greater than 0"}
+
+            success = pantry_manager.set_unit(name, base_unit, float(size))
+
+            if success:
+                return {
+                    "status": "success",
+                    "message": f"Custom unit '{name}' added/updated successfully",
+                    "unit": {"name": name, "base_unit": base_unit, "size": float(size)},
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": f"Failed to add/update unit '{name}'",
+                }
+
+        except Exception as e:
+            return {"status": "error", "message": f"Error adding custom unit: {str(e)}"}
+
+    def _delete_custom_unit(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Delete a custom measurement unit."""
+        try:
+            name = arguments.get("name")
+
+            if not name:
+                return {
+                    "status": "error",
+                    "message": "Missing required parameter: name",
+                }
+
+            success = pantry_manager.delete_unit(name)
+
+            if success:
+                return {
+                    "status": "success",
+                    "message": f"Unit '{name}' deleted successfully",
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": f"Cannot delete unit '{name}' - it may be in use, protected, or not exist",
+                }
+
+        except Exception as e:
+            return {"status": "error", "message": f"Error deleting unit: {str(e)}"}
+
+    def _get_preferred_units(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Get the household's preferred default units."""
+        try:
+            preferred_units = pantry_manager.get_preferred_units()
+
+            return {
+                "status": "success",
+                "preferred_units": preferred_units,
+                "message": "Retrieved preferred units successfully",
+            }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error getting preferred units: {str(e)}",
+            }
+
+    def _set_preferred_units(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Set the household's preferred default units."""
+        try:
+            volume_unit = arguments.get("volume_unit")
+            weight_unit = arguments.get("weight_unit")
+            count_unit = arguments.get("count_unit")
+
+            if not all([volume_unit, weight_unit, count_unit]):
+                return {
+                    "status": "error",
+                    "message": "Missing required parameters: volume_unit, weight_unit, count_unit",
+                }
+
+            # Get available units to validate the selections
+            available_units = pantry_manager.list_units()
+            units_by_base = {}
+            for unit in available_units:
+                base = unit.get("base_unit")
+                if base not in units_by_base:
+                    units_by_base[base] = []
+                units_by_base[base].append(unit["name"])
+
+            # Validate unit selections - check if units exist in available units
+            volume_units = units_by_base.get("ml", [])
+            weight_units = units_by_base.get("g", [])
+            count_units = units_by_base.get("count", [])
+
+            if volume_unit not in volume_units:
+                return {
+                    "status": "error",
+                    "message": f"'{volume_unit}' is not a valid volume unit. Available: {', '.join(volume_units)}",
+                }
+
+            if weight_unit not in weight_units:
+                return {
+                    "status": "error",
+                    "message": f"'{weight_unit}' is not a valid weight unit. Available: {', '.join(weight_units)}",
+                }
+
+            if count_unit not in count_units:
+                return {
+                    "status": "error",
+                    "message": f"'{count_unit}' is not a valid count unit. Available: {', '.join(count_units)}",
+                }
+
+            success = pantry_manager.set_preferred_units(
+                volume_unit, weight_unit, count_unit
+            )
+
+            if success:
+                return {
+                    "status": "success",
+                    "message": "Preferred units updated successfully",
+                    "preferred_units": {
+                        "volume_unit": volume_unit,
+                        "weight_unit": weight_unit,
+                        "count_unit": count_unit,
+                    },
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to update preferred units",
+                }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error setting preferred units: {str(e)}",
+            }
 
     def _get_user_profile(
         self, arguments: Dict[str, Any], pantry_manager

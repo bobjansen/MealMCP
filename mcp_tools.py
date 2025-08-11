@@ -264,11 +264,76 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     # === UTILITY TOOLS ===
     {
         "name": "list_units",
-        "description": "List all available units of measurement",
+        "description": "List all available units of measurement with their conversion factors and base units",
         "inputSchema": {
             "type": "object",
             "properties": {},
             "required": [],
+        },
+    },
+    {
+        "name": "add_custom_unit",
+        "description": "Add or update a custom measurement unit with conversion to base units",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the unit (e.g., 'cup', 'tablespoon', 'can')",
+                },
+                "base_unit": {
+                    "type": "string",
+                    "enum": ["ml", "g", "count"],
+                    "description": "Base unit type: ml (volume), g (weight), count (discrete items)",
+                },
+                "size": {
+                    "type": "number",
+                    "description": "Size of this unit in base units (e.g., 250 for '1 cup = 250ml')",
+                },
+            },
+            "required": ["name", "base_unit", "size"],
+        },
+    },
+    {
+        "name": "delete_custom_unit",
+        "description": "Delete a custom measurement unit (cannot delete if unit is currently in use)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Name of the unit to delete"}
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "get_preferred_units",
+        "description": "Get the household's preferred default units for volume, weight, and count measurements",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "set_preferred_units",
+        "description": "Set the household's preferred default units for new recipes and pantry items",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "volume_unit": {
+                    "type": "string",
+                    "description": "Preferred unit for volume measurements (must be a volume unit with base_unit 'ml')",
+                },
+                "weight_unit": {
+                    "type": "string",
+                    "description": "Preferred unit for weight measurements (must be a weight unit with base_unit 'g')",
+                },
+                "count_unit": {
+                    "type": "string",
+                    "description": "Preferred unit for count measurements (must be a count unit with base_unit 'count')",
+                },
+            },
+            "required": ["volume_unit", "weight_unit", "count_unit"],
         },
     },
     # === PANTRY MANAGEMENT (INDIVIDUAL) ===

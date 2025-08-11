@@ -1209,7 +1209,6 @@ class SQLitePantryManager(PantryManager):
 
         return grocery_list
 
-
     def get_household_characteristics(self) -> Dict[str, Any]:
         """Get household characteristics including number of adults and children."""
         try:
@@ -1224,7 +1223,9 @@ class SQLitePantryManager(PantryManager):
                 )
                 result = cursor.fetchone()
                 if result:
-                    adults, children, notes, updated_date, volume, weight, count = result
+                    adults, children, notes, updated_date, volume, weight, count = (
+                        result
+                    )
                     return {
                         "adults": adults,
                         "children": children,

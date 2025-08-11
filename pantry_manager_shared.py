@@ -1896,7 +1896,10 @@ class SharedPantryManager(PantryManager):
             print(f"Error setting household characteristics: {e}")
             return False
 
-    @safe_execute("get preferred units", default_return={"volume": "Milliliter", "weight": "Gram", "count": "Piece"})
+    @safe_execute(
+        "get preferred units",
+        default_return={"volume": "Milliliter", "weight": "Gram", "count": "Piece"},
+    )
     def get_preferred_units(self) -> Dict[str, str]:
         """Get preferred units for the household."""
         with self._get_connection() as conn:
