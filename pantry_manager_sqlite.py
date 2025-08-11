@@ -240,13 +240,16 @@ class SQLitePantryManager(PantryManager):
         if quantity <= 0:
             raise ValueError("Quantity must be positive")
 
+        # Normalize the unit name to match database entries
+        normalized_unit = self._normalize_unit_name(unit)
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
 
             # Get or create the ingredient
             ingredient_id = self.get_ingredient_id(item_name)
             if ingredient_id is None:
-                self.add_ingredient(item_name, unit)
+                self.add_ingredient(item_name, normalized_unit)
                 ingredient_id = self.get_ingredient_id(item_name)
 
             cursor.execute(
@@ -259,7 +262,7 @@ class SQLitePantryManager(PantryManager):
                     "addition",
                     ingredient_id,
                     quantity,
-                    unit,
+                    normalized_unit,
                     datetime.now().isoformat(),
                     notes,
                 ),
@@ -282,6 +285,9 @@ class SQLitePantryManager(PantryManager):
             bool: True if successful, False otherwise
         """
         try:
+            # Normalize the unit name to match database entries
+            normalized_unit = self._normalize_unit_name(unit)
+
             # First check if we have enough of the item
             current_quantity = self.get_item_quantity(item_name, unit)
             if current_quantity < quantity:
@@ -307,7 +313,7 @@ class SQLitePantryManager(PantryManager):
                         "removal",
                         ingredient_id,
                         quantity,
-                        unit,
+                        normalized_unit,
                         datetime.now().isoformat(),
                         notes,
                     ),
@@ -363,13 +369,70 @@ class SQLitePantryManager(PantryManager):
                 if ingredient_id is None:
                     return 0.0
 
+                # First try exact match
                 cursor.execute(
                     "SELECT base_unit, size FROM Units WHERE name = ?",
                     (unit,),
                 )
                 target = cursor.fetchone()
+
+                # If no exact match, try common variations
+                if not target:
+                    # Create mapping for common abbreviations and case variations
+                    unit_mappings = {
+                        # Volume abbreviations
+                        "tsp": "Teaspoon",
+                        "tbsp": "Tablespoon",
+                        "cup": "Cup",
+                        "ml": "Milliliter",
+                        "l": "Liter",
+                        "fl oz": "Fluid ounce",
+                        "pt": "Pint",
+                        "qt": "Quart",
+                        "gal": "Gallon",
+                        # Weight abbreviations
+                        "g": "Gram",
+                        "kg": "Kilogram",
+                        "oz": "Ounce",
+                        "lb": "Pound",
+                        "lbs": "Pound",
+                        # Count abbreviations
+                        "pc": "Piece",
+                        "pcs": "Piece",
+                        "piece": "Piece",
+                        "pieces": "Piece",
+                        # Case variations (lowercase to proper case)
+                        "teaspoon": "Teaspoon",
+                        "tablespoon": "Tablespoon",
+                        "milliliter": "Milliliter",
+                        "liter": "Liter",
+                        "gram": "Gram",
+                        "kilogram": "Kilogram",
+                        "ounce": "Ounce",
+                        "pound": "Pound",
+                    }
+
+                    # Try mapped unit name
+                    mapped_unit = unit_mappings.get(unit.lower())
+                    if mapped_unit:
+                        cursor.execute(
+                            "SELECT base_unit, size FROM Units WHERE name = ?",
+                            (mapped_unit,),
+                        )
+                        target = cursor.fetchone()
+
+                    # If still no match, try case-insensitive search
+                    if not target:
+                        cursor.execute(
+                            "SELECT base_unit, size FROM Units WHERE LOWER(name) = LOWER(?)",
+                            (unit,),
+                        )
+                        target = cursor.fetchone()
+
+                # If still no match, fall back to old behavior
                 if not target:
                     return self.get_item_quantity(item_name, unit)
+
                 target_base, target_size = target
 
                 cursor.execute(
@@ -394,6 +457,70 @@ class SQLitePantryManager(PantryManager):
         except Exception as e:
             print(f"Error getting total item quantity: {e}")
             return 0.0
+
+    def _normalize_unit_name(self, unit: str) -> str:
+        """Normalize unit name to match Units table entries."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+
+                # First try exact match
+                cursor.execute("SELECT name FROM Units WHERE name = ?", (unit,))
+                if cursor.fetchone():
+                    return unit
+
+                # Try common abbreviation mappings
+                unit_mappings = {
+                    "tsp": "Teaspoon",
+                    "tbsp": "Tablespoon",
+                    "cup": "Cup",
+                    "ml": "Milliliter",
+                    "l": "Liter",
+                    "fl oz": "Fluid ounce",
+                    "pt": "Pint",
+                    "qt": "Quart",
+                    "gal": "Gallon",
+                    "g": "Gram",
+                    "kg": "Kilogram",
+                    "oz": "Ounce",
+                    "lb": "Pound",
+                    "lbs": "Pound",
+                    "pc": "Piece",
+                    "pcs": "Piece",
+                    "piece": "Piece",
+                    "pieces": "Piece",
+                    "teaspoon": "Teaspoon",
+                    "tablespoon": "Tablespoon",
+                    "milliliter": "Milliliter",
+                    "liter": "Liter",
+                    "gram": "Gram",
+                    "kilogram": "Kilogram",
+                    "ounce": "Ounce",
+                    "pound": "Pound",
+                }
+
+                mapped_unit = unit_mappings.get(unit.lower())
+                if mapped_unit:
+                    cursor.execute(
+                        "SELECT name FROM Units WHERE name = ?", (mapped_unit,)
+                    )
+                    if cursor.fetchone():
+                        return mapped_unit
+
+                # Try case-insensitive match
+                cursor.execute(
+                    "SELECT name FROM Units WHERE LOWER(name) = LOWER(?)", (unit,)
+                )
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+
+                # If no match found, return original unit (might need to be added to Units)
+                return unit
+
+        except Exception as e:
+            print(f"Error normalizing unit name: {e}")
+            return unit
 
     def get_pantry_contents(self) -> Dict[str, Dict[str, float]]:
         """

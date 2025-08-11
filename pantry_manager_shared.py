@@ -649,13 +649,70 @@ class SharedPantryManager(PantryManager):
                 if ingredient_id is None:
                     return 0.0
 
+                # First try exact match
                 cursor.execute(
                     f"SELECT base_unit, size FROM units WHERE user_id = {ph} AND name = {ph}",
                     (self.user_id, unit),
                 )
                 target = cursor.fetchone()
+
+                # If no exact match, try common variations
+                if not target:
+                    # Create mapping for common abbreviations and case variations
+                    unit_mappings = {
+                        # Volume abbreviations
+                        "tsp": "Teaspoon",
+                        "tbsp": "Tablespoon",
+                        "cup": "Cup",
+                        "ml": "Milliliter",
+                        "l": "Liter",
+                        "fl oz": "Fluid ounce",
+                        "pt": "Pint",
+                        "qt": "Quart",
+                        "gal": "Gallon",
+                        # Weight abbreviations
+                        "g": "Gram",
+                        "kg": "Kilogram",
+                        "oz": "Ounce",
+                        "lb": "Pound",
+                        "lbs": "Pound",
+                        # Count abbreviations
+                        "pc": "Piece",
+                        "pcs": "Piece",
+                        "piece": "Piece",
+                        "pieces": "Piece",
+                        # Case variations (lowercase to proper case)
+                        "teaspoon": "Teaspoon",
+                        "tablespoon": "Tablespoon",
+                        "milliliter": "Milliliter",
+                        "liter": "Liter",
+                        "gram": "Gram",
+                        "kilogram": "Kilogram",
+                        "ounce": "Ounce",
+                        "pound": "Pound",
+                    }
+
+                    # Try mapped unit name
+                    mapped_unit = unit_mappings.get(unit.lower())
+                    if mapped_unit:
+                        cursor.execute(
+                            f"SELECT base_unit, size FROM units WHERE user_id = {ph} AND name = {ph}",
+                            (self.user_id, mapped_unit),
+                        )
+                        target = cursor.fetchone()
+
+                    # If still no match, try case-insensitive search
+                    if not target:
+                        cursor.execute(
+                            f"SELECT base_unit, size FROM units WHERE user_id = {ph} AND LOWER(name) = LOWER({ph})",
+                            (self.user_id, unit),
+                        )
+                        target = cursor.fetchone()
+
+                # If still no match, fall back to old behavior
                 if not target:
                     return self.get_item_quantity(item_name, unit)
+
                 target_base, target_size = target
 
                 cursor.execute(
