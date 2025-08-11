@@ -74,7 +74,15 @@
                                         <select class="form-select" name="ingredient_unit[]" required>
                                             <option value="">Select unit...</option>
                                             {% for unit in units %}
-                                            <option value="{{ unit }}" {% if unit == ingredient.unit %}selected{% endif %}>{{ unit }}</option>
+                                            <option value="{{ unit }}" 
+                                                {% if unit == ingredient.unit or 
+                                                      unit.lower() == ingredient.unit.lower() or
+                                                      (unit == 'Tablespoon' and ingredient.unit == 'tbsp') or
+                                                      (unit == 'Teaspoon' and ingredient.unit == 'tsp') or
+                                                      (unit == 'Cup' and ingredient.unit == 'cup') or
+                                                      (unit == 'Pound' and ingredient.unit == 'lb') or
+                                                      (unit == 'Ounce' and ingredient.unit == 'oz') or
+                                                      (unit == 'Piece' and ingredient.unit in ['piece', 'cloves', 'clove', 'whole', 'medium', 'large', 'small']) %}selected{% endif %}>{{ unit }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -136,10 +144,20 @@
 
 {% block scripts %}
 <script>
+// Store units data for JavaScript access
+const availableUnits = {{ units|tojson }};
+
 function addIngredient() {
     const container = document.getElementById('ingredients-container');
     const newRow = document.createElement('div');
     newRow.className = 'ingredient-row mb-2';
+    
+    // Build the units options dynamically
+    let unitOptions = '<option value="">Select unit...</option>';
+    availableUnits.forEach(unit => {
+        unitOptions += `<option value="${unit}">${unit}</option>`;
+    });
+    
     newRow.innerHTML = `
         <div class="row">
             <div class="col-md-4">
@@ -152,10 +170,7 @@ function addIngredient() {
             </div>
             <div class="col-md-3">
                 <select class="form-select" name="ingredient_unit[]" required>
-                    <option value="">Select unit...</option>
-                    {% for unit in units %}
-                    <option value="{{ unit }}">{{ unit }}</option>
-                    {% endfor %}
+                    ${unitOptions}
                 </select>
             </div>
             <div class="col-md-2">
