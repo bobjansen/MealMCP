@@ -31,14 +31,14 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="time_minutes" class="form-label">Preparation Time (minutes)</label>
-                            <input type="number" class="form-control" id="time_minutes" name="time_minutes" 
+                            <input type="number" class="form-control" id="time_minutes" name="time_minutes"
                                    required min="1">
                         </div>
                     </div>
 
                     <div class="mb-4">
                         <label for="instructions" class="form-label">Instructions</label>
-                        <textarea class="form-control" id="instructions" name="instructions" 
+                        <textarea class="form-control" id="instructions" name="instructions"
                                   rows="6" required placeholder="Enter cooking instructions..."></textarea>
                     </div>
 
@@ -49,24 +49,57 @@
                                 <i class="fas fa-plus"></i> Add Ingredient
                             </button>
                         </div>
-                        
+
                         <div id="ingredients-container">
                             <div class="ingredient-row mb-2">
                                 <div class="row">
                                     <div class="col-md-4">
-                                        <input type="text" class="form-control" name="ingredient_name[]" 
+                                        <input type="text" class="form-control" name="ingredient_name[]"
                                                placeholder="Ingredient name" required>
                                     </div>
                                     <div class="col-md-3">
-                                        <input type="number" class="form-control" name="ingredient_quantity[]" 
+                                        <input type="number" class="form-control" name="ingredient_quantity[]"
                                                placeholder="Quantity" step="0.01" required>
                                     </div>
                                     <div class="col-md-3">
                                         <select class="form-select" name="ingredient_unit[]" required>
-                                            <option value="">Select unit...</option>
-                                            {% for unit in units %}
-                                            <option value="{{ unit }}">{{ unit }}</option>
-                                            {% endfor %}
+                                            <option value="">{{ t('Select unit...') }}</option>
+
+                                            <!-- Most Common Cooking Units -->
+                                            <optgroup label="🍽️ {{ t('Common Cooking') }}">
+                                                {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
+                                                    {% if unit in units %}
+                                                    <option value="{{ unit }}">{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
+
+                                            <!-- Volume Units -->
+                                            <optgroup label="🥤 {{ t('Volume') }}">
+                                                {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
+                                                    {% if unit in units %}
+                                                    <option value="{{ unit }}">{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
+
+                                            <!-- Weight Units -->
+                                            <optgroup label="⚖️ {{ t('Weight') }}">
+                                                {% for unit in ['Kilogram', 'Pound'] %}
+                                                    {% if unit in units %}
+                                                    <option value="{{ unit }}">{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
+
+                                            <!-- Custom/Other Units -->
+                                            <optgroup label="📦 {{ t('Other') }}">
+                                                {% for unit in units %}
+                                                    {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
+                                                    <option value="{{ unit }}">{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div class="col-md-2">
@@ -79,7 +112,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card-footer">
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('recipes') }}" class="btn btn-secondary">
@@ -98,26 +131,90 @@
 
 {% block scripts %}
 <script>
+// Store units data for JavaScript access, organized by category
+const allUnits = {{ units|tojson }};
+const unitsByCategory = {
+    common: [],
+    volume: [],
+    weight: [],
+    other: []
+};
+
+// Organize units by category
+['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'].forEach(unit => {
+    if (allUnits.includes(unit)) unitsByCategory.common.push(unit);
+});
+['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'].forEach(unit => {
+    if (allUnits.includes(unit)) unitsByCategory.volume.push(unit);
+});
+['Kilogram', 'Pound'].forEach(unit => {
+    if (allUnits.includes(unit)) unitsByCategory.weight.push(unit);
+});
+
+// Calculate other units (those not in any other category)
+const allCategorizedUnits = [...unitsByCategory.common, ...unitsByCategory.volume, ...unitsByCategory.weight];
+unitsByCategory.other = allUnits.filter(unit => !allCategorizedUnits.includes(unit));
+
+function buildUnitsOptions() {
+    let options = '<option value="">{{ t("Select unit...") }}</option>';
+
+    // Common Cooking Units
+    if (unitsByCategory.common.length > 0) {
+        options += '<optgroup label="🍽️ {{ t("Common Cooking") }}">';
+        unitsByCategory.common.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+
+    // Volume Units
+    if (unitsByCategory.volume.length > 0) {
+        options += '<optgroup label="🥤 {{ t("Volume") }}">';
+        unitsByCategory.volume.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+
+    // Weight Units
+    if (unitsByCategory.weight.length > 0) {
+        options += '<optgroup label="⚖️ {{ t("Weight") }}">';
+        unitsByCategory.weight.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+
+    // Other Units
+    if (unitsByCategory.other.length > 0) {
+        options += '<optgroup label="📦 {{ t("Other") }}">';
+        unitsByCategory.other.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+
+    return options;
+}
+
 function addIngredient() {
     const container = document.getElementById('ingredients-container');
     const newRow = document.createElement('div');
     newRow.className = 'ingredient-row mb-2';
+
     newRow.innerHTML = `
         <div class="row">
             <div class="col-md-4">
-                <input type="text" class="form-control" name="ingredient_name[]" 
+                <input type="text" class="form-control" name="ingredient_name[]"
                        placeholder="Ingredient name" required>
             </div>
             <div class="col-md-3">
-                <input type="number" class="form-control" name="ingredient_quantity[]" 
+                <input type="number" class="form-control" name="ingredient_quantity[]"
                        placeholder="Quantity" step="0.01" required>
             </div>
             <div class="col-md-3">
                 <select class="form-select" name="ingredient_unit[]" required>
-                    <option value="">Select unit...</option>
-                    {% for unit in units %}
-                    <option value="{{ unit }}">{{ unit }}</option>
-                    {% endfor %}
+                    ${buildUnitsOptions()}
                 </select>
             </div>
             <div class="col-md-2">
@@ -133,7 +230,7 @@ function addIngredient() {
 function removeIngredient(button) {
     const ingredientRow = button.closest('.ingredient-row');
     const container = document.getElementById('ingredients-container');
-    
+
     // Don't remove if it's the last ingredient
     if (container.children.length > 1) {
         ingredientRow.remove();

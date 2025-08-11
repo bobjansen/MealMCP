@@ -29,22 +29,55 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="quantity" class="form-label">{{ t('Quantity') }}</label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                            <input type="number" class="form-control" id="quantity" name="quantity"
                                    step="0.01" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="unit" class="form-label">{{ t('Unit') }}</label>
                             <select name="unit" id="unit" class="form-select" required>
                                 <option value="">{{ t('Select unit...') }}</option>
-                                {% for unit in units %}
-                                <option value="{{ unit }}">{{ unit }}</option>
-                                {% endfor %}
+
+                                <!-- Most Common Cooking Units -->
+                                <optgroup label="🍽️ {{ t('Common Cooking') }}">
+                                    {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
+                                        {% if unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+
+                                <!-- Volume Units -->
+                                <optgroup label="🥤 {{ t('Volume') }}">
+                                    {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
+                                        {% if unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+
+                                <!-- Weight Units -->
+                                <optgroup label="⚖️ {{ t('Weight') }}">
+                                    {% for unit in ['Kilogram', 'Pound'] %}
+                                        {% if unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+
+                                <!-- Custom/Other Units -->
+                                <optgroup label="📦 {{ t('Other') }}">
+                                    {% for unit in units %}
+                                        {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
                             </select>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="notes" class="form-label">{{ t('Notes (optional)') }}</label>
-                        <input type="text" class="form-control" id="notes" name="notes" 
+                        <input type="text" class="form-control" id="notes" name="notes"
                                placeholder="{{ t('e.g., expiry date, brand') }}">
                     </div>
                 </div>
@@ -72,22 +105,55 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="remove_quantity" class="form-label">{{ t('Quantity') }}</label>
-                            <input type="number" class="form-control" id="remove_quantity" name="quantity" 
+                            <input type="number" class="form-control" id="remove_quantity" name="quantity"
                                    step="0.01" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="remove_unit" class="form-label">{{ t('Unit') }}</label>
                             <select name="unit" id="remove_unit" class="form-select" required>
                                 <option value="">{{ t('Select unit...') }}</option>
-                                {% for unit in units %}
-                                <option value="{{ unit }}">{{ unit }}</option>
-                                {% endfor %}
+
+                                <!-- Most Common Cooking Units -->
+                                <optgroup label="🍽️ {{ t('Common Cooking') }}">
+                                    {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
+                                        {% if unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+
+                                <!-- Volume Units -->
+                                <optgroup label="🥤 {{ t('Volume') }}">
+                                    {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
+                                        {% if unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+
+                                <!-- Weight Units -->
+                                <optgroup label="⚖️ {{ t('Weight') }}">
+                                    {% for unit in ['Kilogram', 'Pound'] %}
+                                        {% if unit in units %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+
+                                <!-- Custom/Other Units -->
+                                <optgroup label="📦 {{ t('Other') }}">
+                                    {% for unit in units %}
+                                        {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
+                                        <option value="{{ unit }}">{{ unit }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
                             </select>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="remove_notes" class="form-label">{{ t('Notes (optional)') }}</label>
-                        <input type="text" class="form-control" id="remove_notes" name="notes" 
+                        <input type="text" class="form-control" id="remove_notes" name="notes"
                                placeholder="{{ t('e.g., used for cooking') }}">
                     </div>
                 </div>

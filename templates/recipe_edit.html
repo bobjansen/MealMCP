@@ -72,18 +72,75 @@
                                     </div>
                                     <div class="col-md-3">
                                         <select class="form-select" name="ingredient_unit[]" required>
-                                            <option value="">Select unit...</option>
-                                            {% for unit in units %}
-                                            <option value="{{ unit }}" 
-                                                {% if unit == ingredient.unit or 
-                                                      unit.lower() == ingredient.unit.lower() or
-                                                      (unit == 'Tablespoon' and ingredient.unit == 'tbsp') or
-                                                      (unit == 'Teaspoon' and ingredient.unit == 'tsp') or
-                                                      (unit == 'Cup' and ingredient.unit == 'cup') or
-                                                      (unit == 'Pound' and ingredient.unit == 'lb') or
-                                                      (unit == 'Ounce' and ingredient.unit == 'oz') or
-                                                      (unit == 'Piece' and ingredient.unit in ['piece', 'cloves', 'clove', 'whole', 'medium', 'large', 'small']) %}selected{% endif %}>{{ unit }}</option>
-                                            {% endfor %}
+                                            <option value="">{{ t('Select unit...') }}</option>
+                                            
+                                            <!-- Most Common Cooking Units -->
+                                            <optgroup label="🍽️ {{ t('Common Cooking') }}">
+                                                {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
+                                                    {% if unit in units %}
+                                                    <option value="{{ unit }}" 
+                                                        {% if unit == ingredient.unit or 
+                                                              unit.lower() == ingredient.unit.lower() or
+                                                              (unit == 'Tablespoon' and ingredient.unit == 'tbsp') or
+                                                              (unit == 'Teaspoon' and ingredient.unit == 'tsp') or
+                                                              (unit == 'Cup' and ingredient.unit == 'cup') or
+                                                              (unit == 'Pound' and ingredient.unit == 'lb') or
+                                                              (unit == 'Ounce' and ingredient.unit == 'oz') or
+                                                              (unit == 'Piece' and ingredient.unit in ['piece', 'cloves', 'clove', 'whole', 'medium', 'large', 'small']) %}selected{% endif %}>{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
+                                            
+                                            <!-- Volume Units -->
+                                            <optgroup label="🥤 {{ t('Volume') }}">
+                                                {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
+                                                    {% if unit in units %}
+                                                    <option value="{{ unit }}" 
+                                                        {% if unit == ingredient.unit or 
+                                                              unit.lower() == ingredient.unit.lower() or
+                                                              (unit == 'Tablespoon' and ingredient.unit == 'tbsp') or
+                                                              (unit == 'Teaspoon' and ingredient.unit == 'tsp') or
+                                                              (unit == 'Cup' and ingredient.unit == 'cup') or
+                                                              (unit == 'Pound' and ingredient.unit == 'lb') or
+                                                              (unit == 'Ounce' and ingredient.unit == 'oz') or
+                                                              (unit == 'Piece' and ingredient.unit in ['piece', 'cloves', 'clove', 'whole', 'medium', 'large', 'small']) %}selected{% endif %}>{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
+                                            
+                                            <!-- Weight Units -->
+                                            <optgroup label="⚖️ {{ t('Weight') }}">
+                                                {% for unit in ['Kilogram', 'Pound'] %}
+                                                    {% if unit in units %}
+                                                    <option value="{{ unit }}" 
+                                                        {% if unit == ingredient.unit or 
+                                                              unit.lower() == ingredient.unit.lower() or
+                                                              (unit == 'Tablespoon' and ingredient.unit == 'tbsp') or
+                                                              (unit == 'Teaspoon' and ingredient.unit == 'tsp') or
+                                                              (unit == 'Cup' and ingredient.unit == 'cup') or
+                                                              (unit == 'Pound' and ingredient.unit == 'lb') or
+                                                              (unit == 'Ounce' and ingredient.unit == 'oz') or
+                                                              (unit == 'Piece' and ingredient.unit in ['piece', 'cloves', 'clove', 'whole', 'medium', 'large', 'small']) %}selected{% endif %}>{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
+                                            
+                                            <!-- Custom/Other Units -->
+                                            <optgroup label="📦 {{ t('Other') }}">
+                                                {% for unit in units %}
+                                                    {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
+                                                    <option value="{{ unit }}" 
+                                                        {% if unit == ingredient.unit or 
+                                                              unit.lower() == ingredient.unit.lower() or
+                                                              (unit == 'Tablespoon' and ingredient.unit == 'tbsp') or
+                                                              (unit == 'Teaspoon' and ingredient.unit == 'tsp') or
+                                                              (unit == 'Cup' and ingredient.unit == 'cup') or
+                                                              (unit == 'Pound' and ingredient.unit == 'lb') or
+                                                              (unit == 'Ounce' and ingredient.unit == 'oz') or
+                                                              (unit == 'Piece' and ingredient.unit in ['piece', 'cloves', 'clove', 'whole', 'medium', 'large', 'small']) %}selected{% endif %}>{{ unit }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div class="col-md-2">
@@ -109,10 +166,43 @@
                                 </div>
                                 <div class="col-md-3">
                                     <select class="form-select" name="ingredient_unit[]" required>
-                                        <option value="">Select unit...</option>
-                                        {% for unit in units %}
-                                        <option value="{{ unit }}">{{ unit }}</option>
-                                        {% endfor %}
+                                        <option value="">{{ t('Select unit...') }}</option>
+                                        
+                                        <!-- Most Common Cooking Units -->
+                                        <optgroup label="🍽️ {{ t('Common Cooking') }}">
+                                            {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
+                                                {% if unit in units %}
+                                                <option value="{{ unit }}">{{ unit }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </optgroup>
+                                        
+                                        <!-- Volume Units -->
+                                        <optgroup label="🥤 {{ t('Volume') }}">
+                                            {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
+                                                {% if unit in units %}
+                                                <option value="{{ unit }}">{{ unit }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </optgroup>
+                                        
+                                        <!-- Weight Units -->
+                                        <optgroup label="⚖️ {{ t('Weight') }}">
+                                            {% for unit in ['Kilogram', 'Pound'] %}
+                                                {% if unit in units %}
+                                                <option value="{{ unit }}">{{ unit }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </optgroup>
+                                        
+                                        <!-- Custom/Other Units -->
+                                        <optgroup label="📦 {{ t('Other') }}">
+                                            {% for unit in units %}
+                                                {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
+                                                <option value="{{ unit }}">{{ unit }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </optgroup>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -144,19 +234,76 @@
 
 {% block scripts %}
 <script>
-// Store units data for JavaScript access
-const availableUnits = {{ units|tojson }};
+// Store units data for JavaScript access, organized by category
+const allUnits = {{ units|tojson }};
+const unitsByCategory = {
+    common: [],
+    volume: [],
+    weight: [],
+    other: []
+};
+
+// Organize units by category
+['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'].forEach(unit => {
+    if (allUnits.includes(unit)) unitsByCategory.common.push(unit);
+});
+['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'].forEach(unit => {
+    if (allUnits.includes(unit)) unitsByCategory.volume.push(unit);
+});
+['Kilogram', 'Pound'].forEach(unit => {
+    if (allUnits.includes(unit)) unitsByCategory.weight.push(unit);
+});
+
+// Calculate other units (those not in any other category)
+const allCategorizedUnits = [...unitsByCategory.common, ...unitsByCategory.volume, ...unitsByCategory.weight];
+unitsByCategory.other = allUnits.filter(unit => !allCategorizedUnits.includes(unit));
+
+function buildUnitsOptions() {
+    let options = '<option value="">{{ t("Select unit...") }}</option>';
+    
+    // Common Cooking Units
+    if (unitsByCategory.common.length > 0) {
+        options += '<optgroup label="🍽️ {{ t("Common Cooking") }}">';
+        unitsByCategory.common.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+    
+    // Volume Units
+    if (unitsByCategory.volume.length > 0) {
+        options += '<optgroup label="🥤 {{ t("Volume") }}">';
+        unitsByCategory.volume.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+    
+    // Weight Units
+    if (unitsByCategory.weight.length > 0) {
+        options += '<optgroup label="⚖️ {{ t("Weight") }}">';
+        unitsByCategory.weight.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+    
+    // Other Units
+    if (unitsByCategory.other.length > 0) {
+        options += '<optgroup label="📦 {{ t("Other") }}">';
+        unitsByCategory.other.forEach(unit => {
+            options += `<option value="${unit}">${unit}</option>`;
+        });
+        options += '</optgroup>';
+    }
+    
+    return options;
+}
 
 function addIngredient() {
     const container = document.getElementById('ingredients-container');
     const newRow = document.createElement('div');
     newRow.className = 'ingredient-row mb-2';
-    
-    // Build the units options dynamically
-    let unitOptions = '<option value="">Select unit...</option>';
-    availableUnits.forEach(unit => {
-        unitOptions += `<option value="${unit}">${unit}</option>`;
-    });
     
     newRow.innerHTML = `
         <div class="row">
@@ -170,7 +317,7 @@ function addIngredient() {
             </div>
             <div class="col-md-3">
                 <select class="form-select" name="ingredient_unit[]" required>
-                    ${unitOptions}
+                    ${buildUnitsOptions()}
                 </select>
             </div>
             <div class="col-md-2">

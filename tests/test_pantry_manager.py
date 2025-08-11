@@ -227,9 +227,10 @@ class TestPantryManager(unittest.TestCase):
         self.assertIn("flour", contents)
         self.assertIn("sugar", contents)
         self.assertIn("milk", contents)
-        self.assertEqual(contents["flour"]["g"], 1000)
-        self.assertEqual(contents["sugar"]["g"], 500)
-        self.assertEqual(contents["milk"]["L"], 2)
+        # Units are normalized: "g" -> "Gram", "L" -> "Liter"
+        self.assertEqual(contents["flour"]["Gram"], 1000)
+        self.assertEqual(contents["sugar"]["Gram"], 500)
+        self.assertEqual(contents["milk"]["Liter"], 2)
 
     def test_transaction_history(self):
         """Test transaction history tracking"""

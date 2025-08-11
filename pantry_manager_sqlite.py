@@ -335,6 +335,9 @@ class SQLitePantryManager(PantryManager):
             float: Current quantity of the item (can be negative if more removals than additions)
         """
         try:
+            # Normalize the unit name to match database entries
+            normalized_unit = self._normalize_unit_name(unit)
+
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 ingredient_id = self.get_ingredient_id(item_name)
@@ -351,7 +354,7 @@ class SQLitePantryManager(PantryManager):
                     FROM PantryTransactions
                     WHERE ingredient_id = ? AND unit = ?
                     """,
-                    (ingredient_id, unit),
+                    (ingredient_id, normalized_unit),
                 )
                 result = cursor.fetchone()[0]
                 return float(result) if result is not None else 0.0
@@ -369,10 +372,13 @@ class SQLitePantryManager(PantryManager):
                 if ingredient_id is None:
                     return 0.0
 
-                # First try exact match
+                # Normalize the unit name to match database entries
+                normalized_unit = self._normalize_unit_name(unit)
+
+                # First try exact match with normalized unit
                 cursor.execute(
                     "SELECT base_unit, size FROM Units WHERE name = ?",
-                    (unit,),
+                    (normalized_unit,),
                 )
                 target = cursor.fetchone()
 
@@ -474,6 +480,7 @@ class SQLitePantryManager(PantryManager):
                     "tsp": "Teaspoon",
                     "tbsp": "Tablespoon",
                     "cup": "Cup",
+                    "cups": "Cup",
                     "ml": "Milliliter",
                     "l": "Liter",
                     "fl oz": "Fluid ounce",
@@ -491,6 +498,7 @@ class SQLitePantryManager(PantryManager):
                     "pieces": "Piece",
                     "teaspoon": "Teaspoon",
                     "tablespoon": "Tablespoon",
+                    "tablespoons": "Tablespoon",
                     "milliliter": "Milliliter",
                     "liter": "Liter",
                     "gram": "Gram",

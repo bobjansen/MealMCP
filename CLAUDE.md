@@ -5,6 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Common Development Commands
 
 ### Running the Application
+ALl scripts and applications run through uv using `uv run`
+
+### Some applications
 - **Flask Web Interface (Recommended)**: `uv run run_web.py` - Smart launcher with backend detection and validation
 - **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000
 - **Unified MCP Server (Recommended)**: `uv run run_mcp.py [mode]` - Single server supporting all transport modes

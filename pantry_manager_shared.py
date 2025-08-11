@@ -611,6 +611,9 @@ class SharedPantryManager(PantryManager):
     def get_item_quantity(self, item_name: str, unit: str) -> float:
         """Get the current quantity of an item in the pantry for the current user."""
         try:
+            # Normalize the unit name to match database entries
+            normalized_unit = self._normalize_unit_name(unit)
+
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
@@ -629,7 +632,7 @@ class SharedPantryManager(PantryManager):
                     FROM pantry_transactions
                     WHERE ingredient_id = {ph} AND unit = {ph} AND user_id = {ph}
                 """,
-                    (ingredient_id, unit, self.user_id),
+                    (ingredient_id, normalized_unit, self.user_id),
                 )
 
                 result = cursor.fetchone()[0]
@@ -656,7 +659,7 @@ class SharedPantryManager(PantryManager):
                 )
                 target = cursor.fetchone()
 
-                # If no exact match, try common variations
+                # If no exact match, try with unit normalization first
                 if not target:
                     # Create mapping for common abbreviations and case variations
                     unit_mappings = {
@@ -664,6 +667,7 @@ class SharedPantryManager(PantryManager):
                         "tsp": "Teaspoon",
                         "tbsp": "Tablespoon",
                         "cup": "Cup",
+                        "cups": "Cup",
                         "ml": "Milliliter",
                         "l": "Liter",
                         "fl oz": "Fluid ounce",
@@ -684,6 +688,7 @@ class SharedPantryManager(PantryManager):
                         # Case variations (lowercase to proper case)
                         "teaspoon": "Teaspoon",
                         "tablespoon": "Tablespoon",
+                        "tablespoons": "Tablespoon",
                         "milliliter": "Milliliter",
                         "liter": "Liter",
                         "gram": "Gram",
@@ -700,6 +705,8 @@ class SharedPantryManager(PantryManager):
                             (self.user_id, mapped_unit),
                         )
                         target = cursor.fetchone()
+                        if target:
+                            unit = mapped_unit  # Use the normalized unit for the rest of the method
 
                     # If still no match, try case-insensitive search
                     if not target:

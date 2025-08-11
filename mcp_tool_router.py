@@ -636,37 +636,25 @@ class MCPToolRouter:
                 )  # Assume recipe serves 4
                 needed_unit = ingredient["unit"]
 
-                if (
-                    ing_name in pantry_contents
-                    and needed_unit in pantry_contents[ing_name]
-                ):
-                    have_qty = pantry_contents[ing_name][needed_unit]
-                    if have_qty >= needed_qty:
-                        available.append(
-                            {
-                                "name": ing_name,
-                                "needed": needed_qty,
-                                "have": have_qty,
-                                "unit": needed_unit,
-                            }
-                        )
-                    else:
-                        missing.append(
-                            {
-                                "name": ing_name,
-                                "needed": needed_qty,
-                                "have": have_qty,
-                                "shortage": needed_qty - have_qty,
-                                "unit": needed_unit,
-                            }
-                        )
+                # Use get_total_item_quantity for proper unit normalization and conversion
+                have_qty = pantry_manager.get_total_item_quantity(ing_name, needed_unit)
+
+                if have_qty >= needed_qty:
+                    available.append(
+                        {
+                            "name": ing_name,
+                            "needed": needed_qty,
+                            "have": have_qty,
+                            "unit": needed_unit,
+                        }
+                    )
                 else:
                     missing.append(
                         {
                             "name": ing_name,
                             "needed": needed_qty,
-                            "have": 0,
-                            "shortage": needed_qty,
+                            "have": have_qty,
+                            "shortage": needed_qty - have_qty,
                             "unit": needed_unit,
                         }
                     )

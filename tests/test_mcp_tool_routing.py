@@ -55,6 +55,11 @@ class TestMCPToolRouter:
         mock_pm.set_meal_plan.return_value = True
         mock_pm.get_meal_plan.return_value = {"2024-01-01": "Test Recipe"}
         mock_pm.get_grocery_list.return_value = {"milk": {"liters": 1}}
+        # Mock for unit normalization and conversion - return reasonable quantities
+        mock_pm.get_total_item_quantity.side_effect = lambda item, unit: {
+            ("flour", "cups"): 3.0,
+            ("sugar", "cup"): 0.5,
+        }.get((item, unit), 0.0)
 
         return mock_pm
 
@@ -314,7 +319,7 @@ class TestMCPToolRouter:
         assert result["status"] == "error"
 
         # Check that error was logged
-        assert "Error calling tool get_all_recipes" in caplog.text
+        assert "Error in tool 'get_all_recipes' during execution" in caplog.text
         assert "Test error" in caplog.text
 
     def test_tool_argument_validation(self, router, mock_pantry_manager):

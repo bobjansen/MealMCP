@@ -178,7 +178,8 @@ class TestMCPIntegration:
         assert "pasta" in result["contents"]
 
         # Check initial onions count before removal
-        initial_onions = result["contents"]["onions"]["pieces"]
+        # Unit is normalized from "pieces" to "Piece" during storage
+        initial_onions = result["contents"]["onions"]["Piece"]
 
         # Remove item
         result = sqlite_server.tool_router.call_tool(
@@ -197,7 +198,8 @@ class TestMCPIntegration:
         result = sqlite_server.tool_router.call_tool("get_pantry_contents", {}, pantry)
         assert result["status"] == "success"
         # Should have 1 less onion after removing 1
-        remaining_onions = result["contents"]["onions"]["pieces"]
+        # Unit is normalized from "pieces" to "Piece" during storage
+        remaining_onions = result["contents"]["onions"]["Piece"]
         assert remaining_onions == initial_onions - 1.0
 
     def test_meal_planning_flow(self, sqlite_server, sample_recipes):
@@ -375,7 +377,8 @@ class TestMCPIntegration:
         initial_result = sqlite_server.tool_router.call_tool(
             "get_pantry_contents", {}, pantry
         )
-        initial_pasta = initial_result["contents"]["pasta"]["cups"]
+        # Unit is normalized from "cups" to "Cup" during storage
+        initial_pasta = initial_result["contents"]["pasta"]["Cup"]
 
         result = sqlite_server.tool_router.call_tool(
             "execute_recipe", {"recipe_name": pasta_recipe_name}, pantry
@@ -387,7 +390,8 @@ class TestMCPIntegration:
         result = sqlite_server.tool_router.call_tool("get_pantry_contents", {}, pantry)
         assert result["status"] == "success"
         # Pasta should be reduced by 2 cups (the recipe uses 2 cups)
-        assert result["contents"]["pasta"]["cups"] == initial_pasta - 2.0
+        # Unit is normalized from "cups" to "Cup" during storage
+        assert result["contents"]["pasta"]["Cup"] == initial_pasta - 2.0
 
     def test_grocery_list_generation(self, sqlite_server, sample_recipes):
         """Test grocery list generation."""
