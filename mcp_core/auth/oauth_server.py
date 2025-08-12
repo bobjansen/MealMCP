@@ -548,6 +548,8 @@ class OAuthServer:
             "client_id": client_id,
             "scope": auth_data["scope"],
             "access_token": access_token,
+            "expires_at": time.time()
+            + (expires_in * 24),  # Refresh tokens last 24x longer than access tokens
         }
 
         self.access_tokens[access_token] = access_token_data
@@ -589,6 +591,12 @@ class OAuthServer:
 
         refresh_data = self.refresh_tokens[refresh_token]
 
+        # Check if refresh token is expired
+        if "expires_at" in refresh_data and time.time() > refresh_data["expires_at"]:
+            del self.refresh_tokens[refresh_token]
+            self._remove_token_from_db(refresh_token)
+            raise ValueError("Refresh token expired")
+
         if refresh_data["client_id"] != client_id:
             raise ValueError("Client ID mismatch")
 
@@ -617,6 +625,8 @@ class OAuthServer:
             "client_id": client_id,
             "scope": refresh_data["scope"],
             "access_token": new_access_token,
+            "expires_at": time.time()
+            + (expires_in * 24),  # Refresh tokens last 24x longer than access tokens
         }
 
         self.access_tokens[new_access_token] = new_access_token_data
