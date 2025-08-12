@@ -37,7 +37,9 @@ def _add_column_if_not_exists(
         raise ValueError(f"Unsupported dialect: {dialect}")
 
     if not exists:
-        _execute_with_reporting(cursor, f"ALTER TABLE {table} ADD COLUMN {column_def}")
+        _execute_with_reporting(
+            cursor, f"ALTER TABLE {table} ADD COLUMN {column} {column_def}"
+        )
 
 
 def _execute_with_reporting(
