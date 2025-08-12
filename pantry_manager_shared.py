@@ -72,7 +72,7 @@ class SharedPantryManager(PantryManager):
         value: Any,
         field_name: str,
         max_length: int = 255,
-        min_length: int = 1,
+        min_length: int = 0,
         allow_empty: bool = False,
     ) -> str:
         """Validate and sanitize string input."""
@@ -841,7 +841,7 @@ class SharedPantryManager(PantryManager):
             # Get pantry quantities grouped by unit
             cursor.execute(
                 f"""
-                SELECT t.unit, 
+                SELECT t.unit,
                        SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
                 FROM pantry_transactions t
                 WHERE t.user_id = {ph} AND t.ingredient_id = {ph}
