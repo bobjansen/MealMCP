@@ -89,7 +89,7 @@
                         {% for ingredient in missing_ingredients %}
                         <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-0">
                             <span class="small">{{ ingredient.name }}</span>
-                            <span class="badge bg-danger rounded-pill">{{ ingredient.missing }} {{ ingredient.unit }}</span>
+                            <span class="badge bg-danger rounded-pill">{{ ingredient.missing|round(1) }} {{ ingredient.unit }}</span>
                         </li>
                         {% endfor %}
                     </ul>
@@ -105,7 +105,7 @@
                         {% for ingredient in available_ingredients %}
                         <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-0">
                             <span class="small">{{ ingredient.name }}</span>
-                            <span class="badge bg-success rounded-pill">{{ ingredient.available }} {{ ingredient.unit }}</span>
+                            <span class="badge bg-success rounded-pill">{{ ingredient.available|round(1) }} {{ ingredient.unit }}</span>
                         </li>
                         {% endfor %}
                     </ul>
