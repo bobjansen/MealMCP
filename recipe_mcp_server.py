@@ -5,7 +5,7 @@ This server wraps the generic UnifiedMCPServer with recipe-specific
 tool routers and data managers.
 """
 
-from mcp_core import UnifiedMCPServer, MCPContext
+from mcpnp import UnifiedMCPServer, MCPContext
 from mcp_tool_router import MCPToolRouter
 from pantry_manager_factory import create_pantry_manager
 from db_setup import setup_database

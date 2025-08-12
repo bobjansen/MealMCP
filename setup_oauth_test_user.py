@@ -72,7 +72,7 @@ def register_user_via_database(username: str, email: str, password: str) -> bool
             return False
 
         # Import database components
-        from mcp_core.auth.oauth_server import OAuthServer
+        from mcpnp.auth.oauth_server import OAuthServer
 
         oauth_server = OAuthServer(
             base_url="http://localhost:8000", use_postgresql=True  # Dummy URL

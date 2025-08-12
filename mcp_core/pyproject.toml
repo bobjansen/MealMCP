@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcpnp"
+version = "1.0.0"
+description = "MCPnp - Model Context Protocol, no problem. A generic, reusable MCP server framework."
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "MealMCP Team"}
+]
+keywords = ["mcp", "model-context-protocol", "server", "oauth", "authentication"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "mcp[cli]>=1.12.2",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "requests>=2.32.4",
+    "markdown>=3.4.0",
+    "pytest>=8.4.1",
+    "psycopg2-binary>=2.9.0",
+    "werkzeug>=2.0.0",
+    "flask>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.3.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/mcpnp"
+Repository = "https://github.com/yourusername/mcpnp"
+Issues = "https://github.com/yourusername/mcpnp/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["mcpnp_tests"]
+python_files = "test_*.py"
+python_classes = "Test*" 
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcpnp"]
+
+[tool.black]
+line-length = 88
+target-version = ['py312']

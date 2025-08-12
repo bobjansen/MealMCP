@@ -6,23 +6,19 @@ license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "mcp[cli]>=1.12.2",
+    "mcpnp @ file:///home/brj/MealMCP/mcp_core",
     "pytest>=8.4.1",
     "psycopg2-binary>=2.9.0",
     "flask>=2.0.0",
     "werkzeug>=2.0.0",
     "gunicorn>=23.0.0",
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
-    "requests>=2.32.4",
-    "markdown>=3.4.0",
 ]
 
 [project.optional-dependencies]
 dev = ["black>=24.3.0"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "mcp_core/tests"]
+testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"

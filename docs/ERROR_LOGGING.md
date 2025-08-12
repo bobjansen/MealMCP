@@ -81,7 +81,7 @@ The logging system captures errors from different parts of the MCP server:
 ### In Application Code
 
 ```python
-from mcp_core.server.unified_server import log_error_with_traceback
+from mcpnp.server.unified_server import log_error_with_traceback
 
 try:
     # Some risky operation

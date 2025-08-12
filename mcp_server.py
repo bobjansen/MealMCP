@@ -23,8 +23,8 @@ Environment Configuration:
 from recipe_mcp_server import RecipeMCPServer
 
 # Import OAuth components for backwards compatibility
-from mcp_core.auth import OAuthServer, OAuthFlowHandler
-from mcp_core.templates.oauth_templates import (
+from mcpnp.auth import OAuthServer, OAuthFlowHandler
+from mcpnp.templates.oauth_templates import (
     generate_login_form,
     generate_register_form,
     generate_error_page,
