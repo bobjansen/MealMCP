@@ -257,7 +257,7 @@ class PantryManager(ABC):
         Get lightweight list of all recipes from the database.
 
         Returns:
-            List[Dict[str, Any]]: List of recipes with name, short_id, and rating only
+            List[Dict[str, Any]]: List of recipes with name, short_id, rating, time_minutes, and ingredient_count
         """
         pass
 

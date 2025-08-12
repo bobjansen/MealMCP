@@ -716,8 +716,16 @@ class SharedPantryManager(PantryManager):
                         )
                         target = cursor.fetchone()
 
-                # If still no match, fall back to old behavior
+                # If still no match, try ingredient-specific conversions
                 if not target:
+                    # Try ingredient-specific volume-to-weight conversions
+                    conversion_result = self._try_ingredient_conversion(
+                        item_name, unit, cursor
+                    )
+                    if conversion_result is not None:
+                        return conversion_result
+
+                    # Fall back to old behavior
                     return self.get_item_quantity(item_name, unit)
 
                 target_base, target_size = target
@@ -737,12 +745,136 @@ class SharedPantryManager(PantryManager):
                 total_base = 0.0
                 for unit_name, base_unit, size, qty in cursor.fetchall():
                     if base_unit == target_base and qty:
-                        total_base += qty * size
+                        total_base += float(qty) * float(size)
 
-                return total_base / target_size
+                # If no matching base units found, try ingredient-specific conversion
+                if total_base == 0.0:
+                    conversion_result = self._try_ingredient_conversion(
+                        item_name, unit, cursor
+                    )
+                    if conversion_result is not None:
+                        return conversion_result
+
+                return total_base / float(target_size)
         except Exception as e:
             print(f"Error getting total item quantity: {e}")
             return 0.0
+
+    def _try_ingredient_conversion(
+        self, item_name: str, requested_unit: str, cursor
+    ) -> float:
+        """
+        Try ingredient-specific conversions between volume and weight.
+
+        Args:
+            item_name: Name of the ingredient
+            requested_unit: Unit being requested (e.g., 'Cup')
+            cursor: Database cursor
+
+        Returns:
+            float: Converted quantity, or None if no conversion possible
+        """
+        try:
+            ph = self._get_placeholder()
+
+            # Common ingredient conversions (volume to weight)
+            # These are approximate values for cooking purposes
+            ingredient_conversions = {
+                # Cheese (grated)
+                "parmesan cheese": {
+                    ("Cup", "Gram"): 100,  # 1 cup grated parmesan ≈ 100g
+                    ("Tablespoon", "Gram"): 6,  # 1 tbsp grated parmesan ≈ 6g
+                },
+                "cheddar cheese": {
+                    ("Cup", "Gram"): 110,  # 1 cup grated cheddar ≈ 110g
+                    ("Tablespoon", "Gram"): 7,
+                },
+                "mozzarella cheese": {
+                    ("Cup", "Gram"): 100,  # 1 cup shredded mozzarella ≈ 100g
+                },
+                # Flour and baking
+                "flour": {
+                    ("Cup", "Gram"): 120,  # 1 cup all-purpose flour ≈ 120g
+                    ("Tablespoon", "Gram"): 8,
+                },
+                "sugar": {
+                    ("Cup", "Gram"): 200,  # 1 cup granulated sugar ≈ 200g
+                    ("Tablespoon", "Gram"): 12,
+                },
+                "brown sugar": {
+                    ("Cup", "Gram"): 220,  # 1 cup packed brown sugar ≈ 220g
+                    ("Tablespoon", "Gram"): 14,
+                },
+                "butter": {
+                    ("Cup", "Gram"): 227,  # 1 cup butter ≈ 227g (2 sticks)
+                    ("Tablespoon", "Gram"): 14,  # 1 tbsp butter ≈ 14g
+                },
+                # Common cooking ingredients
+                "rice": {
+                    ("Cup", "Gram"): 185,  # 1 cup uncooked rice ≈ 185g
+                },
+                "pasta": {
+                    ("Cup", "Gram"): 100,  # 1 cup dry pasta ≈ 100g
+                },
+            }
+
+            # Normalize ingredient name for matching
+            normalized_ingredient = item_name.lower().strip()
+
+            # Check if we have conversions for this ingredient
+            if normalized_ingredient not in ingredient_conversions:
+                return None
+
+            conversions = ingredient_conversions[normalized_ingredient]
+
+            # Find what units we have in the pantry for this ingredient
+            cursor.execute(
+                f"SELECT id FROM ingredients WHERE user_id = {ph} AND LOWER(name) = LOWER({ph})",
+                (self.user_id, item_name),
+            )
+            ingredient_result = cursor.fetchone()
+            if not ingredient_result:
+                return None
+
+            ingredient_id = ingredient_result[0]
+
+            # Get pantry quantities grouped by unit
+            cursor.execute(
+                f"""
+                SELECT t.unit, 
+                       SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
+                FROM pantry_transactions t
+                WHERE t.user_id = {ph} AND t.ingredient_id = {ph}
+                GROUP BY t.unit
+                HAVING SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) > 0
+                """,
+                (self.user_id, ingredient_id),
+            )
+
+            total_in_requested_unit = 0.0
+
+            for pantry_unit, pantry_quantity in cursor.fetchall():
+                # Check if we can convert from pantry_unit to requested_unit
+                conversion_key = (requested_unit, pantry_unit)
+                reverse_conversion_key = (pantry_unit, requested_unit)
+
+                if conversion_key in conversions:
+                    # Direct conversion: pantry_unit to requested_unit
+                    conversion_factor = conversions[conversion_key]
+                    converted_amount = float(pantry_quantity) / conversion_factor
+                    total_in_requested_unit += converted_amount
+
+                elif reverse_conversion_key in conversions:
+                    # Reverse conversion: requested_unit to pantry_unit
+                    conversion_factor = conversions[reverse_conversion_key]
+                    converted_amount = float(pantry_quantity) * conversion_factor
+                    total_in_requested_unit += converted_amount
+
+            return total_in_requested_unit if total_in_requested_unit > 0 else None
+
+        except Exception as e:
+            print(f"Error in ingredient conversion: {e}")
+            return None
 
     def get_multiple_item_quantities(
         self, items: List[tuple[str, str]]
@@ -1190,21 +1322,32 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    SELECT short_id, name, rating
-                    FROM recipes
-                    WHERE user_id = {ph}
-                    ORDER BY name
+                    SELECT r.short_id, r.name, r.rating, r.time_minutes,
+                           COUNT(ri.ingredient_id) as ingredient_count
+                    FROM recipes r
+                    LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+                    WHERE r.user_id = {ph}
+                    GROUP BY r.short_id, r.name, r.rating, r.time_minutes
+                    ORDER BY r.name
                     """,
                     (self.user_id,),
                 )
 
                 recipes = []
-                for short_id, name, rating in cursor.fetchall():
+                for (
+                    short_id,
+                    name,
+                    rating,
+                    time_minutes,
+                    ingredient_count,
+                ) in cursor.fetchall():
                     recipes.append(
                         {
                             "short_id": short_id,
                             "name": name,
                             "rating": float(rating) if rating is not None else None,
+                            "time_minutes": time_minutes,
+                            "ingredient_count": ingredient_count,
                         }
                     )
 

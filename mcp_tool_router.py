@@ -631,7 +631,7 @@ class MCPToolRouter:
 
             for ingredient in recipe.get("ingredients", []):
                 ing_name = ingredient["name"]
-                needed_qty = ingredient["quantity"] * (
+                needed_qty = float(ingredient["quantity"]) * (
                     servings / 4
                 )  # Assume recipe serves 4
                 needed_unit = ingredient["unit"]
