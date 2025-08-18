@@ -5,10 +5,12 @@ This server wraps the generic UnifiedMCPServer with recipe-specific
 tool routers and data managers.
 """
 
+import os
 from mcpnp import UnifiedMCPServer, MCPContext
 from mcp_tool_router import MCPToolRouter
 from pantry_manager_factory import create_pantry_manager
 from db_setup import setup_database
+from datastore_postgresql import PostgreSQLOAuthDatastore
 
 
 class RecipeMCPServer(UnifiedMCPServer):
@@ -18,12 +20,21 @@ class RecipeMCPServer(UnifiedMCPServer):
         # Create recipe-specific tool router
         tool_router = MCPToolRouter()
 
+        # Setup OAuth datastore if needed
+        oauth_datastore = None
+        transport = os.environ.get("MCP_TRANSPORT", "fastmcp")
+        if transport == "oauth" or os.environ.get("MCP_MODE") == "oauth":
+            db_url = os.environ.get("PANTRY_DATABASE_URL")
+            if db_url:
+                oauth_datastore = PostgreSQLOAuthDatastore(db_url)
+
         # Configure with recipe-specific components
         super().__init__(
             tool_router=tool_router,
             data_manager_factory=create_pantry_manager,
             database_setup_func=setup_database,
             server_name="Recipe Manager",
+            oauth_datastore=oauth_datastore,
         )
 
     # Backwards compatibility methods for recipe-specific API
