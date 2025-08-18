@@ -88,25 +88,22 @@ class WebUserManager:
                             (invite_code,),
                         )
 
+                    # First, insert user without household_id to avoid circular dependency
                     cursor.execute(
                         """
-                        INSERT INTO users (username, email, password_hash, preferred_language, household_id)
-                        VALUES (%s, %s, %s, %s, %s) RETURNING id
+                        INSERT INTO users (username, email, password_hash, preferred_language)
+                        VALUES (%s, %s, %s, %s) RETURNING id
                     """,
-                        (username, email, password_hash, language, household_id),
+                        (username, email, password_hash, language),
                     )
                     user_id = cursor.fetchone()[0]
 
                     # Set up household ownership
                     if household_id is None:
                         # User is creating their own household
-                        cursor.execute(
-                            "UPDATE users SET household_id = %s WHERE id = %s",
-                            (user_id, user_id),
-                        )
                         household_id = user_id
 
-                        # Create household characteristics for new household
+                        # Create household characteristics for new household first
                         cursor.execute(
                             """
                             INSERT INTO household_characteristics 
@@ -115,6 +112,12 @@ class WebUserManager:
                             """,
                             (household_id, 2, 0, "Milliliter", "Gram", "Piece"),
                         )
+
+                    # Update user with household_id (either self for new household, or existing for join)
+                    cursor.execute(
+                        "UPDATE users SET household_id = %s WHERE id = %s",
+                        (household_id, user_id),
+                    )
 
                 conn.commit()
 
