@@ -29,7 +29,7 @@ class RecipeMCPServer(UnifiedMCPServer):
     # Backwards compatibility methods for recipe-specific API
     def get_user_pantry(self, user_id=None, token=None):
         """Backwards compatibility alias for get_user_data_manager."""
-        return self.get_user_data_manager(user_id, token)
+        return self.get_user_data_manager(user_id)
 
 
 def main():

@@ -19,7 +19,7 @@ from unittest.mock import patch, AsyncMock
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mcp_server import UnifiedMCPServer
+from recipe_mcp_server import RecipeMCPServer
 from pantry_manager_factory import create_pantry_manager
 
 
@@ -46,7 +46,7 @@ class TestMCPIntegration:
         os.environ["PANTRY_BACKEND"] = "sqlite"
         os.environ["PANTRY_DB_PATH"] = os.path.join(temp_dir, "integration_test.db")
 
-        server = UnifiedMCPServer()
+        server = RecipeMCPServer()
         return server
 
     @pytest.fixture
@@ -535,7 +535,7 @@ class TestMCPToolAuthentication:
         os.environ["USER_DATA_DIR"] = temp_dir
         os.environ["ADMIN_TOKEN"] = "auth-test-admin"
 
-        server = UnifiedMCPServer()
+        server = RecipeMCPServer()
         return server
 
     def test_public_tools_no_auth_required(self, auth_server):

@@ -164,7 +164,7 @@ for i in {1..10}; do
   python3 -c "
 import sys
 sys.path.insert(0, '.')
-from mcp_server import create_user
+from cli import create_user
 result = create_user('user$i', 'your-admin-token')
 print(f'Created user$i: {result}')
 "

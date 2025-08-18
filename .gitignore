@@ -15,8 +15,12 @@ wheels/
 # Logs
 *.log
 
+# Local database
+*.sqlite
+
 # vim or other editors
 *.swp
+
 
 # PyCharm
 .idea/

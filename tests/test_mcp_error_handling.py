@@ -24,7 +24,7 @@ from io import StringIO
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mcp_server import UnifiedMCPServer
+from recipe_mcp_server import RecipeMCPServer
 
 
 class TestMCPErrorHandling:
@@ -45,7 +45,7 @@ class TestMCPErrorHandling:
         os.environ["PANTRY_BACKEND"] = "sqlite"
         os.environ["PANTRY_DB_PATH"] = os.path.join(temp_dir, "error_test.db")
 
-        server = UnifiedMCPServer()
+        server = RecipeMCPServer()
         return server
 
     def test_invalid_tool_names(self, test_server):
@@ -495,7 +495,7 @@ class TestMCPBoundaryConditions:
         os.environ["PANTRY_BACKEND"] = "sqlite"
         os.environ["PANTRY_DB_PATH"] = os.path.join(temp_dir, "boundary_test.db")
 
-        server = UnifiedMCPServer()
+        server = RecipeMCPServer()
         return server
 
     def test_empty_inputs(self, boundary_server):
@@ -767,7 +767,7 @@ class TestMCPRecoveryScenarios:
         os.environ["PANTRY_BACKEND"] = "sqlite"
         os.environ["PANTRY_DB_PATH"] = os.path.join(temp_dir, "recovery_test.db")
 
-        server = UnifiedMCPServer()
+        server = RecipeMCPServer()
         return server
 
     def test_recovery_after_database_error(self, recovery_server, temp_dir):
@@ -820,7 +820,7 @@ class TestMCPRecoveryScenarios:
         shutil.copy2(backup_path, db_path)
 
         # Create new server instance to reinitialize
-        recovery_server = UnifiedMCPServer()
+        recovery_server = RecipeMCPServer()
         user_id, pantry = recovery_server.get_user_pantry()
 
         # Should work again

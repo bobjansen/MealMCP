@@ -6,12 +6,12 @@ license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "mcpnp @ file:///home/brj/MealMCP/mcp_core",
     "pytest>=8.4.1",
     "psycopg2-binary>=2.9.0",
     "flask>=2.0.0",
     "werkzeug>=2.0.0",
     "gunicorn>=23.0.0",
+    "mcpnp",
 ]
 
 [project.optional-dependencies]
@@ -23,3 +23,6 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
+
+[tool.uv.sources]
+mcpnp = { git = "https://github.com/bobjansen/mcpnp.git" }

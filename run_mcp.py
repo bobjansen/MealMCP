@@ -82,7 +82,7 @@ def main():
         os.environ["PANTRY_DATABASE_URL"] = args.db_url
 
     # Import after environment is set
-    from mcp_server import UnifiedMCPServer
+    from recipe_mcp_server import RecipeMCPServer
 
     # Create and run server
     print(f"Starting MealMCP server:")
@@ -93,7 +93,7 @@ def main():
     print()
 
     try:
-        server = UnifiedMCPServer()
+        server = RecipeMCPServer()
         server.run()
     except KeyboardInterrupt:
         print("\nServer stopped by user")

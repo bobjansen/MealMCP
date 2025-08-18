@@ -832,10 +832,25 @@ class SQLitePantryManager(PantryManager):
                         )
                         recipe = cursor.fetchone()
 
-                # Strategy 4: Any word in search term appears in recipe name
+                # Strategy 4: Any word in search term appears in recipe name (excluding common words)
                 if not recipe:
+                    # Filter out very common words that would match too many recipes
+                    common_words = {
+                        "recipe",
+                        "the",
+                        "and",
+                        "with",
+                        "for",
+                        "of",
+                        "to",
+                        "in",
+                        "a",
+                        "an",
+                    }
                     search_words = [
-                        w.lower() for w in search_term.split() if len(w) > 2
+                        w.lower()
+                        for w in search_term.split()
+                        if len(w) > 2 and w.lower() not in common_words
                     ]
                     if search_words:
                         word_conditions = " OR ".join(
@@ -857,24 +872,79 @@ class SQLitePantryManager(PantryManager):
                         )
                         recipe = cursor.fetchone()
 
-                # Strategy 5: Substring match (fallback)
+                # Strategy 5: Substring match (fallback) - more conservative
                 if not recipe:
-                    cursor.execute(
-                        """
+                    # Split search term into words and require multiple words to match (filter common words)
+                    common_words = {
+                        "recipe",
+                        "the",
+                        "and",
+                        "with",
+                        "for",
+                        "of",
+                        "to",
+                        "in",
+                        "a",
+                        "an",
+                    }
+                    search_words = [
+                        w.strip()
+                        for w in search_term.lower().split()
+                        if len(w.strip()) > 2 and w.strip() not in common_words
+                    ]
+
+                    if len(search_words) >= 2:
+                        # For multi-word searches, require at least 2 words to match
+                        # Rebuild word conditions and params for this strategy
+                        word_conditions_s5 = []
+                        word_params_s5 = []
+                        for word in search_words:
+                            word_conditions_s5.append("LOWER(r.name) LIKE ?")
+                            word_params_s5.append(f"%{word}%")
+
+                        # Require at least 80% of words to match (round up)
+                        min_matches = max(2, int(len(search_words) * 0.8 + 0.5))
+                        word_match_query = f"""
                         SELECT
                             r.id, r.name, r.instructions, r.time_minutes, r.rating,
-                            r.created_date, r.last_modified, 5 as match_score
+                            r.created_date, r.last_modified, 5 as match_score,
+                            ({' + '.join(['CASE WHEN ' + cond + ' THEN 1 ELSE 0 END' for cond in word_conditions_s5])}) as word_matches
                         FROM Recipes r
-                        WHERE LOWER(r.name) LIKE LOWER(?)
-                        ORDER BY LENGTH(r.name) ASC
+                        WHERE ({' + '.join(['CASE WHEN ' + cond + ' THEN 1 ELSE 0 END' for cond in word_conditions_s5])}) >= ?
+                        ORDER BY word_matches DESC, LENGTH(r.name) ASC
                         LIMIT 1
-                        """,
-                        (f"%{search_term}%",),
-                    )
-                    recipe = cursor.fetchone()
+                        """
+                        cursor.execute(
+                            word_match_query,
+                            word_params_s5 + word_params_s5 + [min_matches],
+                        )
+                        recipe = cursor.fetchone()
+                    elif len(search_words) == 1 and len(search_words[0]) >= 4:
+                        # For single word searches, only match if word is substantial and similar
+                        cursor.execute(
+                            """
+                            SELECT
+                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.created_date, r.last_modified, 5 as match_score
+                            FROM Recipes r
+                            WHERE LOWER(r.name) LIKE LOWER(?)
+                            AND LENGTH(r.name) <= ?
+                            ORDER BY LENGTH(r.name) ASC
+                            LIMIT 1
+                            """,
+                            (
+                                f"%{search_words[0]}%",
+                                len(search_term) * 2,
+                            ),  # Don't match names much longer than search
+                        )
+                        recipe = cursor.fetchone()
 
-                # Strategy 6: Character-level fuzzy matching for typos
-                if not recipe and len(search_term) >= 4:
+                # Strategy 6: Character-level fuzzy matching for typos - only for short, simple terms
+                if (
+                    not recipe
+                    and len(search_term) >= 4
+                    and len(search_term.split()) == 1
+                ):
                     # Generate various character-level variations
                     variations = []
                     term = search_term.lower()
