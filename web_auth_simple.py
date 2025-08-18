@@ -96,10 +96,24 @@ class WebUserManager:
                         (username, email, password_hash, language, household_id),
                     )
                     user_id = cursor.fetchone()[0]
+
+                    # Set up household ownership
                     if household_id is None:
+                        # User is creating their own household
                         cursor.execute(
                             "UPDATE users SET household_id = %s WHERE id = %s",
                             (user_id, user_id),
+                        )
+                        household_id = user_id
+
+                        # Create household characteristics for new household
+                        cursor.execute(
+                            """
+                            INSERT INTO household_characteristics 
+                            (household_id, adults, children, preferred_volume_unit, preferred_weight_unit, preferred_count_unit)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            """,
+                            (household_id, 2, 0, "Milliliter", "Gram", "Piece"),
                         )
 
                 conn.commit()
@@ -237,9 +251,12 @@ class WebUserManager:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT id, username, email, created_at, is_active, preferred_language,
-                               household_adults, household_children, household_id
-                        FROM users WHERE id = %s AND is_active = TRUE
+                        SELECT u.id, u.username, u.email, u.created_at, u.is_active, u.preferred_language,
+                               u.household_id, hc.adults, hc.children, hc.preferred_volume_unit,
+                               hc.preferred_weight_unit, hc.preferred_count_unit
+                        FROM users u
+                        LEFT JOIN household_characteristics hc ON u.household_id = hc.household_id
+                        WHERE u.id = %s AND u.is_active = TRUE
                     """,
                         (user_id,),
                     )
@@ -253,9 +270,12 @@ class WebUserManager:
                             "created_at": user[3],
                             "is_active": user[4],
                             "preferred_language": user[5] or "en",
-                            "household_adults": user[6] or 2,
-                            "household_children": user[7] or 0,
-                            "household_id": user[8],
+                            "household_id": user[6],
+                            "household_adults": user[7] or 2,
+                            "household_children": user[8] or 0,
+                            "preferred_volume_unit": user[9] or "Milliliter",
+                            "preferred_weight_unit": user[10] or "Gram",
+                            "preferred_count_unit": user[11] or "Piece",
                         }
         except Exception as e:
             print(f"Error getting user: {e}")
@@ -353,15 +373,29 @@ class WebUserManager:
         try:
             with psycopg2.connect(self.connection_string) as conn:
                 with conn.cursor() as cursor:
+                    # Get user's household_id first
                     cursor.execute(
-                        "UPDATE users SET household_adults = %s, household_children = %s WHERE id = %s",
-                        (adults, children, user_id),
+                        "SELECT household_id FROM users WHERE id = %s",
+                        (user_id,),
+                    )
+                    result = cursor.fetchone()
+                    if not result:
+                        return False, "User not found"
+
+                    household_id = result[0]
+                    if not household_id:
+                        return False, "User has no household"
+
+                    # Update household characteristics
+                    cursor.execute(
+                        "UPDATE household_characteristics SET adults = %s, children = %s, updated_at = CURRENT_TIMESTAMP WHERE household_id = %s",
+                        (adults, children, household_id),
                     )
 
                     if cursor.rowcount > 0:
                         return True, "Household size updated successfully"
                     else:
-                        return False, "User not found"
+                        return False, "Household characteristics not found"
 
         except Exception as e:
             return False, f"Error updating household size: {str(e)}"
@@ -375,7 +409,12 @@ class WebUserManager:
             with psycopg2.connect(self.connection_string) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
-                        "SELECT household_adults, household_children FROM users WHERE id = %s",
+                        """
+                        SELECT hc.adults, hc.children
+                        FROM users u
+                        JOIN household_characteristics hc ON u.household_id = hc.household_id
+                        WHERE u.id = %s
+                        """,
                         (user_id,),
                     )
                     result = cursor.fetchone()

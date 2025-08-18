@@ -99,12 +99,21 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE,
             preferred_language VARCHAR(10) DEFAULT 'en',
-            household_id INTEGER REFERENCES users(id),
-            household_adults INTEGER DEFAULT 2,
-            household_children INTEGER DEFAULT 0,
+            household_id INTEGER REFERENCES users(id)
+        )
+    """,
+    "household_characteristics": """
+        CREATE TABLE IF NOT EXISTS household_characteristics (
+            id SERIAL PRIMARY KEY,
+            household_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            adults INTEGER DEFAULT 2,
+            children INTEGER DEFAULT 0,
+            notes TEXT,
             preferred_volume_unit VARCHAR(50) DEFAULT 'Milliliter',
             preferred_weight_unit VARCHAR(50) DEFAULT 'Gram',
-            preferred_count_unit VARCHAR(50) DEFAULT 'Piece'
+            preferred_count_unit VARCHAR(50) DEFAULT 'Piece',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """,
     "household_invites": """
@@ -207,12 +216,21 @@ MULTI_USER_SQLITE_SCHEMAS = {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT 1,
             preferred_language TEXT DEFAULT 'en',
-            household_id INTEGER REFERENCES users(id),
-            household_adults INTEGER DEFAULT 2,
-            household_children INTEGER DEFAULT 0,
+            household_id INTEGER REFERENCES users(id)
+        )
+    """,
+    "household_characteristics": """
+        CREATE TABLE IF NOT EXISTS household_characteristics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            household_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            adults INTEGER DEFAULT 2,
+            children INTEGER DEFAULT 0,
+            notes TEXT,
             preferred_volume_unit TEXT DEFAULT 'Milliliter',
             preferred_weight_unit TEXT DEFAULT 'Gram',
-            preferred_count_unit TEXT DEFAULT 'Piece'
+            preferred_count_unit TEXT DEFAULT 'Piece',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """,
     "household_invites": """
