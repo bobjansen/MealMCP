@@ -12,6 +12,9 @@ wheels/
 # Sqlite database
 *.db
 
+# Json, created by the oauth sequence tester
+*.json
+
 # Logs
 *.log
 
