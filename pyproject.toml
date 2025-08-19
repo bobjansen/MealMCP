@@ -12,6 +12,7 @@ dependencies = [
     "werkzeug>=2.0.0",
     "gunicorn>=23.0.0",
     "mcpnp",
+    "beautifulsoup4>=4.13.4",
 ]
 
 [project.optional-dependencies]
