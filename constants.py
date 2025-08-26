@@ -30,14 +30,50 @@ UNITS = [u["name"] for u in DEFAULT_UNITS]
 PREFERENCE_CATEGORIES = {"dietary", "allergy", "like", "dislike", "cuisine", "other"}
 
 # Ingredients that are considered to have infinite quantities (don't need to be purchased)
-INFINITE_INGREDIENTS = {
-    "water",
-    "tap water",
-    "salt",
-    "black pepper",
-    "white pepper",
-    "pepper",
+# Organized by language for internationalization support
+INFINITE_INGREDIENTS_BY_LANG = {
+    "en": {
+        "water",
+        "tap water",
+        "drinking water",
+        "salt",
+        "table salt",
+        "sea salt",
+        "black pepper",
+        "white pepper",
+        "pepper",
+        "ground pepper",
+        "peppercorns",
+    },
+    "nl": {
+        "water",
+        "kraanwater",
+        "drinkwater",
+        "zout",
+        "tafelzout",
+        "zeezout",
+        "zwarte peper",
+        "witte peper",
+        "peper",
+        "gemalen peper",
+        "peperkorrels",
+    },
 }
+
+# Default infinite ingredients (English) for backward compatibility
+INFINITE_INGREDIENTS = INFINITE_INGREDIENTS_BY_LANG["en"]
+
+
+def get_infinite_ingredients(lang="en"):
+    """Get infinite ingredients list for the specified language."""
+    return INFINITE_INGREDIENTS_BY_LANG.get(lang, INFINITE_INGREDIENTS_BY_LANG["en"])
+
+
+def is_infinite_ingredient(ingredient_name, lang="en"):
+    """Check if an ingredient is considered to have infinite quantities."""
+    infinite_set = get_infinite_ingredients(lang)
+    return ingredient_name.lower() in infinite_set
+
 
 # Database Limits
 MAX_INGREDIENT_NAME_LENGTH = 100

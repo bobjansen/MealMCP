@@ -6,6 +6,7 @@ import traceback
 from functools import wraps
 from pathlib import Path
 from i18n import t, set_lang
+import i18n
 import markdown
 from flask import (
     Flask,
@@ -21,6 +22,7 @@ from datetime import date, timedelta, datetime
 from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
 from web_auth_simple import WebUserManager
+from constants import is_infinite_ingredient
 
 
 # Set up comprehensive Flask logging
@@ -849,14 +851,29 @@ def view_recipe(recipe_name):
 
     for ingredient in recipe["ingredients"]:
         needed_quantity = ingredient["quantity"]
+        ingredient_name = ingredient["name"]
+
+        # Skip infinite ingredients from missing calculations (e.g., water, salt)
+        if is_infinite_ingredient(ingredient_name, i18n.LANG):
+            # Always consider infinite ingredients as available
+            available_ingredients.append(
+                {
+                    "name": ingredient_name,
+                    "needed": needed_quantity,
+                    "available": "∞",  # Infinity symbol for infinite ingredients
+                    "unit": ingredient["unit"],
+                }
+            )
+            continue
+
         available_quantity = user_pantry.get_total_item_quantity(
-            ingredient["name"], ingredient["unit"]
+            ingredient_name, ingredient["unit"]
         )
 
         if available_quantity < needed_quantity:
             missing_ingredients.append(
                 {
-                    "name": ingredient["name"],
+                    "name": ingredient_name,
                     "needed": needed_quantity,
                     "available": available_quantity,
                     "missing": needed_quantity - available_quantity,
@@ -866,7 +883,7 @@ def view_recipe(recipe_name):
         else:
             available_ingredients.append(
                 {
-                    "name": ingredient["name"],
+                    "name": ingredient_name,
                     "needed": needed_quantity,
                     "available": available_quantity,
                     "unit": ingredient["unit"],
