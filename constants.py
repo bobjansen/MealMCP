@@ -29,6 +29,16 @@ UNITS = [u["name"] for u in DEFAULT_UNITS]
 # Preference Categories
 PREFERENCE_CATEGORIES = {"dietary", "allergy", "like", "dislike", "cuisine", "other"}
 
+# Ingredients that are considered to have infinite quantities (don't need to be purchased)
+INFINITE_INGREDIENTS = {
+    "water",
+    "tap water",
+    "salt",
+    "black pepper",
+    "white pepper",
+    "pepper",
+}
+
 # Database Limits
 MAX_INGREDIENT_NAME_LENGTH = 100
 MAX_RECIPE_NAME_LENGTH = 200

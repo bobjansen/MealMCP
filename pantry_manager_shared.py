@@ -22,6 +22,7 @@ from constants import (
     MAX_QUANTITY_VALUE,
     MAX_TIME_MINUTES,
     DEFAULT_UNITS,
+    INFINITE_INGREDIENTS,
 )
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
 
@@ -1929,6 +1930,10 @@ class SharedPantryManager(PantryManager):
             # Calculate grocery list
             grocery_list = []
             for (name, unit), needed in required.items():
+                # Skip ingredients that are considered to have infinite quantities
+                if name.lower() in INFINITE_INGREDIENTS:
+                    continue
+
                 have = quantities.get((name, unit), 0.0)
                 if have < needed:
                     grocery_list.append(

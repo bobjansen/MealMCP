@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from pantry_manager_abc import PantryManager
 from short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
-from constants import DEFAULT_UNITS
+from constants import DEFAULT_UNITS, INFINITE_INGREDIENTS
 
 
 class SQLitePantryManager(PantryManager):
@@ -1550,6 +1550,10 @@ class SQLitePantryManager(PantryManager):
 
         grocery_list = []
         for (name, unit), qty in required.items():
+            # Skip ingredients that are considered to have infinite quantities
+            if name.lower() in INFINITE_INGREDIENTS:
+                continue
+
             have = self.get_item_quantity(name, unit)
             if have < qty:
                 grocery_list.append(
