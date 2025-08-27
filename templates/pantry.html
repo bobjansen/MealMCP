@@ -190,7 +190,7 @@
                                 {% for unit, quantity in units_dict.items() %}
                                 <tr>
                                     <td>{{ item_name }}</td>
-                                    <td>{{ "%.2f"|format(quantity) }}</td>
+                                    <td>{{ quantity|format_quantity }}</td>
                                     <td>{{ unit }}</td>
                                 </tr>
                                 {% endfor %}
@@ -242,7 +242,7 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ transaction.item_name }}</td>
-                                <td>{{ "%.2f"|format(transaction.quantity) }}</td>
+                                <td>{{ transaction.quantity|format_quantity }}</td>
                                 <td>{{ transaction.unit }}</td>
                             </tr>
                             {% endfor %}

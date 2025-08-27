@@ -72,6 +72,28 @@ FLASK_LOG_PATH = setup_flask_logging()
 logger = logging.getLogger("app_flask")
 
 
+def format_quantity(value):
+    """Format numeric quantities by removing unnecessary trailing zeros and decimals."""
+    if isinstance(value, str):
+        try:
+            value = float(value)
+        except (ValueError, TypeError):
+            return str(value)
+
+    if isinstance(value, (int, float)):
+        # Convert to float to handle both int and float inputs
+        float_val = float(value)
+
+        # Check if it's a whole number
+        if float_val.is_integer():
+            return str(int(float_val))
+        else:
+            # Remove trailing zeros from decimal
+            return f"{float_val:g}"
+
+    return str(value)
+
+
 def log_error_with_context(error: Exception, context: str, extra_info: dict = None):
     """Log error with full context and traceback."""
     try:
@@ -106,6 +128,9 @@ else:
 
 app = Flask(__name__, static_folder="assets")
 app.secret_key = secret_key
+
+# Add custom template filters
+app.jinja_env.filters["format_quantity"] = format_quantity
 
 # Determine backend mode
 backend = os.getenv("PANTRY_BACKEND", "sqlite")
@@ -865,9 +890,9 @@ def view_recipe(recipe_name):
             missing_ingredients.append(
                 {
                     "name": ingredient_name,
-                    "needed": needed_quantity,
-                    "available": available_quantity,
-                    "missing": needed_quantity - available_quantity,
+                    "needed": format_quantity(needed_quantity),
+                    "available": format_quantity(available_quantity),
+                    "missing": format_quantity(needed_quantity - available_quantity),
                     "unit": ingredient["unit"],
                 }
             )
@@ -875,8 +900,8 @@ def view_recipe(recipe_name):
             available_ingredients.append(
                 {
                     "name": ingredient_name,
-                    "needed": needed_quantity,
-                    "available": available_quantity,
+                    "needed": format_quantity(needed_quantity),
+                    "available": format_quantity(available_quantity),
                     "unit": ingredient["unit"],
                 }
             )
