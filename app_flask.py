@@ -853,17 +853,8 @@ def view_recipe(recipe_name):
         needed_quantity = ingredient["quantity"]
         ingredient_name = ingredient["name"]
 
-        # Skip infinite ingredients from missing calculations (e.g., water, salt)
+        # Skip infinite ingredients entirely (e.g., water, salt) - users know these are always available
         if is_infinite_ingredient(ingredient_name, i18n.LANG):
-            # Always consider infinite ingredients as available
-            available_ingredients.append(
-                {
-                    "name": ingredient_name,
-                    "needed": needed_quantity,
-                    "available": "∞",  # Infinity symbol for infinite ingredients
-                    "unit": ingredient["unit"],
-                }
-            )
             continue
 
         available_quantity = user_pantry.get_total_item_quantity(
