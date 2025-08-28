@@ -8,8 +8,7 @@ import sys
 import os
 import argparse
 import getpass
-from typing import Optional
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -234,7 +233,7 @@ def create_user(
                 )
 
                 if verbose:
-                    print(f"✅ User created successfully!")
+                    print("✅ User created successfully!")
                     print(f"   Username: {username}")
                     print(f"   Email: {email}")
                     print(f"   User ID: {user_id}")

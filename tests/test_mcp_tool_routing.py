@@ -10,14 +10,13 @@ import tempfile
 import shutil
 from pathlib import Path
 import sys
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mcp_tool_router import MCPToolRouter
-from mcp_tools import MCP_TOOLS, get_tool_by_name
+from mcp_tool_router import MCPToolRouter  # noqa: E402
 
 
 class TestMCPToolRouter:
@@ -435,7 +434,6 @@ class TestMCPErrorHandling:
     def test_concurrent_tool_calls(self):
         """Test concurrent tool execution."""
         import threading
-        import time
 
         router = MCPToolRouter()
         mock_pm = Mock()

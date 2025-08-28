@@ -11,7 +11,6 @@ import markdown
 from flask import (
     Flask,
     flash,
-    jsonify,
     redirect,
     render_template,
     request,
@@ -121,7 +120,7 @@ secret_key = os.getenv("FLASK_SECRET_KEY")
 if not secret_key:
     secret_key = secrets.token_urlsafe(32)
     os.environ["FLASK_SECRET_KEY"] = secret_key
-    logger.info(f"Generated Flask secret key")
+    logger.info("Generated Flask secret key")
 else:
     logger.info("Using existing Flask secret key")
 
@@ -235,7 +234,7 @@ def strftime_filter(date_str, format="%A"):
         else:
             date_obj = date_str
         return date_obj.strftime(format)
-    except:
+    except Exception:  # pylint: disable=broad-except
         return date_str
 
 
@@ -247,7 +246,7 @@ def markdown_filter(text):
     try:
         md = markdown.Markdown(extensions=["nl2br", "fenced_code"])
         return md.convert(text)
-    except Exception as e:
+    except Exception:
         # Fallback to simple line break conversion if markdown fails
         return text.replace("\n", "<br>")
 

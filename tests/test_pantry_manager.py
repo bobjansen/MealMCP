@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from pantry_manager_factory import create_pantry_manager
 from db_setup import setup_database
-from datetime import date, timedelta
+from datetime import date
 
 
 class TestPantryManager(unittest.TestCase):
@@ -107,12 +107,12 @@ class TestPantryManager(unittest.TestCase):
         # Close any remaining connections and remove the temporary database
         try:
             self.pantry._get_connection().close()
-        except:
+        except Exception:  # pylint: disable=broad-except
             pass
         try:
             if os.path.exists(self.db_path):
                 os.unlink(self.db_path)
-        except:
+        except Exception:  # pylint: disable=broad-except
             pass
 
     def test_unit_customization(self):

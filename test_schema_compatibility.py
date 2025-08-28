@@ -21,7 +21,6 @@ import argparse
 import tempfile
 import sqlite3
 import uuid
-from typing import List, Dict, Any
 
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

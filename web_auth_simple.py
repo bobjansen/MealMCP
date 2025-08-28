@@ -106,7 +106,7 @@ class WebUserManager:
                         # Create household characteristics for new household first
                         cursor.execute(
                             """
-                            INSERT INTO household_characteristics 
+                            INSERT INTO household_characteristics
                             (household_id, adults, children, preferred_volume_unit, preferred_weight_unit, preferred_count_unit)
                             VALUES (%s, %s, %s, %s, %s, %s)
                             """,
@@ -179,7 +179,7 @@ class WebUserManager:
                         "SELECT 1 FROM users WHERE username = %s", (username,)
                     )
                     return cursor.fetchone() is not None
-        except:
+        except Exception:  # pylint: disable=broad-except
             return False
 
     def email_exists(self, email: str) -> bool:
@@ -192,7 +192,7 @@ class WebUserManager:
                 with conn.cursor() as cursor:
                     cursor.execute("SELECT 1 FROM users WHERE email = %s", (email,))
                     return cursor.fetchone() is not None
-        except:
+        except Exception:  # pylint: disable=broad-except
             return False
 
     def create_household_invite(self, owner_id: int, email: str) -> Optional[str]:

@@ -85,7 +85,7 @@ def main():
     from recipe_mcp_server import RecipeMCPServer
 
     # Create and run server
-    print(f"Starting MealMCP server:")
+    print("Starting MealMCP server:")
     print(f"  Transport: {args.transport}")
     print(f"  Auth Mode: {os.environ.get('MCP_MODE', 'local')}")
     print(f"  Address: {args.host}:{args.port}")

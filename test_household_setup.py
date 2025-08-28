@@ -54,7 +54,7 @@ def test_household_setup_sqlite():
     finally:
         try:
             os.unlink(db_path)
-        except:
+        except Exception:  # pylint: disable=broad-except
             pass
 
 
@@ -140,7 +140,7 @@ def test_household_setup_postgresql(postgres_url: str = None):
                     # Verify household characteristics were created in separate table
                     cursor.execute(
                         """
-                        SELECT household_id, adults, children, preferred_volume_unit, 
+                        SELECT household_id, adults, children, preferred_volume_unit,
                                preferred_weight_unit, preferred_count_unit
                         FROM household_characteristics WHERE household_id = %s
                         """,
@@ -185,7 +185,7 @@ def test_household_setup_postgresql(postgres_url: str = None):
                         )
 
                     print(
-                        f"  ✅ Household characteristics properly set in separate table:"
+                        "  ✅ Household characteristics properly set in separate table:"
                     )
                     print(f"    - Household ID: {hc_household_id}")
                     print(f"    - Adults: {adults}, Children: {children}")

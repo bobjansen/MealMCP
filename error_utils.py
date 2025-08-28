@@ -4,7 +4,7 @@ Common error handling utilities to reduce code duplication.
 
 import logging
 import functools
-from typing import Optional, Callable, Any, Union
+from typing import Optional, Callable, Any
 
 logger = logging.getLogger(__name__)
 

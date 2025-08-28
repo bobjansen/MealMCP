@@ -23,7 +23,7 @@ import base64
 import hashlib
 import secrets
 import urllib.parse
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 import argparse
 from datetime import datetime
 
@@ -64,7 +64,7 @@ class OAuthSequenceTracer:
         # Tracing
         self.trace_log = []
 
-        print(f"🔍 OAuth Sequence Tracer initialized")
+        print("🔍 OAuth Sequence Tracer initialized")
         print(f"   Server URL: {self.server_url}")
         print(f"   Username: {self.username}")
         print(f"   Client Name: {self.client_name}")
@@ -104,7 +104,7 @@ class OAuthSequenceTracer:
         # Try to parse JSON content
         try:
             json_content = response.json()
-        except:
+        except Exception:  # pylint: disable=broad-except
             json_content = None
 
         log_entry = {
@@ -158,7 +158,7 @@ class OAuthSequenceTracer:
         self.code_verifier = code_verifier
         self.code_challenge = code_challenge
 
-        print(f"🔐 Generated PKCE parameters:")
+        print("🔐 Generated PKCE parameters:")
         print(f"    Code Verifier: {code_verifier}")
         print(f"    Code Challenge: {code_challenge}")
         print()
@@ -391,25 +391,25 @@ class OAuthSequenceTracer:
             print("=" * 60)
 
             # Step 1: Discovery
-            discovery_info = self.discover_oauth_endpoints()
+            self.discover_oauth_endpoints()
 
             # Step 2: Client registration
-            client_info = self.register_client()
+            self.register_client()
 
             # Step 3: Authorization flow
             login_form = self.start_authorization_flow()
 
             # Step 4: Login and get code
-            auth_code = self.submit_login_form(login_form)
+            self.submit_login_form(login_form)
 
             # Step 5: Token exchange
-            token_info = self.exchange_code_for_tokens()
+            self.exchange_code_for_tokens()
 
             # Step 6: Test authenticated request
-            mcp_response = self.test_authenticated_request()
+            self.test_authenticated_request()
 
             # Step 7: Test refresh token
-            refresh_response = self.test_refresh_token()
+            self.test_refresh_token()
 
             print("=" * 60)
             print("✅ OAuth 2.1 sequence completed successfully!")

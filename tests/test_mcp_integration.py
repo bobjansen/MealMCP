@@ -8,19 +8,15 @@ import pytest
 import os
 import tempfile
 import shutil
-import json
-import asyncio
 from pathlib import Path
 import sys
 from datetime import datetime, timedelta
-from unittest.mock import patch, AsyncMock
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from recipe_mcp_server import RecipeMCPServer
-from pantry_manager_factory import create_pantry_manager
+from recipe_mcp_server import RecipeMCPServer  # noqa: E402
 
 
 class TestMCPIntegration:

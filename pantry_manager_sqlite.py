@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from pantry_manager_abc import PantryManager
 from short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
-from constants import DEFAULT_UNITS, INFINITE_INGREDIENTS, is_infinite_ingredient
+from constants import DEFAULT_UNITS, is_infinite_ingredient
 import i18n
 
 
@@ -559,7 +559,7 @@ class SQLitePantryManager(PantryManager):
             # Get pantry quantities grouped by unit
             cursor.execute(
                 """
-                SELECT t.unit, 
+                SELECT t.unit,
                        SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
                 FROM PantryTransactions t
                 WHERE t.ingredient_id = ?
@@ -969,7 +969,6 @@ class SQLitePantryManager(PantryManager):
                         "i": "e",
                         "e": "i",
                         "a": "e",
-                        "e": "a",
                         "tion": "sion",
                         "sion": "tion",
                     }

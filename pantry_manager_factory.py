@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from pantry_manager_abc import PantryManager
 from pantry_manager_sqlite import SQLitePantryManager

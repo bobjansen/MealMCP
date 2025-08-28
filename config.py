@@ -5,7 +5,7 @@ Consolidates all environment variable access and default values.
 
 import os
 from typing import Optional
-from error_utils import safe_int_conversion, safe_float_conversion
+from error_utils import safe_int_conversion
 
 
 def get_env_str(key: str, default: str = "") -> str:

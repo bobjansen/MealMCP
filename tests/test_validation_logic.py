@@ -5,8 +5,6 @@ Tests the validation methods that protect against malicious input.
 """
 
 import pytest
-import tempfile
-import shutil
 from pathlib import Path
 import sys
 from unittest.mock import patch, MagicMock
@@ -15,7 +13,7 @@ from unittest.mock import patch, MagicMock
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from pantry_manager_shared import SharedPantryManager
+from pantry_manager_shared import SharedPantryManager  # noqa: E402
 
 
 class TestValidationLogic:
@@ -208,7 +206,7 @@ class TestValidationLogic:
         """Test that add_ingredient calls validation correctly."""
         # Should succeed with valid input
         result = pantry_manager.add_ingredient("tomato", "pieces")
-        assert result == True  # Mocked to succeed
+        assert result  # Mocked to succeed
 
         # Should fail with invalid input
         with pytest.raises(ValueError):
@@ -231,7 +229,7 @@ class TestValidationLogic:
                 [{"name": "chicken", "quantity": 1, "unit": "piece"}],
             )
             success, recipe_id = result
-            assert success == True  # Should succeed
+            assert success  # Should succeed
             assert recipe_id == "R123A"  # Should return mocked short ID
 
         # Should fail with invalid recipe name
@@ -265,7 +263,7 @@ class TestValidationLogic:
         """Test that add_preference calls validation correctly."""
         # Should succeed with valid input
         result = pantry_manager.add_preference("like", "chocolate", "preferred")
-        assert result == True  # Mocked to succeed
+        assert result  # Mocked to succeed
 
         # Should fail with invalid category
         with pytest.raises(ValueError):

@@ -11,9 +11,7 @@ Usage:
 
 import os
 import sys
-import json
 import argparse
-from typing import Optional
 
 try:
     import requests
@@ -62,7 +60,7 @@ def register_user_via_web(
 
 def register_user_via_database(username: str, email: str, password: str) -> bool:
     """Register a user directly in the database (PostgreSQL backend)."""
-    print(f"💾 Registering user directly in database")
+    print("💾 Registering user directly in database")
 
     try:
         # Check if we have database access
@@ -84,7 +82,7 @@ def register_user_via_database(username: str, email: str, password: str) -> bool
             print(f"✅ User '{username}' registered directly in database")
             return True
         else:
-            print(f"❌ Database registration failed - user might already exist")
+            print("❌ Database registration failed - user might already exist")
             return False
 
     except ImportError as e:
@@ -173,7 +171,7 @@ def main():
 
     if success:
         print("\n✅ User setup complete!")
-        print(f"   You can now run: python oauth_sequence_tracer.py")
+        print("   You can now run: python oauth_sequence_tracer.py")
         print(f"   Username: {args.username}")
         print(f"   Password: {args.password}")
     else:

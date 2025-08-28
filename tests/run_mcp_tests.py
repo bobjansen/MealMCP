@@ -163,7 +163,7 @@ def main():
 
     for cmd, description, env in test_suites:
         # Update environment for this test
-        cmd_env = env.copy()
+        env.copy()
 
         success, stdout, stderr, duration = run_command(cmd, description, args.timeout)
         results.append((description, success, duration, stdout, stderr))
@@ -197,7 +197,7 @@ def main():
 
     # Run additional checks if all tests passed
     if passed == total:
-        print(f"\n🎉 All tests passed! Running additional checks...")
+        print("\n🎉 All tests passed! Running additional checks...")
 
         # Check test coverage
         coverage_cmd = [
@@ -211,7 +211,7 @@ def main():
             "tests/",
         ]
 
-        print(f"\n📈 Running coverage analysis...")
+        print("\n📈 Running coverage analysis...")
         success, stdout, stderr, duration = run_command(
             coverage_cmd, "Test Coverage Analysis", args.timeout
         )
@@ -228,12 +228,10 @@ def main():
     exit_code = 0 if passed == total else 1
 
     if exit_code == 0:
-        print(f"\n🚀 All MCP server tests completed successfully!")
-        print(f"💡 Ready for production deployment")
+        print("\n🚀 All MCP server tests completed successfully!")
+        print("💡 Ready for production deployment")
     else:
-        print(
-            f"\n⚠️  Some tests failed. Please review and fix issues before deployment."
-        )
+        print("\n⚠️  Some tests failed. Please review and fix issues before deployment.")
 
     return exit_code
 

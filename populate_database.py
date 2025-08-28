@@ -417,7 +417,6 @@ def create_default_user(
     """
     try:
         import psycopg2
-        from urllib.parse import urlparse
 
         with psycopg2.connect(connection_string) as conn:
             with conn.cursor() as cursor:
@@ -485,20 +484,20 @@ def populate_database(
                 raise ValueError("PostgreSQL backend requires connection string")
 
             if verbose:
-                print(f"  🐘 Setting up PostgreSQL database...")
+                print("  🐘 Setting up PostgreSQL database...")
 
             setup_shared_database(connection_string)
 
             # Create or find default user if user_id is 1 (default)
             if user_id == 1:
                 if verbose:
-                    print(f"  👤 Creating/finding default demo user...")
+                    print("  👤 Creating/finding default demo user...")
                 user_id = create_default_user(connection_string)
                 if verbose:
                     print(f"  ✅ Demo user ready (ID: {user_id})")
 
             if verbose:
-                print(f"  ✅ PostgreSQL database initialized")
+                print("  ✅ PostgreSQL database initialized")
                 print(f"  👤 Using user ID: {user_id}")
         else:
             # For SQLite, use the setup function
@@ -633,7 +632,7 @@ def populate_database(
             print(f"   📝 Recipes: {len(added_recipes)}")
             print(f"   🥫 Pantry items: {added_items}")
             print(f"   ❤️  Preferences: {added_preferences}")
-            print(f"   📅 Meal plan: 7 days")
+            print("   📅 Meal plan: 7 days")
 
         return True
 

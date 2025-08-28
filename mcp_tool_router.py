@@ -2,14 +2,13 @@
 MCP Tool Router - Centralized tool dispatch
 """
 
-import json
 import logging
 import traceback
 from datetime import datetime, timedelta
 from i18n import t
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Callable
 from mcp_tools import MCP_TOOLS
-from error_utils import safe_execute, validate_required_params
+from error_utils import validate_required_params
 
 logger = logging.getLogger(__name__)
 
@@ -625,7 +624,6 @@ class MCPToolRouter:
                     "message": f"Recipe '{recipe_name}' not found",
                 }
 
-            pantry_contents = pantry_manager.get_pantry_contents()
             missing = []
             available = []
 

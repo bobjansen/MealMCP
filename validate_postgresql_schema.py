@@ -22,9 +22,7 @@ import os
 import sys
 import argparse
 import psycopg2
-from typing import Dict, List, Set, Tuple, Any, Optional
-import tempfile
-import subprocess
+from typing import Set, Tuple
 from urllib.parse import urlparse, urlunparse
 import uuid
 
@@ -208,7 +206,7 @@ class PostgreSQLSchemaValidator:
             if (
                 parts
                 and not parts[0].startswith("'")
-                and not parts[0].upper() in ("INDEX", "KEY")
+                and parts[0].upper() not in ("INDEX", "KEY")
             ):
                 col_name = parts[0].replace(",", "").lower()
                 if col_name and col_name.isalpha() or "_" in col_name:
@@ -347,9 +345,9 @@ class PostgreSQLSchemaValidator:
                 )
 
                 # Test basic operations
-                pantry_contents = pantry_manager.get_pantry_contents()
-                recipes = pantry_manager.get_all_recipes()
-                preferences = pantry_manager.get_preferences()
+                pantry_manager.get_pantry_contents()
+                pantry_manager.get_all_recipes()
+                pantry_manager.get_preferences()
 
                 # Clean up test user
                 cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))

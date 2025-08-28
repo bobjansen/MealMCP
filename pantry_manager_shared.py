@@ -22,7 +22,6 @@ from constants import (
     MAX_QUANTITY_VALUE,
     MAX_TIME_MINUTES,
     DEFAULT_UNITS,
-    INFINITE_INGREDIENTS,
     is_infinite_ingredient,
 )
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
@@ -1231,7 +1230,6 @@ class SharedPantryManager(PantryManager):
                         "i": "e",
                         "e": "i",
                         "a": "e",
-                        "e": "a",
                         "tion": "sion",
                         "sion": "tion",
                     }

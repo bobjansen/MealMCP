@@ -11,8 +11,6 @@ from pathlib import Path
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from datetime import date
-from pantry_manager_factory import PantryManagerFactory
 from pantry_manager_sqlite import SQLitePantryManager
 from db_setup import setup_database
 import app_flask

@@ -6,7 +6,7 @@ tool routers and data managers.
 """
 
 import os
-from mcpnp import UnifiedMCPServer, MCPContext
+from mcpnp import UnifiedMCPServer
 from mcp_tool_router import MCPToolRouter
 from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
@@ -62,7 +62,6 @@ class RecipeDataManagerFactory:
             if effective_user_id is None:
                 # For PostgreSQL multi-user, try to extract user_id from connection_string path
                 # The MCP framework may encode user info in the db_path
-                import re
 
                 if connection_string.startswith(("postgresql://", "postgres://")):
                     # Use a default user_id of 1 if we can't determine it
