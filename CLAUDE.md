@@ -10,6 +10,7 @@ ALl scripts and applications run through uv using `uv run`
 ### Some applications
 - **Flask Web Interface (Recommended)**: `uv run run_web.py` - Smart launcher with backend detection and validation
 - **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000
+- **OpenRouter CLI**: `uv run openrouter_cli.py` - Interactive CLI with LLM integration via OpenRouter
 - **Unified MCP Server (Recommended)**: `uv run run_mcp.py [mode]` - Single server supporting all transport modes
   - `uv run run_mcp.py` - FastMCP local mode (default)
   - `uv run run_mcp.py http --port 8080` - HTTP REST API server

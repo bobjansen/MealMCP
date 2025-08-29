@@ -62,6 +62,8 @@ class MCPToolRouter:
             "execute_recipe": self._execute_recipe,
             "get_week_plan": self._get_week_plan,
             "set_recipe_for_date": self._set_recipe_for_date,
+            "manage_pantry_item": self._manage_pantry_item,
+            "get_grocery_list": self._get_grocery_list,
         }
 
     def call_tool(
@@ -830,4 +832,59 @@ class MCPToolRouter:
             return {
                 "status": "error",
                 "message": f"Failed to set recipe for date: {str(e)}",
+            }
+
+    def _manage_pantry_item(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Add or remove an item from the pantry."""
+        try:
+            action = arguments["action"]
+            item_name = arguments["item_name"]
+            quantity = arguments["quantity"]
+            unit = arguments["unit"]
+            notes = arguments.get("notes", "")
+
+            if action == "add":
+                success = pantry_manager.add_item_to_pantry(
+                    item_name, quantity, unit, notes
+                )
+                message = f"Added {quantity} {unit} of {item_name} to pantry"
+            elif action == "remove":
+                success = pantry_manager.remove_item_from_pantry(
+                    item_name, quantity, unit
+                )
+                message = f"Removed {quantity} {unit} of {item_name} from pantry"
+            else:
+                return {
+                    "status": "error",
+                    "message": "Action must be 'add' or 'remove'",
+                }
+
+            if success:
+                return {"status": "success", "message": message}
+            else:
+                return {"status": "error", "message": f"Failed to {action} pantry item"}
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to manage pantry item: {str(e)}",
+            }
+
+    def _get_grocery_list(
+        self, arguments: Dict[str, Any], pantry_manager
+    ) -> Dict[str, Any]:
+        """Get grocery list for the coming week's meal plan."""
+        try:
+            grocery_list = pantry_manager.get_grocery_list()
+            return {
+                "status": "success",
+                "grocery_list": grocery_list,
+                "message": f"Found {len(grocery_list)} items needed for grocery shopping",
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to get grocery list: {str(e)}",
             }

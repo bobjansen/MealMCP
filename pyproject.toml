@@ -13,6 +13,8 @@ dependencies = [
     "gunicorn>=23.0.0",
     "mcpnp",
     "beautifulsoup4>=4.13.4",
+    "requests>=2.31.0",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]

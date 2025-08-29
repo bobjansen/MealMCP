@@ -431,6 +431,8 @@ dependencies = [
     { name = "mcpnp" },
     { name = "psycopg2-binary" },
     { name = "pytest" },
+    { name = "requests" },
+    { name = "rich" },
     { name = "werkzeug" },
 ]
 
@@ -448,6 +450,8 @@ requires-dist = [
     { name = "mcpnp", git = "https://github.com/bobjansen/mcpnp.git" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
     { name = "pytest", specifier = ">=8.4.1" },
+    { name = "requests", specifier = ">=2.31.0" },
+    { name = "rich", specifier = ">=13.0.0" },
     { name = "werkzeug", specifier = ">=2.0.0" },
 ]
 provides-extras = ["dev"]

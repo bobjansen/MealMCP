@@ -104,6 +104,7 @@ def main():
         "mcp_server.py",
         "mcp_tool_router.py",
         "mcp_tools.py",
+        "openrouter_cli.py",
         "pantry_manager_abc.py",
         "pantry_manager_factory.py",
         "pantry_manager_shared.py",
