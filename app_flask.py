@@ -970,6 +970,7 @@ def add_recipe():
     name = request.form.get("name")
     instructions = request.form.get("instructions")
     time_minutes = int(request.form.get("time_minutes", 0))
+    servings = int(request.form.get("servings", 4))
 
     # Parse ingredients from form
     ingredients = []
@@ -987,7 +988,7 @@ def add_recipe():
                 }
             )
 
-    if user_pantry.add_recipe(name, instructions, time_minutes, ingredients):
+    if user_pantry.add_recipe(name, instructions, time_minutes, ingredients, servings):
         flash(f'Recipe "{name}" added successfully!', "success")
         return redirect(url_for("recipes"))
     flash("Error adding recipe.", "error")
@@ -1023,6 +1024,7 @@ def edit_recipe(recipe_name):
     new_name = request.form.get("name", "").strip()
     instructions = request.form.get("instructions")
     time_minutes = int(request.form.get("time_minutes", 0))
+    servings = int(request.form.get("servings", 4))
 
     # Use new name if provided and different, otherwise None
     name_to_update = new_name if new_name and new_name != recipe_name else None
@@ -1044,7 +1046,12 @@ def edit_recipe(recipe_name):
             )
 
     if user_pantry.edit_recipe(
-        recipe_name, instructions, time_minutes, ingredients, new_name=name_to_update
+        recipe_name,
+        instructions,
+        time_minutes,
+        ingredients,
+        new_name=name_to_update,
+        servings=servings,
     ):
         # Use the new name if it was changed, otherwise use the original
         final_name = name_to_update if name_to_update else recipe_name

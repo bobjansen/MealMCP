@@ -41,6 +41,7 @@ SINGLE_USER_SCHEMAS = {
             name TEXT NOT NULL,
             instructions TEXT NOT NULL,
             time_minutes INTEGER NOT NULL,
+            servings INTEGER DEFAULT 4,
             rating INTEGER DEFAULT NULL CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
             created_date TEXT NOT NULL,
             last_modified TEXT NOT NULL
@@ -204,6 +205,7 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             name VARCHAR(255) NOT NULL,
             instructions TEXT NOT NULL,
             time_minutes INTEGER NOT NULL,
+            servings INTEGER DEFAULT 4,
             rating INTEGER CHECK (rating >= 1 AND rating <= 5),
             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -343,6 +345,7 @@ MULTI_USER_SQLITE_SCHEMAS = {
             name TEXT NOT NULL,
             instructions TEXT NOT NULL,
             time_minutes INTEGER NOT NULL,
+            servings INTEGER DEFAULT 4,
             rating INTEGER CHECK (rating >= 1 AND rating <= 5),
             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

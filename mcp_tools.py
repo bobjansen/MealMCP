@@ -60,6 +60,10 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                     "type": "integer",
                     "description": "Preparation time in minutes",
                 },
+                "servings": {
+                    "type": "integer",
+                    "description": "Number of servings (default: 4)",
+                },
                 "ingredients": {
                     "type": "array",
                     "items": {
@@ -98,7 +102,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "edit_recipe",
-        "description": "Edit an existing recipe. Can update instructions, time, ingredients, and optionally rename the recipe.",
+        "description": "Edit an existing recipe. Can update instructions, time, servings, ingredients, and optionally rename the recipe.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -113,6 +117,10 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "time_minutes": {
                     "type": "integer",
                     "description": "Updated preparation time",
+                },
+                "servings": {
+                    "type": "integer",
+                    "description": "Updated number of servings",
                 },
                 "ingredients": {
                     "type": "array",
@@ -155,6 +163,10 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                 "time_minutes": {
                     "type": "integer",
                     "description": "Updated preparation time (optional)",
+                },
+                "servings": {
+                    "type": "integer",
+                    "description": "Updated number of servings (optional)",
                 },
                 "ingredients": {
                     "type": "array",

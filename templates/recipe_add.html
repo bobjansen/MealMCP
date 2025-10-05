@@ -29,10 +29,15 @@
                             <label for="name" class="form-label">Recipe Name</label>
                             <input type="text" class="form-control" id="name" name="name" required>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="time_minutes" class="form-label">Preparation Time (minutes)</label>
+                        <div class="col-md-2 mb-3">
+                            <label for="time_minutes" class="form-label">{{ t('Prep Time (min)') }}</label>
                             <input type="number" class="form-control" id="time_minutes" name="time_minutes"
                                    required min="1">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label for="servings" class="form-label">{{ t('Servings') }}</label>
+                            <input type="number" class="form-control" id="servings" name="servings"
+                                   required min="1" max="100" value="4">
                         </div>
                     </div>
 

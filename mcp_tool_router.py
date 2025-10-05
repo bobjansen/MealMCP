@@ -286,6 +286,7 @@ class MCPToolRouter:
                 instructions=arguments["instructions"],
                 time_minutes=arguments["time_minutes"],
                 ingredients=arguments["ingredients"],
+                servings=arguments.get("servings", 4),
             )
 
             if success:
@@ -323,6 +324,7 @@ class MCPToolRouter:
             time_minutes=arguments["time_minutes"],
             ingredients=arguments["ingredients"],
             new_name=new_name,
+            servings=arguments.get("servings"),
         )
 
         if success:
@@ -354,15 +356,17 @@ class MCPToolRouter:
         name = arguments.get("name")
         instructions = arguments.get("instructions")
         time_minutes = arguments.get("time_minutes")
+        servings = arguments.get("servings")
         ingredients = arguments.get("ingredients")
 
         # Check if at least one field is provided for update
         if all(
-            field is None for field in [name, instructions, time_minutes, ingredients]
+            field is None
+            for field in [name, instructions, time_minutes, servings, ingredients]
         ):
             return {
                 "status": "error",
-                "message": "At least one field (name, instructions, time_minutes, or ingredients) must be provided for update",
+                "message": "At least one field (name, instructions, time_minutes, servings, or ingredients) must be provided for update",
             }
 
         # Call the improved edit method with detailed error handling
@@ -371,6 +375,7 @@ class MCPToolRouter:
             name=name,
             instructions=instructions,
             time_minutes=time_minutes,
+            servings=servings,
             ingredients=ingredients,
         )
 

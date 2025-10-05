@@ -1039,12 +1039,19 @@ WHERE id = {ph} AND user_id = {ph}""",
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
+        servings: int = 4,
     ) -> tuple[bool, Optional[str]]:
         """Add a new recipe to the database for the current user."""
         # Validate inputs
         name = self._validate_recipe_name(name)
         instructions = self._validate_instructions(instructions)
         time_minutes = self._validate_time_minutes(time_minutes)
+
+        # Validate servings
+        if not isinstance(servings, int) or servings < 1:
+            raise ValueError("Servings must be a positive integer")
+        if servings > 100:
+            raise ValueError("Servings must be 100 or less")
 
         # Validate ingredients list
         if not isinstance(ingredients, list):
@@ -1077,8 +1084,8 @@ WHERE id = {ph} AND user_id = {ph}""",
                     cursor.execute(
                         f"""
                         INSERT INTO recipes
-                        (user_id, name, instructions, time_minutes, created_date, last_modified)
-                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                        (user_id, name, instructions, time_minutes, servings, created_date, last_modified)
+                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
                         RETURNING id, short_id
                         """,
                         (
@@ -1086,6 +1093,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                             name,
                             instructions,
                             time_minutes,
+                            servings,
                             now,
                             now,
                         ),
@@ -1096,8 +1104,8 @@ WHERE id = {ph} AND user_id = {ph}""",
                     cursor.execute(
                         f"""
                         INSERT INTO recipes
-                        (user_id, name, instructions, time_minutes, created_date, last_modified)
-                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+                        (user_id, name, instructions, time_minutes, servings, created_date, last_modified)
+                        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
                         RETURNING id, short_id
                         """,
                         (
@@ -1105,6 +1113,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                             name,
                             instructions,
                             time_minutes,
+                            servings,
                             now,
                             now,
                         ),
@@ -1195,7 +1204,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                 cursor.execute(
                     f"""
                     SELECT
-                        r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                        r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                         r.created_date, r.last_modified, 1 as match_score
                     FROM recipes r
                     WHERE r.name = {ph} AND r.user_id = {ph}
@@ -1209,7 +1218,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                     cursor.execute(
                         f"""
                         SELECT
-                            r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                            r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                             r.created_date, r.last_modified, 2 as match_score
                         FROM recipes r
                         WHERE LOWER(r.name) = LOWER({ph}) AND r.user_id = {ph}
@@ -1234,7 +1243,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                         cursor.execute(
                             f"""
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 3 as match_score
                             FROM recipes r
                             WHERE {word_conditions} AND r.user_id = {ph}
@@ -1261,7 +1270,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                         cursor.execute(
                             f"""
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 4 as match_score
                             FROM recipes r
                             WHERE ({word_conditions}) AND r.user_id = {ph}
@@ -1277,7 +1286,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                     cursor.execute(
                         f"""
                         SELECT
-                            r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                            r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                             r.created_date, r.last_modified, 5 as match_score
                         FROM recipes r
                         WHERE LOWER(r.name) LIKE LOWER({ph}) AND r.user_id = {ph}
@@ -1331,7 +1340,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                         cursor.execute(
                             f"""
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 6 as match_score
                             FROM recipes r
                             WHERE ({or_conditions}) AND r.user_id = {ph}
@@ -1350,6 +1359,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                     actual_name,
                     instructions,
                     time_minutes,
+                    servings,
                     rating,
                     created_date,
                     last_modified,
@@ -1381,6 +1391,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                     "name": actual_name,
                     "instructions": instructions,
                     "time_minutes": time_minutes,
+                    "servings": servings,
                     "rating": float(rating) if rating is not None else None,
                     "created_date": (
                         created_date.isoformat()
@@ -1448,6 +1459,7 @@ WHERE id = {ph} AND user_id = {ph}""",
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
         new_name: Optional[str] = None,
+        servings: Optional[int] = None,
     ) -> bool:
         """Edit an existing recipe in the database for the current user.
 
@@ -1457,6 +1469,7 @@ WHERE id = {ph} AND user_id = {ph}""",
             time_minutes: New preparation time
             ingredients: New ingredients list
             new_name: Optional new name for the recipe (if renaming)
+            servings: Optional new servings count
         """
         # Validate inputs (same as add_recipe)
         name = self._validate_recipe_name(name)
@@ -1466,6 +1479,13 @@ WHERE id = {ph} AND user_id = {ph}""",
         # Validate new name if provided
         if new_name is not None:
             new_name = self._validate_recipe_name(new_name)
+
+        # Validate servings if provided
+        if servings is not None:
+            if not isinstance(servings, int) or servings < 1:
+                raise ValueError("Servings must be a positive integer")
+            if servings > 100:
+                raise ValueError("Servings must be 100 or less")
 
         # Validate ingredients list
         if not isinstance(ingredients, list):
@@ -1514,7 +1534,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                 else:
                     now = datetime.now().isoformat()
 
-                # Update recipe (with optional name change)
+                # Update recipe (with optional name change and/or servings)
                 if new_name is not None:
                     # Check if new name conflicts with another recipe
                     cursor.execute(
@@ -1530,23 +1550,50 @@ WHERE id = {ph} AND user_id = {ph}""",
                         )
                         return False
 
-                    cursor.execute(
-                        f"""
-                        UPDATE recipes
-                        SET name = {ph}, instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
-                        WHERE id = {ph}
-                    """,
-                        (new_name, instructions, time_minutes, now, recipe_id),
-                    )
+                    if servings is not None:
+                        cursor.execute(
+                            f"""
+                            UPDATE recipes
+                            SET name = {ph}, instructions = {ph}, time_minutes = {ph}, servings = {ph}, last_modified = {ph}
+                            WHERE id = {ph}
+                        """,
+                            (
+                                new_name,
+                                instructions,
+                                time_minutes,
+                                servings,
+                                now,
+                                recipe_id,
+                            ),
+                        )
+                    else:
+                        cursor.execute(
+                            f"""
+                            UPDATE recipes
+                            SET name = {ph}, instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
+                            WHERE id = {ph}
+                        """,
+                            (new_name, instructions, time_minutes, now, recipe_id),
+                        )
                 else:
-                    cursor.execute(
-                        f"""
-                        UPDATE recipes
-                        SET instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
-                        WHERE id = {ph}
-                    """,
-                        (instructions, time_minutes, now, recipe_id),
-                    )
+                    if servings is not None:
+                        cursor.execute(
+                            f"""
+                            UPDATE recipes
+                            SET instructions = {ph}, time_minutes = {ph}, servings = {ph}, last_modified = {ph}
+                            WHERE id = {ph}
+                        """,
+                            (instructions, time_minutes, servings, now, recipe_id),
+                        )
+                    else:
+                        cursor.execute(
+                            f"""
+                            UPDATE recipes
+                            SET instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
+                            WHERE id = {ph}
+                        """,
+                            (instructions, time_minutes, now, recipe_id),
+                        )
 
                 # Delete existing ingredients
                 cursor.execute(
@@ -1810,6 +1857,7 @@ WHERE id = {ph} AND user_id = {ph}""",
         name: Optional[str] = None,
         instructions: Optional[str] = None,
         time_minutes: Optional[int] = None,
+        servings: Optional[int] = None,
         ingredients: Optional[List[Dict[str, Any]]] = None,
     ) -> tuple[bool, str]:
         """Edit an existing recipe by short ID with detailed error messages for the current user."""
@@ -1856,6 +1904,14 @@ WHERE id = {ph} AND user_id = {ph}""",
                     time_minutes = self._validate_time_minutes(time_minutes)
                     updated_fields.append(f"time_minutes = {ph}")
                     update_params.append(time_minutes)
+
+                if servings is not None:
+                    if not isinstance(servings, int) or servings < 1:
+                        return False, "Servings must be a positive integer"
+                    if servings > 100:
+                        return False, "Servings must be 100 or less"
+                    updated_fields.append(f"servings = {ph}")
+                    update_params.append(servings)
 
                 # Always update last_modified
                 updated_fields.append(f"last_modified = {ph}")
