@@ -1671,6 +1671,50 @@ WHERE id = {ph} AND user_id = {ph}""",
             print(f"Error editing recipe: {e}")
             return False
 
+    def delete_recipe(self, recipe_name: str) -> bool:
+        """
+        Delete a recipe from the database for the current user.
+
+        Args:
+            recipe_name: Name of the recipe to delete
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            recipe_name = self._validate_recipe_name(recipe_name)
+
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                # Check if recipe exists for this user
+                cursor.execute(
+                    f"SELECT id FROM recipes WHERE name = {ph} AND user_id = {ph}",
+                    (recipe_name, self.user_id),
+                )
+                result = cursor.fetchone()
+
+                if not result:
+                    print(f"Recipe '{recipe_name}' not found for current user")
+                    return False
+
+                recipe_id = result[0]
+
+                # Delete recipe ingredients first (foreign key constraint)
+                cursor.execute(
+                    f"DELETE FROM recipe_ingredients WHERE recipe_id = {ph}",
+                    (recipe_id,),
+                )
+
+                # Delete the recipe
+                cursor.execute(f"DELETE FROM recipes WHERE id = {ph}", (recipe_id,))
+
+                return True
+        except Exception as e:
+            print(f"Error deleting recipe: {e}")
+            return False
+
     def rate_recipe(self, recipe_name: str, rating: int) -> bool:
         """Rate a recipe on a scale of 1-5 for the current user."""
         # Validate inputs

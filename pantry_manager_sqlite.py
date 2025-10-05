@@ -1388,6 +1388,43 @@ class SQLitePantryManager(PantryManager):
             print(f"Error editing recipe: {e}")
             return False
 
+    def delete_recipe(self, recipe_name: str) -> bool:
+        """
+        Delete a recipe from the database.
+
+        Args:
+            recipe_name: Name of the recipe to delete
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Check if recipe exists
+                cursor.execute("SELECT id FROM Recipes WHERE name = ?", (recipe_name,))
+                result = cursor.fetchone()
+
+                if not result:
+                    print(f"Recipe '{recipe_name}' not found")
+                    return False
+
+                recipe_id = result[0]
+
+                # Delete recipe ingredients first (foreign key constraint)
+                cursor.execute(
+                    "DELETE FROM RecipeIngredients WHERE recipe_id = ?", (recipe_id,)
+                )
+
+                # Delete the recipe
+                cursor.execute("DELETE FROM Recipes WHERE id = ?", (recipe_id,))
+
+                return True
+        except Exception as e:
+            print(f"Error deleting recipe: {e}")
+            return False
+
     def rate_recipe(self, recipe_name: str, rating: int) -> bool:
         """
         Rate a recipe on a scale of 1-5.

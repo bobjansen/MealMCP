@@ -1080,6 +1080,23 @@ def rate_recipe(recipe_name):
     return redirect(url_for("view_recipe", recipe_name=recipe_name))
 
 
+@app.route("/recipes/delete/<recipe_name>", methods=["POST"])
+@requires_auth
+def delete_recipe(recipe_name):
+    """Delete a recipe."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+
+    if user_pantry.delete_recipe(recipe_name):
+        flash(f'Recipe "{recipe_name}" deleted successfully!', "success")
+        return redirect(url_for("recipes"))
+    else:
+        flash("Error deleting recipe.", "error")
+        return redirect(url_for("view_recipe", recipe_name=recipe_name))
+
+
 @app.route("/recipes/execute/<recipe_name>", methods=["POST"])
 @requires_auth
 def execute_recipe(recipe_name):
