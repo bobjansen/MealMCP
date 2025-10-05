@@ -35,7 +35,6 @@ disable=
     duplicate-code,
     
     # MCP server specific - these are common in protocol implementations
-    too-many-positional-arguments,
     unused-argument,
     
     # Development/testing specific
