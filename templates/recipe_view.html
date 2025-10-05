@@ -33,11 +33,15 @@
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <h6><i class="fas fa-clock"></i> {{ t('Preparation Time') }}</h6>
                         <p>{{ recipe.time_minutes }} {{ t('minutes') }}</p>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-users"></i> {{ t('Servings') }}</h6>
+                        <p>{{ recipe.servings|default(4) }}</p>
+                    </div>
+                    <div class="col-md-4">
                         <h6><i class="fas fa-star"></i> {{ t('Rating') }}</h6>
                         {% if recipe.rating and recipe.rating > 0 %}
                         <p>

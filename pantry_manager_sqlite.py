@@ -734,6 +734,7 @@ class SQLitePantryManager(PantryManager):
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
+        servings: int = 4,
     ) -> tuple[bool, Optional[str]]:
         """
         Add a new recipe to the database.
@@ -746,10 +747,17 @@ class SQLitePantryManager(PantryManager):
                 - name: ingredient name
                 - quantity: amount needed
                 - unit: unit of measurement
+            servings: Number of servings (default: 4)
 
         Returns:
             tuple[bool, Optional[str]]: (Success status, Recipe Short ID)
         """
+        # Validate servings
+        if not isinstance(servings, int) or servings < 1:
+            raise ValueError("Servings must be a positive integer")
+        if servings > 100:
+            raise ValueError("Servings must be 100 or less")
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -758,11 +766,11 @@ class SQLitePantryManager(PantryManager):
                 cursor.execute(
                     """
                     INSERT INTO Recipes
-                    (name, instructions, time_minutes, created_date, last_modified)
-                    VALUES (?, ?, ?, ?, ?)
+                    (name, instructions, time_minutes, servings, created_date, last_modified)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     RETURNING id, short_id
                     """,
-                    (name, instructions, time_minutes, now, now),
+                    (name, instructions, time_minutes, servings, now, now),
                 )
                 recipe_id, short_id = cursor.fetchone()
 
@@ -857,7 +865,7 @@ class SQLitePantryManager(PantryManager):
                 cursor.execute(
                     """
                     SELECT
-                        r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                        r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                         r.created_date, r.last_modified, 1 as match_score
                     FROM Recipes r
                     WHERE r.name = ?
@@ -871,7 +879,7 @@ class SQLitePantryManager(PantryManager):
                     cursor.execute(
                         """
                         SELECT
-                            r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                            r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                             r.created_date, r.last_modified, 2 as match_score
                         FROM Recipes r
                         WHERE LOWER(r.name) = LOWER(?)
@@ -894,7 +902,7 @@ class SQLitePantryManager(PantryManager):
                         cursor.execute(
                             f"""
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 3 as match_score
                             FROM Recipes r
                             WHERE {word_conditions}
@@ -934,7 +942,7 @@ class SQLitePantryManager(PantryManager):
                         cursor.execute(
                             f"""
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 4 as match_score
                             FROM Recipes r
                             WHERE {word_conditions}
@@ -997,7 +1005,7 @@ class SQLitePantryManager(PantryManager):
                         cursor.execute(
                             """
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 5 as match_score
                             FROM Recipes r
                             WHERE LOWER(r.name) LIKE LOWER(?)
@@ -1058,7 +1066,7 @@ class SQLitePantryManager(PantryManager):
                         cursor.execute(
                             f"""
                             SELECT
-                                r.id, r.name, r.instructions, r.time_minutes, r.rating,
+                                r.id, r.name, r.instructions, r.time_minutes, r.servings, r.rating,
                                 r.created_date, r.last_modified, 6 as match_score
                             FROM Recipes r
                             WHERE {or_conditions}
@@ -1077,6 +1085,7 @@ class SQLitePantryManager(PantryManager):
                     actual_name,
                     instructions,
                     time_minutes,
+                    servings,
                     rating,
                     created_date,
                     last_modified,
@@ -1089,9 +1098,10 @@ class SQLitePantryManager(PantryManager):
                     SELECT
                         i.name,
                         ri.quantity,
-                        ri.unit
+                        u.name
                     FROM RecipeIngredients ri
                     JOIN Ingredients i ON ri.ingredient_id = i.id
+                    JOIN Units u ON ri.unit_id = u.id
                     WHERE ri.recipe_id = ?
                     """,
                     (recipe_id,),
@@ -1105,6 +1115,7 @@ class SQLitePantryManager(PantryManager):
                     "name": actual_name,
                     "instructions": instructions,
                     "time_minutes": time_minutes,
+                    "servings": servings,
                     "rating": rating,
                     "created_date": created_date,
                     "last_modified": last_modified,
@@ -1218,6 +1229,8 @@ class SQLitePantryManager(PantryManager):
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
+        new_name: Optional[str] = None,
+        servings: Optional[int] = None,
     ) -> bool:
         """
         Edit an existing recipe in the database.
@@ -1230,10 +1243,19 @@ class SQLitePantryManager(PantryManager):
                 - name: ingredient name
                 - quantity: amount needed
                 - unit: unit of measurement
+            new_name: Optional new name for the recipe (if renaming)
+            servings: Optional updated number of servings
 
         Returns:
             bool: True if successful, False otherwise
         """
+        # Validate servings if provided
+        if servings is not None:
+            if not isinstance(servings, int) or servings < 1:
+                raise ValueError("Servings must be a positive integer")
+            if servings > 100:
+                raise ValueError("Servings must be 100 or less")
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -1248,15 +1270,50 @@ class SQLitePantryManager(PantryManager):
                 recipe_id = result[0]
                 now = datetime.now().isoformat()
 
-                # Update recipe
-                cursor.execute(
-                    """
-                    UPDATE Recipes
-                    SET instructions = ?, time_minutes = ?, last_modified = ?
-                    WHERE id = ?
-                    """,
-                    (instructions, time_minutes, now, recipe_id),
-                )
+                # Update recipe - build SQL dynamically based on what's being updated
+                if new_name is not None and servings is not None:
+                    cursor.execute(
+                        """
+                        UPDATE Recipes
+                        SET name = ?, instructions = ?, time_minutes = ?, servings = ?, last_modified = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            new_name,
+                            instructions,
+                            time_minutes,
+                            servings,
+                            now,
+                            recipe_id,
+                        ),
+                    )
+                elif new_name is not None:
+                    cursor.execute(
+                        """
+                        UPDATE Recipes
+                        SET name = ?, instructions = ?, time_minutes = ?, last_modified = ?
+                        WHERE id = ?
+                        """,
+                        (new_name, instructions, time_minutes, now, recipe_id),
+                    )
+                elif servings is not None:
+                    cursor.execute(
+                        """
+                        UPDATE Recipes
+                        SET instructions = ?, time_minutes = ?, servings = ?, last_modified = ?
+                        WHERE id = ?
+                        """,
+                        (instructions, time_minutes, servings, now, recipe_id),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        UPDATE Recipes
+                        SET instructions = ?, time_minutes = ?, last_modified = ?
+                        WHERE id = ?
+                        """,
+                        (instructions, time_minutes, now, recipe_id),
+                    )
 
                 # Delete existing ingredients
                 cursor.execute(
