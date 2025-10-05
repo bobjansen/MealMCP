@@ -1447,12 +1447,25 @@ WHERE id = {ph} AND user_id = {ph}""",
         instructions: str,
         time_minutes: int,
         ingredients: List[Dict[str, Any]],
+        new_name: Optional[str] = None,
     ) -> bool:
-        """Edit an existing recipe in the database for the current user."""
+        """Edit an existing recipe in the database for the current user.
+
+        Args:
+            name: Current recipe name to identify the recipe
+            instructions: New instructions
+            time_minutes: New preparation time
+            ingredients: New ingredients list
+            new_name: Optional new name for the recipe (if renaming)
+        """
         # Validate inputs (same as add_recipe)
         name = self._validate_recipe_name(name)
         instructions = self._validate_instructions(instructions)
         time_minutes = self._validate_time_minutes(time_minutes)
+
+        # Validate new name if provided
+        if new_name is not None:
+            new_name = self._validate_recipe_name(new_name)
 
         # Validate ingredients list
         if not isinstance(ingredients, list):
@@ -1501,15 +1514,39 @@ WHERE id = {ph} AND user_id = {ph}""",
                 else:
                     now = datetime.now().isoformat()
 
-                # Update recipe
-                cursor.execute(
-                    f"""
-                    UPDATE recipes
-                    SET instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
-                    WHERE id = {ph}
-                """,
-                    (instructions, time_minutes, now, recipe_id),
-                )
+                # Update recipe (with optional name change)
+                if new_name is not None:
+                    # Check if new name conflicts with another recipe
+                    cursor.execute(
+                        f"""
+                        SELECT id FROM recipes
+                        WHERE name = {ph} AND user_id = {ph} AND id != {ph}
+                    """,
+                        (new_name, self.user_id, recipe_id),
+                    )
+                    if cursor.fetchone():
+                        print(
+                            f"Recipe name '{new_name}' already exists for current user"
+                        )
+                        return False
+
+                    cursor.execute(
+                        f"""
+                        UPDATE recipes
+                        SET name = {ph}, instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
+                        WHERE id = {ph}
+                    """,
+                        (new_name, instructions, time_minutes, now, recipe_id),
+                    )
+                else:
+                    cursor.execute(
+                        f"""
+                        UPDATE recipes
+                        SET instructions = {ph}, time_minutes = {ph}, last_modified = {ph}
+                        WHERE id = {ph}
+                    """,
+                        (instructions, time_minutes, now, recipe_id),
+                    )
 
                 # Delete existing ingredients
                 cursor.execute(

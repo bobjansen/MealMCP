@@ -1020,8 +1020,12 @@ def edit_recipe(recipe_name):
         flash("Unable to access your data. Please try logging in again.", "error")
         return redirect(url_for("logout"))
 
+    new_name = request.form.get("name", "").strip()
     instructions = request.form.get("instructions")
     time_minutes = int(request.form.get("time_minutes", 0))
+
+    # Use new name if provided and different, otherwise None
+    name_to_update = new_name if new_name and new_name != recipe_name else None
 
     # Parse ingredients from form
     ingredients = []
@@ -1039,9 +1043,13 @@ def edit_recipe(recipe_name):
                 }
             )
 
-    if user_pantry.edit_recipe(recipe_name, instructions, time_minutes, ingredients):
-        flash(f'Recipe "{recipe_name}" updated successfully!', "success")
-        return redirect(url_for("view_recipe", recipe_name=recipe_name))
+    if user_pantry.edit_recipe(
+        recipe_name, instructions, time_minutes, ingredients, new_name=name_to_update
+    ):
+        # Use the new name if it was changed, otherwise use the original
+        final_name = name_to_update if name_to_update else recipe_name
+        flash(f'Recipe "{final_name}" updated successfully!', "success")
+        return redirect(url_for("view_recipe", recipe_name=final_name))
     flash("Error updating recipe.", "error")
     return redirect(url_for("edit_recipe_form", recipe_name=recipe_name))
 

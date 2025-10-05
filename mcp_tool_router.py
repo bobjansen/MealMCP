@@ -309,6 +309,7 @@ class MCPToolRouter:
     def _edit_recipe(self, arguments: Dict[str, Any], pantry_manager) -> Dict[str, Any]:
         """Edit an existing recipe."""
         recipe_name = arguments["recipe_name"]
+        new_name = arguments.get("new_name")
 
         # Check if recipe exists
         existing_recipe = pantry_manager.get_recipe(recipe_name)
@@ -321,17 +322,26 @@ class MCPToolRouter:
             instructions=arguments["instructions"],
             time_minutes=arguments["time_minutes"],
             ingredients=arguments["ingredients"],
+            new_name=new_name,
         )
 
         if success:
+            final_name = new_name if new_name else recipe_name
+            message = f"Recipe '{recipe_name}' updated successfully"
+            if new_name:
+                message = f"Recipe '{recipe_name}' renamed to '{new_name}' and updated successfully"
             return {
                 "status": "success",
-                "message": f"Recipe '{recipe_name}' updated successfully",
+                "message": message,
+                "recipe_name": final_name,
             }
         else:
+            error_msg = f"Failed to update recipe '{recipe_name}'"
+            if new_name:
+                error_msg += f" (note: new name '{new_name}' may already exist)"
             return {
                 "status": "error",
-                "message": f"Failed to update recipe '{recipe_name}'",
+                "message": error_msg,
             }
 
     def _edit_recipe_by_id(

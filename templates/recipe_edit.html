@@ -25,10 +25,16 @@
             </div>
             <form method="POST" action="{{ url_for('edit_recipe', recipe_name=recipe.name) }}">
                 <div class="card-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">{{ t('Recipe Name') }}</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ recipe.name }}" required maxlength="200">
+                    </div>
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="time_minutes" class="form-label">Preparation Time (minutes)</label>
-                            <input type="number" class="form-control" id="time_minutes" name="time_minutes" 
+                            <label for="time_minutes" class="form-label">{{ t('Preparation Time (minutes)') }}</label>
+                            <input type="number" class="form-control" id="time_minutes" name="time_minutes"
                                    value="{{ recipe.time_minutes }}" required min="1">
                         </div>
                         <div class="col-md-6 mb-3">

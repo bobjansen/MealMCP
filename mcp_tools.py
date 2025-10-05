@@ -98,13 +98,13 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "edit_recipe",
-        "description": "Edit an existing recipe",
+        "description": "Edit an existing recipe. Can update instructions, time, ingredients, and optionally rename the recipe.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "recipe_name": {
                     "type": "string",
-                    "description": "Name of recipe to edit",
+                    "description": "Current name of recipe to edit",
                 },
                 "instructions": {
                     "type": "string",
@@ -125,6 +125,10 @@ MCP_TOOLS: List[Dict[str, Any]] = [
                         },
                         "required": ["name", "quantity", "unit"],
                     },
+                },
+                "new_name": {
+                    "type": "string",
+                    "description": "Optional new name for the recipe (if renaming)",
                 },
             },
             "required": ["recipe_name", "instructions", "time_minutes", "ingredients"],
