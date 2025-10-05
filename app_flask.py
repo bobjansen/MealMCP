@@ -1154,9 +1154,28 @@ def set_meal_plan():
     recipe_name = request.form.get("recipe_name")
 
     if user_pantry.set_meal_plan(meal_date, recipe_name):
-        flash(f"Meal plan updated for {meal_date}!", "success")
+        flash(t("Meal plan updated for {date}!").format(date=meal_date), "success")
     else:
-        flash("Error updating meal plan.", "error")
+        flash(t("Error updating meal plan."), "error")
+
+    return redirect(url_for("meal_plan"))
+
+
+@app.route("/meal-plan/clear", methods=["POST"])
+@requires_auth
+def clear_meal_plan():
+    """Clear meal plan for a specific date."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        flash("Unable to access your data. Please try logging in again.", "error")
+        return redirect(url_for("logout"))
+
+    meal_date = request.form.get("meal_date")
+
+    if user_pantry.clear_recipe_for_date(meal_date):
+        flash(t("Meal cleared for {date}!").format(date=meal_date), "success")
+    else:
+        flash(t("Error clearing meal plan."), "error")
 
     return redirect(url_for("meal_plan"))
 

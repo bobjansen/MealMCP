@@ -35,23 +35,68 @@
                         </thead>
                         <tbody>
                             {% for meal in meal_plan %}
-                            <tr>
+                            <tr id="meal-row-{{ loop.index }}">
                                 <td>{{ meal.date }}</td>
                                 <td>
                                     {% set day_name = meal.date | strftime('%A') %}
                                     {{ day_name }}
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('view_recipe', recipe_name=meal.recipe) }}" 
-                                       class="text-decoration-none">
-                                        {{ meal.recipe }}
-                                    </a>
+                                    <!-- Display mode -->
+                                    <div class="meal-display-{{ loop.index }}">
+                                        <a href="{{ url_for('view_recipe', recipe_name=meal.recipe) }}"
+                                           class="text-decoration-none">
+                                            {{ meal.recipe }}
+                                        </a>
+                                    </div>
+                                    <!-- Edit mode -->
+                                    <div class="meal-edit-{{ loop.index }}" style="display: none;">
+                                        <form method="POST" action="{{ url_for('set_meal_plan') }}" class="d-inline">
+                                            <input type="hidden" name="meal_date" value="{{ meal.date }}">
+                                            <select name="recipe_name" class="form-select form-select-sm" required>
+                                                <option value="{{ meal.recipe }}" selected>{{ meal.recipe }}</option>
+                                                {% for recipe in recipes %}
+                                                {% if recipe.name != meal.recipe %}
+                                                <option value="{{ recipe.name }}">
+                                                    {{ recipe.name }} ({{ recipe.time_minutes }} min)
+                                                </option>
+                                                {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                    </div>
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('view_recipe', recipe_name=meal.recipe) }}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i> {{ t('View') }}
-                                    </a>
+                                    <!-- Display mode buttons -->
+                                    <div class="meal-display-{{ loop.index }}">
+                                        <a href="{{ url_for('view_recipe', recipe_name=meal.recipe) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> {{ t('View') }}
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="toggleEdit({{ loop.index }})">
+                                            <i class="fas fa-edit"></i> {{ t('Edit') }}
+                                        </button>
+                                        <form method="POST" action="{{ url_for('clear_meal_plan') }}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('{{ t('Are you sure you want to clear this meal?') }}')">
+                                            <input type="hidden" name="meal_date" value="{{ meal.date }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash"></i> {{ t('Clear') }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <!-- Edit mode buttons -->
+                                    <div class="meal-edit-{{ loop.index }}" style="display: none;">
+                                        <button type="button" class="btn btn-sm btn-success"
+                                                onclick="document.querySelector('.meal-edit-{{ loop.index }} form').submit()">
+                                            <i class="fas fa-check"></i> {{ t('Save') }}
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary"
+                                                onclick="toggleEdit({{ loop.index }})">
+                                            <i class="fas fa-times"></i> {{ t('Cancel') }}
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -152,13 +197,39 @@
 
 {% block scripts %}
 <script>
+function toggleEdit(index) {
+    // Hide all other edit modes first
+    document.querySelectorAll('[class*="meal-edit-"]').forEach(el => {
+        if (!el.classList.contains('meal-edit-' + index)) {
+            el.style.display = 'none';
+        }
+    });
+    document.querySelectorAll('[class*="meal-display-"]').forEach(el => {
+        if (!el.classList.contains('meal-display-' + index)) {
+            el.style.display = 'block';
+        }
+    });
+
+    // Toggle this row's edit mode
+    const displayElements = document.querySelectorAll('.meal-display-' + index);
+    const editElements = document.querySelectorAll('.meal-edit-' + index);
+
+    displayElements.forEach(el => {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    });
+
+    editElements.forEach(el => {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    });
+}
+
 function printGroceryList() {
     const groceryItems = [
         {% for item in grocery_list %}
         "{{ item.name }}: {{ item.quantity|format_quantity }} {{ item.unit }}",
         {% endfor %}
     ];
-    
+
     const printContent = `
         <h2>{{ t('Grocery List') }}</h2>
         <p><strong>{{ t('Week of:') }}</strong> {{ start_date.strftime('%B %d, %Y') }}</p>
@@ -166,7 +237,7 @@ function printGroceryList() {
             ${groceryItems.map(item => `<li>${item}</li>`).join('')}
         </ul>
     `;
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <html>

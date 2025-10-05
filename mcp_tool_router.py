@@ -73,7 +73,9 @@ class MCPToolRouter:
         # Log tool call
         print(f"🔧 Tool called: {tool_name}")
         print(f"   Arguments: {arguments}")
-        print(f"   PantryManager: {type(pantry_manager).__name__ if pantry_manager else 'None'}")
+        print(
+            f"   PantryManager: {type(pantry_manager).__name__ if pantry_manager else 'None'}"
+        )
 
         if tool_name not in self.tools:
             error_msg = f"Unknown tool: {tool_name}"
@@ -86,7 +88,9 @@ class MCPToolRouter:
             print(f"   Result status: {result.get('status', 'unknown')}")
             return result
         except Exception as e:
-            print(f"❌ Tool {tool_name} failed with exception: {type(e).__name__}: {str(e)}")
+            print(
+                f"❌ Tool {tool_name} failed with exception: {type(e).__name__}: {str(e)}"
+            )
             log_tool_error(e, tool_name, "during execution")
             return {"status": "error", "message": f"Tool execution failed: {str(e)}"}
 
@@ -372,6 +376,7 @@ class MCPToolRouter:
         except Exception as e:
             print(f"   ✗ Exception during add_recipe: {type(e).__name__}: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return {"status": "error", "message": f"Failed to add recipe: {str(e)}"}
 
