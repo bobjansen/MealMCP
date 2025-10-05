@@ -62,10 +62,11 @@ SINGLE_USER_SCHEMAS = {
             recipe_id INTEGER NOT NULL,
             ingredient_id INTEGER NOT NULL,
             quantity REAL NOT NULL,
-            unit TEXT NOT NULL,
+            unit_id INTEGER NOT NULL,
             PRIMARY KEY (recipe_id, ingredient_id),
             FOREIGN KEY (recipe_id) REFERENCES Recipes(id),
-            FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
+            FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id),
+            FOREIGN KEY (unit_id) REFERENCES Units(id)
         )
     """,
     "meal_plan": """
@@ -215,7 +216,7 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
             ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
             quantity DECIMAL(10,3) NOT NULL,
-            unit VARCHAR(50) NOT NULL
+            unit_id INTEGER NOT NULL REFERENCES units(id)
         )
     """,
     "meal_plan": """
@@ -354,7 +355,7 @@ MULTI_USER_SQLITE_SCHEMAS = {
             recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
             ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
             quantity REAL NOT NULL,
-            unit TEXT NOT NULL
+            unit_id INTEGER NOT NULL REFERENCES units(id)
         )
     """,
     "meal_plan": """

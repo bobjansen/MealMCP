@@ -2,40 +2,9 @@
 <select name="{{ field_name }}" {% if field_id %}id="{{ field_id }}"{% endif %} class="form-select" {% if required %}required{% endif %}>
     <option value="">{{ t('Select unit...') }}</option>
     
-    <!-- Most Common Cooking Units -->
-    <optgroup label="🍽️ {{ t('Common Cooking') }}">
-        {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
-            {% if unit in units %}
-            <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
-            {% endif %}
-        {% endfor %}
-    </optgroup>
-    
-    <!-- Volume Units -->
-    <optgroup label="🥤 {{ t('Volume') }}">
-        {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
-            {% if unit in units %}
-            <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
-            {% endif %}
-        {% endfor %}
-    </optgroup>
-    
-    <!-- Weight Units -->
-    <optgroup label="⚖️ {{ t('Weight') }}">
-        {% for unit in ['Kilogram', 'Pound'] %}
-            {% if unit in units %}
-            <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
-            {% endif %}
-        {% endfor %}
-    </optgroup>
-    
-    <!-- Custom/Other Units -->
-    <optgroup label="📦 {{ t('Other') }}">
-        {% for unit in units %}
-            {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
-            <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
-            {% endif %}
-        {% endfor %}
-    </optgroup>
+    <!-- All Units (locale-specific) -->
+    {% for unit in units %}
+        <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
+    {% endfor %}
 </select>
 {% endmacro %}

@@ -3,28 +3,54 @@ Application constants for MealMCP.
 Centralized location for all constant values used throughout the application.
 """
 
-# Measurement Units
+# Measurement Units by Locale
 # Each unit includes a base measurement type and its size expressed
-# in that base unit. These provide sensible defaults for new users.
-DEFAULT_UNITS = [
-    {"name": "Teaspoon", "base_unit": "ml", "size": 5.0},
-    {"name": "Tablespoon", "base_unit": "ml", "size": 15.0},
-    {"name": "Fluid ounce", "base_unit": "ml", "size": 30.0},
-    {"name": "Cup", "base_unit": "ml", "size": 240.0},
-    {"name": "Pint", "base_unit": "ml", "size": 473.0},
-    {"name": "Quart", "base_unit": "ml", "size": 946.0},
-    {"name": "Gallon", "base_unit": "ml", "size": 3785.0},
-    {"name": "Milliliter", "base_unit": "ml", "size": 1.0},
-    {"name": "Liter", "base_unit": "ml", "size": 1000.0},
-    {"name": "Ounce", "base_unit": "g", "size": 28.35},
-    {"name": "Pound", "base_unit": "g", "size": 453.59},
-    {"name": "Gram", "base_unit": "g", "size": 1.0},
-    {"name": "Kilogram", "base_unit": "g", "size": 1000.0},
-    {"name": "Piece", "base_unit": "count", "size": 1.0},
-]
+# in that base unit. Different locales prefer different measurement systems.
+UNITS_BY_LOCALE = {
+    "en": [
+        # Imperial/US measurements (common in English-speaking countries)
+        {"name": "Teaspoon", "base_unit": "ml", "size": 5.0},
+        {"name": "Tablespoon", "base_unit": "ml", "size": 15.0},
+        {"name": "Fluid ounce", "base_unit": "ml", "size": 30.0},
+        {"name": "Cup", "base_unit": "ml", "size": 240.0},
+        {"name": "Pint", "base_unit": "ml", "size": 473.0},
+        {"name": "Quart", "base_unit": "ml", "size": 946.0},
+        {"name": "Gallon", "base_unit": "ml", "size": 3785.0},
+        {"name": "Milliliter", "base_unit": "ml", "size": 1.0},
+        {"name": "Liter", "base_unit": "ml", "size": 1000.0},
+        {"name": "Ounce", "base_unit": "g", "size": 28.35},
+        {"name": "Pound", "base_unit": "g", "size": 453.59},
+        {"name": "Gram", "base_unit": "g", "size": 1.0},
+        {"name": "Kilogram", "base_unit": "g", "size": 1000.0},
+        {"name": "Piece", "base_unit": "count", "size": 1.0},
+    ],
+    "nl": [
+        # Metric measurements (common in Netherlands and Europe)
+        {"name": "Theelepel", "base_unit": "ml", "size": 5.0},
+        {"name": "Eetlepel", "base_unit": "ml", "size": 15.0},
+        {"name": "Milliliter", "base_unit": "ml", "size": 1.0},
+        {"name": "Deciliter", "base_unit": "ml", "size": 100.0},
+        {"name": "Liter", "base_unit": "ml", "size": 1000.0},
+        {"name": "Gram", "base_unit": "g", "size": 1.0},
+        {"name": "Kilogram", "base_unit": "g", "size": 1000.0},
+        {"name": "Stuk", "base_unit": "count", "size": 1.0},
+        {"name": "Blik", "base_unit": "count", "size": 1.0},  # Can/tin
+        {"name": "Pak", "base_unit": "count", "size": 1.0},  # Package
+        {"name": "Zakje", "base_unit": "count", "size": 1.0},  # Small bag/packet
+    ],
+}
+
+# Default units (English) for backwards compatibility
+DEFAULT_UNITS = UNITS_BY_LOCALE["en"]
 
 # Combined units list for backwards compatibility
 UNITS = [u["name"] for u in DEFAULT_UNITS]
+
+
+def get_units_for_locale(locale="en"):
+    """Get the appropriate unit set for the specified locale."""
+    return UNITS_BY_LOCALE.get(locale, UNITS_BY_LOCALE["en"])
+
 
 # Preference Categories
 PREFERENCE_CATEGORIES = {"dietary", "allergy", "like", "dislike", "cuisine", "other"}

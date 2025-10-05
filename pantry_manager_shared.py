@@ -22,6 +22,7 @@ from constants import (
     MAX_QUANTITY_VALUE,
     MAX_TIME_MINUTES,
     DEFAULT_UNITS,
+    get_units_for_locale,
     is_infinite_ingredient,
 )
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
@@ -260,11 +261,21 @@ class SharedPantryManager(PantryManager):
                 (self.user_id,),
             )
             if cursor.fetchone()[0] == 0:
+                # Get user's preferred language to determine which units to use
+                cursor.execute(
+                    f"SELECT preferred_language FROM users WHERE id = {placeholder}",
+                    (self.user_id,),
+                )
+                row = cursor.fetchone()
+                user_locale = row[0] if row else "en"
+
+                # Use locale-specific units
+                units = get_units_for_locale(user_locale)
                 cursor.executemany(
                     f"INSERT INTO units (user_id, name, base_unit, size) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})",
                     [
                         (self.user_id, u["name"], u["base_unit"], u["size"])
-                        for u in DEFAULT_UNITS
+                        for u in units
                     ],
                 )
 
@@ -481,6 +492,27 @@ class SharedPantryManager(PantryManager):
                 return result[0] if result else None
         except Exception as e:
             print(f"Error getting ingredient ID: {e}")
+            return None
+
+    def get_unit_id(self, name: str) -> Optional[int]:
+        """Get the ID of a unit by name for the current user."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                ph = self._get_placeholder()
+
+                cursor.execute(
+                    f"""
+                    SELECT id FROM units
+                    WHERE name = {ph} AND user_id = {ph}
+                """,
+                    (name, self.user_id),
+                )
+
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting unit ID: {e}")
             return None
 
     def add_item(
@@ -1078,17 +1110,24 @@ class SharedPantryManager(PantryManager):
                         self.add_ingredient(ingredient["name"], ingredient["unit"])
                         ingredient_id = self.get_ingredient_id(ingredient["name"])
 
+                    # Get unit_id for the unit name
+                    unit_id = self.get_unit_id(ingredient["unit"])
+                    if unit_id is None:
+                        raise ValueError(
+                            f"Unit '{ingredient['unit']}' not found for user"
+                        )
+
                     cursor.execute(
                         f"""
                         INSERT INTO recipe_ingredients
-                        (recipe_id, ingredient_id, quantity, unit)
+                        (recipe_id, ingredient_id, quantity, unit_id)
                         VALUES ({ph}, {ph}, {ph}, {ph})
                     """,
                         (
                             recipe_id,
                             ingredient_id,
                             ingredient["quantity"],
-                            ingredient["unit"],
+                            unit_id,
                         ),
                     )
                 return True, short_id
@@ -1276,9 +1315,10 @@ class SharedPantryManager(PantryManager):
                 # Get ingredients
                 cursor.execute(
                     f"""
-                    SELECT i.name, ri.quantity, ri.unit
+                    SELECT i.name, ri.quantity, u.name
                     FROM recipe_ingredients ri
                     JOIN ingredients i ON ri.ingredient_id = i.id
+                    JOIN units u ON ri.unit_id = u.id
                     WHERE ri.recipe_id = {ph}
                 """,
                     (recipe_id,),
@@ -1443,17 +1483,24 @@ class SharedPantryManager(PantryManager):
                         self.add_ingredient(ingredient["name"], ingredient["unit"])
                         ingredient_id = self.get_ingredient_id(ingredient["name"])
 
+                    # Get unit_id for the unit name
+                    unit_id = self.get_unit_id(ingredient["unit"])
+                    if unit_id is None:
+                        raise ValueError(
+                            f"Unit '{ingredient['unit']}' not found for user"
+                        )
+
                     cursor.execute(
                         f"""
                         INSERT INTO recipe_ingredients
-                        (recipe_id, ingredient_id, quantity, unit)
+                        (recipe_id, ingredient_id, quantity, unit_id)
                         VALUES ({ph}, {ph}, {ph}, {ph})
                     """,
                         (
                             recipe_id,
                             ingredient_id,
                             ingredient["quantity"],
-                            ingredient["unit"],
+                            unit_id,
                         ),
                     )
                 return True
@@ -1603,9 +1650,10 @@ class SharedPantryManager(PantryManager):
                 # Get ingredients
                 cursor.execute(
                     f"""
-                    SELECT i.name, ri.quantity, ri.unit
+                    SELECT i.name, ri.quantity, u.name
                     FROM recipe_ingredients ri
                     JOIN ingredients i ON ri.ingredient_id = i.id
+                    JOIN units u ON ri.unit_id = u.id
                     WHERE ri.recipe_id = {ph}
                     """,
                     (recipe_id,),
@@ -1756,17 +1804,24 @@ class SharedPantryManager(PantryManager):
                             self.add_ingredient(ingredient["name"], ingredient["unit"])
                             ingredient_id = self.get_ingredient_id(ingredient["name"])
 
+                        # Get unit_id for the unit name
+                        unit_id = self.get_unit_id(ingredient["unit"])
+                        if unit_id is None:
+                            raise ValueError(
+                                f"Unit '{ingredient['unit']}' not found for user"
+                            )
+
                         cursor.execute(
                             f"""
                             INSERT INTO recipe_ingredients
-                            (recipe_id, ingredient_id, quantity, unit)
+                            (recipe_id, ingredient_id, quantity, unit_id)
                             VALUES ({ph}, {ph}, {ph}, {ph})
                             """,
                             (
                                 recipe_id,
                                 ingredient_id,
                                 ingredient["quantity"],
-                                ingredient["unit"],
+                                unit_id,
                             ),
                         )
 
@@ -1905,11 +1960,12 @@ class SharedPantryManager(PantryManager):
                 cursor.execute(
                     f"""
                     SELECT r.name as recipe_name, i.name as ingredient_name,
-                           ri.quantity, ri.unit
+                           ri.quantity, u.name
                     FROM meal_plan m
                     JOIN recipes r ON m.recipe_id = r.id
                     JOIN recipe_ingredients ri ON r.id = ri.recipe_id
                     JOIN ingredients i ON ri.ingredient_id = i.id
+                    JOIN units u ON ri.unit_id = u.id
                     WHERE m.user_id = {ph} AND meal_date BETWEEN {ph} AND {ph}
                 """,
                     (self.user_id, start.isoformat(), end.isoformat()),

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from pantry_manager_abc import PantryManager
 from scripts.short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
-from constants import DEFAULT_UNITS, is_infinite_ingredient
+from constants import DEFAULT_UNITS, get_units_for_locale, is_infinite_ingredient
 import i18n
 
 
@@ -49,9 +49,12 @@ class SQLitePantryManager(PantryManager):
             )
             cursor.execute("SELECT COUNT(*) FROM Units")
             if cursor.fetchone()[0] == 0:
+                # Use locale-specific units (default to English for SQLite single-user mode)
+                locale = i18n.LANG
+                units = get_units_for_locale(locale)
                 cursor.executemany(
                     "INSERT INTO Units (name, base_unit, size) VALUES (?, ?, ?)",
-                    [(u["name"], u["base_unit"], u["size"]) for u in DEFAULT_UNITS],
+                    [(u["name"], u["base_unit"], u["size"]) for u in units],
                 )
 
     @safe_execute("list units", default_return=[])
@@ -216,6 +219,19 @@ class SQLitePantryManager(PantryManager):
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT id FROM Ingredients WHERE name = ?",
+                (name,),
+            )
+            result = cursor.fetchone()
+            return result[0] if result else None
+
+    def get_unit_id(self, name: str) -> Optional[int]:
+        """Get the ID of a unit by name."""
+        validate_required_params(name=name)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM Units WHERE name = ?",
                 (name,),
             )
             result = cursor.fetchone()
@@ -744,17 +760,22 @@ class SQLitePantryManager(PantryManager):
                         self.add_ingredient(ingredient["name"], ingredient["unit"])
                         ingredient_id = self.get_ingredient_id(ingredient["name"])
 
+                    # Get unit_id for the unit name
+                    unit_id = self.get_unit_id(ingredient["unit"])
+                    if unit_id is None:
+                        raise ValueError(f"Unit '{ingredient['unit']}' not found")
+
                     cursor.execute(
                         """
                         INSERT INTO RecipeIngredients
-                        (recipe_id, ingredient_id, quantity, unit)
+                        (recipe_id, ingredient_id, quantity, unit_id)
                         VALUES (?, ?, ?, ?)
                         """,
                         (
                             recipe_id,
                             ingredient_id,
                             ingredient["quantity"],
-                            ingredient["unit"],
+                            unit_id,
                         ),
                     )
                 return True, short_id
@@ -1199,17 +1220,22 @@ class SQLitePantryManager(PantryManager):
                         self.add_ingredient(ingredient["name"], ingredient["unit"])
                         ingredient_id = self.get_ingredient_id(ingredient["name"])
 
+                    # Get unit_id for the unit name
+                    unit_id = self.get_unit_id(ingredient["unit"])
+                    if unit_id is None:
+                        raise ValueError(f"Unit '{ingredient['unit']}' not found")
+
                     cursor.execute(
                         """
                         INSERT INTO RecipeIngredients
-                        (recipe_id, ingredient_id, quantity, unit)
+                        (recipe_id, ingredient_id, quantity, unit_id)
                         VALUES (?, ?, ?, ?)
                         """,
                         (
                             recipe_id,
                             ingredient_id,
                             ingredient["quantity"],
-                            ingredient["unit"],
+                            unit_id,
                         ),
                     )
                 return True
@@ -1352,9 +1378,10 @@ class SQLitePantryManager(PantryManager):
                 # Get ingredients
                 cursor.execute(
                     """
-                    SELECT i.name, ri.quantity, ri.unit
+                    SELECT i.name, ri.quantity, u.name
                     FROM RecipeIngredients ri
                     JOIN Ingredients i ON ri.ingredient_id = i.id
+                    JOIN Units u ON ri.unit_id = u.id
                     WHERE ri.recipe_id = ?
                     """,
                     (recipe_id,),
@@ -1457,17 +1484,22 @@ class SQLitePantryManager(PantryManager):
                             self.add_ingredient(ingredient["name"], ingredient["unit"])
                             ingredient_id = self.get_ingredient_id(ingredient["name"])
 
+                        # Get unit_id for the unit name
+                        unit_id = self.get_unit_id(ingredient["unit"])
+                        if unit_id is None:
+                            raise ValueError(f"Unit '{ingredient['unit']}' not found")
+
                         cursor.execute(
                             """
                             INSERT INTO RecipeIngredients
-                            (recipe_id, ingredient_id, quantity, unit)
+                            (recipe_id, ingredient_id, quantity, unit_id)
                             VALUES (?, ?, ?, ?)
                             """,
                             (
                                 recipe_id,
                                 ingredient_id,
                                 ingredient["quantity"],
-                                ingredient["unit"],
+                                unit_id,
                             ),
                         )
 
