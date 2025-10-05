@@ -1,8 +1,11 @@
 import sqlite3
+import logging
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
+
+logger = logging.getLogger(__name__)
 from scripts.short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
 from constants import DEFAULT_UNITS, get_units_for_locale, is_infinite_ingredient
@@ -792,24 +795,24 @@ class SQLitePantryManager(PantryManager):
                                         if "id" in fallback
                                         else self.get_unit_id(fallback["name"])
                                     )
-                                    print(
-                                        f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback['name']}' instead"
-                                    )
+                                    warning_msg = f"⚠️  Warning: Unit '{ingredient['unit']}' not found, using '{fallback['name']}' instead"
+                                    print(warning_msg)
+                                    logger.warning(warning_msg)
                                     break
 
                             # If still no match, use first available unit
                             if unit_id is None and available_units:
                                 fallback_unit = available_units[0]["name"]
                                 unit_id = self.get_unit_id(fallback_unit)
-                                print(
-                                    f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback_unit}' instead"
-                                )
+                                warning_msg = f"⚠️  Warning: Unit '{ingredient['unit']}' not found, using '{fallback_unit}' instead"
+                                print(warning_msg)
+                                logger.warning(warning_msg)
 
                         # If still no unit found, skip this ingredient
                         if unit_id is None:
-                            print(
-                                f"Warning: Skipping ingredient '{ingredient['name']}' - no valid units available"
-                            )
+                            warning_msg = f"⚠️  Warning: Skipping ingredient '{ingredient['name']}' - no valid units available"
+                            print(warning_msg)
+                            logger.warning(warning_msg)
                             continue
 
                     cursor.execute(
@@ -1289,24 +1292,24 @@ class SQLitePantryManager(PantryManager):
                                         if "id" in fallback
                                         else self.get_unit_id(fallback["name"])
                                     )
-                                    print(
-                                        f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback['name']}' instead"
-                                    )
+                                    warning_msg = f"⚠️  Warning: Unit '{ingredient['unit']}' not found, using '{fallback['name']}' instead"
+                                    print(warning_msg)
+                                    logger.warning(warning_msg)
                                     break
 
                             # If still no match, use first available unit
                             if unit_id is None and available_units:
                                 fallback_unit = available_units[0]["name"]
                                 unit_id = self.get_unit_id(fallback_unit)
-                                print(
-                                    f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback_unit}' instead"
-                                )
+                                warning_msg = f"⚠️  Warning: Unit '{ingredient['unit']}' not found, using '{fallback_unit}' instead"
+                                print(warning_msg)
+                                logger.warning(warning_msg)
 
                         # If still no unit found, skip this ingredient
                         if unit_id is None:
-                            print(
-                                f"Warning: Skipping ingredient '{ingredient['name']}' - no valid units available"
-                            )
+                            warning_msg = f"⚠️  Warning: Skipping ingredient '{ingredient['name']}' - no valid units available"
+                            print(warning_msg)
+                            logger.warning(warning_msg)
                             continue
 
                     cursor.execute(

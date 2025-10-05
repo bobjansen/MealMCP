@@ -70,12 +70,23 @@ class MCPToolRouter:
         self, tool_name: str, arguments: Dict[str, Any], pantry_manager
     ) -> Dict[str, Any]:
         """Route tool call to appropriate implementation."""
+        # Log tool call
+        print(f"🔧 Tool called: {tool_name}")
+        print(f"   Arguments: {arguments}")
+        print(f"   PantryManager: {type(pantry_manager).__name__ if pantry_manager else 'None'}")
+
         if tool_name not in self.tools:
-            return {"status": "error", "message": f"Unknown tool: {tool_name}"}
+            error_msg = f"Unknown tool: {tool_name}"
+            print(f"❌ Error: {error_msg}")
+            return {"status": "error", "message": error_msg}
 
         try:
-            return self.tools[tool_name](arguments, pantry_manager)
+            result = self.tools[tool_name](arguments, pantry_manager)
+            print(f"✅ Tool {tool_name} completed successfully")
+            print(f"   Result status: {result.get('status', 'unknown')}")
+            return result
         except Exception as e:
+            print(f"❌ Tool {tool_name} failed with exception: {type(e).__name__}: {str(e)}")
             log_tool_error(e, tool_name, "during execution")
             return {"status": "error", "message": f"Tool execution failed: {str(e)}"}
 
@@ -333,24 +344,36 @@ class MCPToolRouter:
                 ingredients=arguments.get("ingredients"),
             )
         except ValueError as e:
+            print(f"   Validation error: {e}")
             return {"status": "error", "message": f"Invalid parameters: {str(e)}"}
 
-        success, recipe_id = pantry_manager.add_recipe(
-            name=arguments["name"],
-            instructions=arguments["instructions"],
-            time_minutes=arguments["time_minutes"],
-            ingredients=arguments["ingredients"],
-        )
+        print(f"   Adding recipe: {arguments['name']}")
+        print(f"   Ingredients: {arguments['ingredients']}")
 
-        if success:
-            return {
-                "status": "success",
-                "message": t("Recipe added successfully"),
-                "recipe_id": recipe_id,
-                "recipe_name": arguments["name"],
-            }
-        else:
-            return {"status": "error", "message": t("Failed to add recipe")}
+        try:
+            success, recipe_id = pantry_manager.add_recipe(
+                name=arguments["name"],
+                instructions=arguments["instructions"],
+                time_minutes=arguments["time_minutes"],
+                ingredients=arguments["ingredients"],
+            )
+
+            if success:
+                print(f"   ✓ Recipe added with ID: {recipe_id}")
+                return {
+                    "status": "success",
+                    "message": t("Recipe added successfully"),
+                    "recipe_id": recipe_id,
+                    "recipe_name": arguments["name"],
+                }
+            else:
+                print(f"   ✗ Failed to add recipe (no exception, but success=False)")
+                return {"status": "error", "message": t("Failed to add recipe")}
+        except Exception as e:
+            print(f"   ✗ Exception during add_recipe: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {"status": "error", "message": f"Failed to add recipe: {str(e)}"}
 
     def _edit_recipe(self, arguments: Dict[str, Any], pantry_manager) -> Dict[str, Any]:
         """Edit an existing recipe."""
