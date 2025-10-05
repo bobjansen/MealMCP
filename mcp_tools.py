@@ -11,7 +11,7 @@ MCP_TOOLS: List[Dict[str, Any]] = [
     # === USER PROFILE ===
     {
         "name": "get_user_profile",
-        "description": "Get comprehensive user profile including preferences, household size, and constraints for personalized meal planning",
+        "description": "Get comprehensive user profile including preferences, household size, dietary goals/notes, and constraints for personalized meal planning. Returns household characteristics (adults, children, goals/preferences), dietary preferences (allergies, likes, dislikes, restrictions), and preference summaries.",
         "inputSchema": {
             "type": "object",
             "properties": {},

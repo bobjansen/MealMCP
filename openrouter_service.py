@@ -478,6 +478,74 @@ class OpenRouterService:
 
         return results
 
+    def _build_system_message(self, user_id: Optional[int] = None) -> str:
+        """Build system message with user profile context."""
+        system_parts = [
+            "You are a helpful AI assistant for meal planning and recipe management.",
+            "You have access to tools to help users manage their pantry, recipes, meal plans, and preferences.",
+        ]
+
+        # Add user profile information if available
+        if user_id:
+            try:
+                pantry_manager = self._get_pantry_manager(user_id)
+                household = pantry_manager.get_household_characteristics()
+                preferences = pantry_manager.get_preferences()
+
+                # Add household information
+                adults = household.get("adults", 2)
+                children = household.get("children", 0)
+                total_people = adults + children
+                system_parts.append(
+                    f"\nHousehold: {adults} adults, {children} children (total: {total_people} people)"
+                )
+
+                # Add household goals/notes if available
+                notes = household.get("notes", "").strip()
+                if notes:
+                    system_parts.append(f"\nHousehold goals and preferences:\n{notes}")
+
+                # Add dietary preferences summary
+                if preferences:
+                    allergies = [
+                        p["item"] for p in preferences if p.get("category") == "allergy"
+                    ]
+                    dietary = [
+                        p["item"] for p in preferences if p.get("category") == "dietary"
+                    ]
+                    dislikes = [
+                        p["item"] for p in preferences if p.get("category") == "dislike"
+                    ]
+                    likes = [
+                        p["item"] for p in preferences if p.get("category") == "like"
+                    ]
+
+                    pref_parts = []
+                    if allergies:
+                        pref_parts.append(f"- Allergies: {', '.join(allergies)}")
+                    if dietary:
+                        pref_parts.append(
+                            f"- Dietary restrictions: {', '.join(dietary)}"
+                        )
+                    if dislikes:
+                        pref_parts.append(f"- Dislikes: {', '.join(dislikes)}")
+                    if likes:
+                        pref_parts.append(f"- Likes: {', '.join(likes)}")
+
+                    if pref_parts:
+                        system_parts.append(
+                            "\nDietary preferences:\n" + "\n".join(pref_parts)
+                        )
+
+                system_parts.append(
+                    "\nUse this information to provide personalized meal suggestions and recipe recommendations."
+                )
+
+            except Exception as e:
+                logger.warning(f"Failed to load user profile for system message: {e}")
+
+        return "\n".join(system_parts)
+
     def chat(
         self,
         message: str,
@@ -488,6 +556,12 @@ class OpenRouterService:
     ) -> Dict[str, Any]:
         """Process a chat message and return the response with any tool calls."""
         session = self.get_session(session_id, user_id)
+
+        # Add system message at the start of conversation if this is the first message
+        if len(session.get_messages()) == 0:
+            system_content = self._build_system_message(user_id)
+            session.messages.insert(0, {"role": "system", "content": system_content})
+
         session.add_user_message(message)
 
         responses = []

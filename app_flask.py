@@ -654,13 +654,18 @@ def preferences():
 
     prefs = user_pantry.get_preferences()
 
-    # Get current user info for household size
+    # Get current user info for household size and goals
     current_user_info = None
+    household_goals = None
     if backend == "postgresql" and "user_id" in session:
         current_user_info = auth_manager.get_user_by_id(session["user_id"])
+        household_goals = auth_manager.get_household_goals(session["user_id"])
 
     return render_template(
-        "preferences.html", preferences=prefs, current_user_info=current_user_info
+        "preferences.html",
+        preferences=prefs,
+        current_user_info=current_user_info,
+        household_goals=household_goals,
     )
 
 
@@ -1214,6 +1219,26 @@ def update_household_size():
         flash("Household size updated successfully!", "success")
     else:
         flash("Error updating household size.", "error")
+
+    return redirect(url_for("preferences"))
+
+
+@app.route("/preferences/household-goals", methods=["POST"])
+@requires_auth
+def update_household_goals():
+    """Update user's household goals/preferences."""
+    if backend == "sqlite":
+        flash(t("Household goals not available in SQLite mode."), "error")
+        return redirect(url_for("preferences"))
+
+    goals = request.form.get("goals", "").strip()
+
+    success, message = auth_manager.set_household_goals(session["user_id"], goals)
+
+    if success:
+        flash(t("Household goals updated successfully!"), "success")
+    else:
+        flash(t("Error updating household goals."), "error")
 
     return redirect(url_for("preferences"))
 

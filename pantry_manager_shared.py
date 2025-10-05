@@ -2160,20 +2160,32 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    SELECT household_adults, household_children, preferred_language,
-                           preferred_volume_unit, preferred_weight_unit, preferred_count_unit
-                    FROM users
-                    WHERE id = {ph}
+                    SELECT u.household_adults, u.household_children, u.preferred_language,
+                           u.preferred_volume_unit, u.preferred_weight_unit, u.preferred_count_unit,
+                           u.household_id, hc.notes
+                    FROM users u
+                    LEFT JOIN household_characteristics hc ON u.household_id = hc.household_id
+                    WHERE u.id = {ph}
                     """,
                     (self.user_id,),
                 )
                 result = cursor.fetchone()
                 if result:
-                    adults, children, language, vol, weight, count = result
+                    (
+                        adults,
+                        children,
+                        language,
+                        vol,
+                        weight,
+                        count,
+                        household_id,
+                        notes,
+                    ) = result
                     return {
                         "adults": adults or 2,
                         "children": children or 0,
-                        "notes": f"Language preference: {language or 'en'}",
+                        "notes": notes or "",
+                        "language": language or "en",
                         "preferred_units": {
                             "volume": vol or "Milliliter",
                             "weight": weight or "Gram",
@@ -2187,6 +2199,7 @@ class SharedPantryManager(PantryManager):
                         "adults": 2,
                         "children": 0,
                         "notes": "",
+                        "language": "en",
                         "updated_date": datetime.now().isoformat(),
                         "preferred_units": {
                             "volume": "Milliliter",
@@ -2200,6 +2213,7 @@ class SharedPantryManager(PantryManager):
                 "adults": 2,
                 "children": 0,
                 "notes": "",
+                "language": "en",
                 "updated_date": datetime.now().isoformat(),
                 "preferred_units": {
                     "volume": "Milliliter",

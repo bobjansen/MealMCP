@@ -428,3 +428,61 @@ class WebUserManager:
         except Exception as e:
             print(f"Error getting household size: {e}")
             return 2, 0
+
+    def get_household_goals(self, user_id: int) -> Optional[str]:
+        """Get user's household goals/notes."""
+        if self.backend == "sqlite":
+            return None  # Not available in SQLite mode
+
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT hc.notes
+                        FROM users u
+                        JOIN household_characteristics hc ON u.household_id = hc.household_id
+                        WHERE u.id = %s
+                        """,
+                        (user_id,),
+                    )
+                    result = cursor.fetchone()
+                    return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting household goals: {e}")
+            return None
+
+    def set_household_goals(self, user_id: int, goals: str) -> Tuple[bool, str]:
+        """Set user's household goals/notes."""
+        if self.backend == "sqlite":
+            return False, "Household goals not available in SQLite mode"
+
+        try:
+            with psycopg2.connect(self.connection_string) as conn:
+                with conn.cursor() as cursor:
+                    # Get user's household_id first
+                    cursor.execute(
+                        "SELECT household_id FROM users WHERE id = %s",
+                        (user_id,),
+                    )
+                    result = cursor.fetchone()
+                    if not result:
+                        return False, "User not found"
+
+                    household_id = result[0]
+                    if not household_id:
+                        return False, "User has no household"
+
+                    # Update household goals/notes
+                    cursor.execute(
+                        "UPDATE household_characteristics SET notes = %s, updated_at = CURRENT_TIMESTAMP WHERE household_id = %s",
+                        (goals, household_id),
+                    )
+
+                    if cursor.rowcount > 0:
+                        return True, "Household goals updated successfully"
+                    else:
+                        return False, "Household characteristics not found"
+
+        except Exception as e:
+            return False, f"Error updating household goals: {str(e)}"
