@@ -87,6 +87,29 @@ SINGLE_USER_SCHEMAS = {
             updated_date TEXT NOT NULL
         )
     """,
+    "chat_sessions": """
+        CREATE TABLE IF NOT EXISTS ChatSessions (
+            id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            last_activity TEXT NOT NULL,
+            model TEXT DEFAULT 'anthropic/claude-3.5-sonnet',
+            message_count INTEGER DEFAULT 0
+        )
+    """,
+    "chat_messages": """
+        CREATE TABLE IF NOT EXISTS ChatMessages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
+            content TEXT,
+            tool_calls TEXT,
+            tool_call_id TEXT,
+            tool_name TEXT,
+            timestamp TEXT NOT NULL,
+            sequence INTEGER NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES ChatSessions(id) ON DELETE CASCADE
+        )
+    """,
 }
 
 MULTI_USER_POSTGRESQL_SCHEMAS = {
@@ -202,6 +225,29 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             meal_date DATE NOT NULL,
             recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
             UNIQUE(user_id, meal_date)
+        )
+    """,
+    "chat_sessions": """
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMP NOT NULL,
+            last_activity TIMESTAMP NOT NULL,
+            model VARCHAR(100) DEFAULT 'anthropic/claude-3.5-sonnet',
+            message_count INTEGER DEFAULT 0
+        )
+    """,
+    "chat_messages": """
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id SERIAL PRIMARY KEY,
+            session_id TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+            role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
+            content TEXT,
+            tool_calls TEXT,
+            tool_call_id TEXT,
+            tool_name VARCHAR(100),
+            timestamp TIMESTAMP NOT NULL,
+            sequence INTEGER NOT NULL
         )
     """,
 }
@@ -320,10 +366,37 @@ MULTI_USER_SQLITE_SCHEMAS = {
             UNIQUE(user_id, meal_date)
         )
     """,
+    "chat_sessions": """
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMP NOT NULL,
+            last_activity TIMESTAMP NOT NULL,
+            model TEXT DEFAULT 'anthropic/claude-3.5-sonnet',
+            message_count INTEGER DEFAULT 0
+        )
+    """,
+    "chat_messages": """
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+            role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
+            content TEXT,
+            tool_calls TEXT,
+            tool_call_id TEXT,
+            tool_name TEXT,
+            timestamp TIMESTAMP NOT NULL,
+            sequence INTEGER NOT NULL
+        )
+    """,
 }
 
 # Performance indexes for each schema type
-SINGLE_USER_INDEXES = []
+SINGLE_USER_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON ChatMessages(session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON ChatMessages(timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_sequence ON ChatMessages(session_id, sequence)",
+]
 
 MULTI_USER_POSTGRESQL_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_ingredients_user_id ON ingredients(user_id)",
@@ -336,6 +409,10 @@ MULTI_USER_POSTGRESQL_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_meal_plan_user_date ON meal_plan(user_id, meal_date)",
     "CREATE INDEX IF NOT EXISTS idx_household_invites_secret ON household_invites(secret)",
     "CREATE INDEX IF NOT EXISTS idx_household_invites_owner_id ON household_invites(owner_id)",
+    "CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON chat_sessions(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_sequence ON chat_messages(session_id, sequence)",
 ]
 
 MULTI_USER_SQLITE_INDEXES = (

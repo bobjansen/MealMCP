@@ -1,29 +1,23 @@
 #!/usr/bin/env python3
 """
-OpenRouter CLI - Interactive command-line interface with MCP tool integration
+OpenRouter CLI - Refactored to use shared service layer
 
-This CLI app integrates with OpenRouter to provide LLM capabilities with access
-to our MCP tools for meal planning, recipe management, and pantry operations.
+This CLI app uses the shared OpenRouterService for LLM integration.
 """
 
 import os
 import sys
-import json
 import argparse
 import logging
-from typing import Dict, Any, List, Optional
-import requests
+import uuid
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.panel import Panel
 from rich.status import Status
 from rich.table import Table
 
-# Import our MCP components
+from openrouter_service import get_openrouter_service, is_openrouter_available
 from mcp_tools import MCP_TOOLS
-from mcp_tool_router import MCPToolRouter
-from pantry_manager_factory import PantryManagerFactory
-from web_auth_simple import WebUserManager
 
 # Set up logging
 logging.basicConfig(level=logging.WARNING)
@@ -32,312 +26,26 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-class OpenRouterClient:
-    """OpenRouter API client with function calling support."""
-
-    def __init__(self, api_key: str, base_url: str = "https://openrouter.ai/api/v1"):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/MealMCP/openrouter-cli",
-                "X-Title": "MealMCP OpenRouter CLI",
-            }
-        )
-
-    def get_models(self) -> List[Dict[str, Any]]:
-        """Get available models from OpenRouter."""
-        try:
-            response = self.session.get(f"{self.base_url}/models")
-            response.raise_for_status()
-            return response.json().get("data", [])
-        except Exception as e:
-            logger.error(f"Failed to get models: {e}")
-            return []
-
-    def chat_completion(
-        self,
-        messages: List[Dict[str, Any]],
-        model: str,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        tool_choice: str = "auto",
-        temperature: float = 0.7,
-        max_tokens: int = 4000,
-        stream: bool = False,
-    ) -> Dict[str, Any]:
-        """Send chat completion request with optional tool calling."""
-
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": stream,
-        }
-
-        if tools:
-            payload["tools"] = tools
-            payload["tool_choice"] = tool_choice
-
-        try:
-            response = self.session.post(
-                f"{self.base_url}/chat/completions", json=payload
-            )
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Chat completion failed: {e}")
-            raise
-
-
-class MCPToolConverter:
-    """Converts MCP tool definitions to OpenAI function calling format."""
-
-    @staticmethod
-    def convert_mcp_tools_to_openai(
-        mcp_tools: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """Convert MCP tool definitions to OpenAI function calling format."""
-        openai_tools = []
-
-        for tool in mcp_tools:
-            openai_tool = {
-                "type": "function",
-                "function": {
-                    "name": tool["name"],
-                    "description": tool["description"],
-                    "parameters": tool["inputSchema"],
-                },
-            }
-            openai_tools.append(openai_tool)
-
-        return openai_tools
-
-
-class ConversationManager:
-    """Manages conversation history and context."""
-
-    def __init__(self):
-        self.messages: List[Dict[str, Any]] = []
-        self.tool_call_count = 0
-        self.max_tool_calls = 10  # Prevent infinite loops
-
-    def add_user_message(self, content: str):
-        """Add user message to conversation."""
-        self.messages.append({"role": "user", "content": content})
-
-    def add_assistant_message(
-        self, content: str, tool_calls: Optional[List[Dict[str, Any]]] = None
-    ):
-        """Add assistant message to conversation."""
-        message = {"role": "assistant", "content": content}
-        if tool_calls:
-            message["tool_calls"] = tool_calls
-        self.messages.append(message)
-
-    def add_tool_result(self, tool_call_id: str, tool_name: str, result: str):
-        """Add tool execution result to conversation."""
-        self.messages.append(
-            {
-                "role": "tool",
-                "tool_call_id": tool_call_id,
-                "name": tool_name,
-                "content": result,
-            }
-        )
-
-    def reset(self):
-        """Reset conversation history."""
-        self.messages.clear()
-        self.tool_call_count = 0
-
-    def get_messages(self) -> List[Dict[str, Any]]:
-        """Get current conversation messages."""
-        return self.messages.copy()
-
-
-class MealMCPCLI:
-    """Main CLI application class."""
+class OpenRouterCLI:
+    """CLI interface using shared OpenRouter service."""
 
     def __init__(self, api_key: str, model: str = "anthropic/claude-3.5-sonnet"):
-        self.client = OpenRouterClient(api_key)
+        self.service = get_openrouter_service(api_key)
+        if not self.service:
+            raise RuntimeError("Failed to initialize OpenRouter service")
+
         self.model = model
-        self.converter = MCPToolConverter()
-        self.conversation = ConversationManager()
+        self.session_id = str(uuid.uuid4())  # Unique session for CLI
+        self.user_id = None  # For multi-user mode
 
-        # Initialize MCP components
-        self.tool_router = MCPToolRouter()
-        self.pantry_manager = None
-        self.user_manager = None
-
-        # Convert MCP tools to OpenAI format
-        self.openai_tools = self.converter.convert_mcp_tools_to_openai(MCP_TOOLS)
-
-        # Initialize backend
-        self._initialize_backend()
-
-    def _initialize_backend(self):
-        """Initialize the backend (SQLite or PostgreSQL)."""
-        backend = os.getenv("PANTRY_BACKEND", "sqlite")
-
-        if backend.lower() == "postgresql":
-            db_url = os.getenv("PANTRY_DATABASE_URL")
-            if not db_url:
-                console.print(
-                    "[red]PostgreSQL backend selected but PANTRY_DATABASE_URL not set[/red]"
-                )
-                sys.exit(1)
-
-            # For multi-user PostgreSQL, we'll need to handle user authentication
-            self.user_manager = WebUserManager(backend, db_url)
-            console.print("[green]✓[/green] Connected to PostgreSQL backend")
-        else:
-            # Single-user SQLite mode
-            self.pantry_manager = PantryManagerFactory.from_environment()
-            console.print(
-                f"[green]✓[/green] Using SQLite backend: {self.pantry_manager.db_path}"
-            )
-
-    def _get_pantry_manager(self, user_id: Optional[int] = None):
-        """Get pantry manager for the current user."""
-        if self.pantry_manager:
-            return self.pantry_manager
-
-        if self.user_manager and user_id:
-            # For multi-user mode, create user-specific manager
-            from pantry_manager_shared import SharedPantryManager
-
-            db_url = os.getenv("PANTRY_DATABASE_URL")
-            return SharedPantryManager(db_url, user_id, "postgresql")
-
-        raise RuntimeError("No pantry manager available")
-
-    def execute_tool(
-        self, tool_name: str, arguments: Dict[str, Any], user_id: Optional[int] = None
-    ) -> str:
-        """Execute an MCP tool and return the result."""
-        try:
-            pantry_manager = self._get_pantry_manager(user_id)
-
-            # Execute tool through the router
-            result = self.tool_router.call_tool(tool_name, arguments, pantry_manager)
-
-            # Truncate large results to avoid API limits
-            result = self._truncate_large_results(result, tool_name)
-
-            # Format result as JSON string
-            return json.dumps(result, indent=2, default=str)
-
-        except Exception as e:
-            error_result = {"error": str(e), "tool": tool_name, "arguments": arguments}
-            logger.error(f"Tool execution failed: {e}")
-            return json.dumps(error_result, indent=2)
-
-    def _truncate_large_results(
-        self, result: Dict[str, Any], tool_name: str
-    ) -> Dict[str, Any]:
-        """Truncate large results to avoid API message size limits."""
-        MAX_CHARS = 8000  # Conservative limit for OpenRouter
-
-        # Check if result has large arrays that should be truncated
-        if result.get("status") == "success":
-            # Handle recipe lists
-            if "recipes" in result and isinstance(result["recipes"], list):
-                recipes = result["recipes"]
-                if len(recipes) > 20:  # More than 20 recipes
-                    result["recipes"] = recipes[:20]
-                    result["truncated"] = True
-                    result["total_found"] = len(recipes)
-                    result["showing"] = 20
-                    result["message"] = (
-                        f"Showing first 20 of {len(recipes)} results. Use more specific search terms to narrow results."
-                    )
-
-            # Handle pantry items
-            elif "pantry_items" in result and isinstance(result["pantry_items"], list):
-                items = result["pantry_items"]
-                if len(items) > 50:  # More than 50 items
-                    result["pantry_items"] = items[:50]
-                    result["truncated"] = True
-                    result["total_found"] = len(items)
-                    result["showing"] = 50
-
-            # Handle other large arrays
-            for key in ["items", "preferences", "meal_plan"]:
-                if (
-                    key in result
-                    and isinstance(result[key], list)
-                    and len(result[key]) > 30
-                ):
-                    original_length = len(result[key])
-                    result[key] = result[key][:30]
-                    result["truncated"] = True
-                    result["total_found"] = original_length
-                    result["showing"] = 30
-
-        # Final size check - if still too large, summarize
-        result_str = json.dumps(result, default=str)
-        if len(result_str) > MAX_CHARS:
-            # Create a summary instead
-            summary_result = {
-                "status": result.get("status", "success"),
-                "message": f"Result too large ({len(result_str)} chars). ",
-                "tool_name": tool_name,
-                "truncated": True,
-            }
-
-            # Add key information based on result type
-            if "recipes" in result:
-                summary_result[
-                    "message"
-                ] += f"Found {len(result.get('recipes', []))} recipes. Please use more specific search terms."
-                summary_result["recipe_count"] = len(result.get("recipes", []))
-            elif "pantry_items" in result:
-                summary_result[
-                    "message"
-                ] += f"Found {len(result.get('pantry_items', []))} pantry items."
-                summary_result["item_count"] = len(result.get("pantry_items", []))
-
-            return summary_result
-
-        return result
-
-    def process_tool_calls(
-        self, tool_calls: List[Dict[str, Any]], user_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
-        """Process and execute tool calls from the assistant."""
-        results = []
-
-        for tool_call in tool_calls:
-            tool_name = tool_call["function"]["name"]
-            arguments = json.loads(tool_call["function"]["arguments"])
-            tool_call_id = tool_call["id"]
-
-            console.print(f"[blue]🔧 Executing tool:[/blue] {tool_name}")
-            console.print(f"[dim]Arguments: {arguments}[/dim]")
-
-            # Execute the tool
-            result = self.execute_tool(tool_name, arguments, user_id)
-
-            # Add result to conversation
-            self.conversation.add_tool_result(tool_call_id, tool_name, result)
-
-            results.append(
-                {"tool_call_id": tool_call_id, "tool_name": tool_name, "result": result}
-            )
-
-        return results
-
-    def chat_loop(self, user_id: Optional[int] = None):
+    def chat_loop(self):
         """Main chat loop."""
         console.print(
             Panel(
-                "[bold green]MealMCP CLI[/bold green]\n"
+                "[bold green]MealMCP CLI[/bold green] (Refactored)\n"
                 f"Model: {self.model}\n"
-                f"Available tools: {len(self.openai_tools)}\n"
+                f"Available tools: {len(self.service.openai_tools)}\n"
+                f"Session ID: {self.session_id[:8]}...\n"
                 "Type 'quit', 'exit', or 'q' to end the conversation.\n"
                 "Type '/help' for available commands.",
                 title="Welcome",
@@ -357,50 +65,17 @@ class MealMCPCLI:
                     self._handle_command(user_input)
                     continue
 
-                # Add user message to conversation
-                self.conversation.add_user_message(user_input)
-
-                # Start tool call loop
-                max_iterations = 5
-                iteration = 0
-
-                while iteration < max_iterations:
-                    iteration += 1
-
-                    with Status("[dim]Thinking...[/dim]"):
-                        response = self.client.chat_completion(
-                            messages=self.conversation.get_messages(),
-                            model=self.model,
-                            tools=self.openai_tools,
-                            tool_choice="auto",
-                        )
-
-                    choice = response["choices"][0]
-                    message = choice["message"]
-                    finish_reason = choice["finish_reason"]
-
-                    # Add assistant message
-                    tool_calls = message.get("tool_calls", [])
-                    content = message.get("content", "")
-
-                    if content:
-                        console.print(
-                            f"\n[bold green]Assistant[/bold green]: {content}"
-                        )
-
-                    self.conversation.add_assistant_message(content, tool_calls)
-
-                    # Handle tool calls
-                    if tool_calls and finish_reason == "tool_calls":
-                        self.process_tool_calls(tool_calls, user_id)
-                        continue  # Continue the loop for follow-up
-                    else:
-                        break  # No more tool calls, exit loop
-
-                if iteration >= max_iterations:
-                    console.print(
-                        f"[yellow]Maximum iterations ({max_iterations}) reached.[/yellow]"
+                # Process message through service
+                with Status("[dim]Thinking...[/dim]"):
+                    result = self.service.chat(
+                        message=user_input,
+                        session_id=self.session_id,
+                        model=self.model,
+                        user_id=self.user_id,
                     )
+
+                # Display responses
+                self._display_chat_result(result)
 
             except KeyboardInterrupt:
                 console.print("\n[yellow]Interrupted by user[/yellow]")
@@ -408,6 +83,27 @@ class MealMCPCLI:
             except Exception as e:
                 console.print(f"[red]Error: {e}[/red]")
                 logger.error(f"Chat loop error: {e}")
+
+    def _display_chat_result(self, result: dict):
+        """Display the chat result with responses and tool calls."""
+        responses = result.get("responses", [])
+
+        for response in responses:
+            # Show assistant content
+            content = response.get("content", "")
+            if content:
+                console.print(f"\n[bold green]Assistant[/bold green]: {content}")
+
+            # Show tool calls if any
+            tool_calls = response.get("tool_calls", [])
+            for tool_result in tool_calls:
+                tool_name = tool_result["tool_name"]
+                console.print(f"[blue]🔧 Executed tool:[/blue] {tool_name}")
+
+        # Show summary info
+        iterations = result.get("total_iterations", 1)
+        if iterations > 1:
+            console.print(f"[dim]Completed in {iterations} iterations[/dim]")
 
     def _handle_command(self, command: str):
         """Handle CLI commands."""
@@ -420,10 +116,10 @@ class MealMCPCLI:
         elif command == "/tools":
             self._show_tools()
         elif command == "/reset":
-            self.conversation.reset()
+            self.service.reset_session(self.session_id)
             console.print("[green]Conversation reset[/green]")
-        elif command == "/history":
-            self._show_history()
+        elif command == "/session":
+            self._show_session_info()
         elif command.startswith("/model "):
             model_name = command.split(" ", 1)[1]
             self.model = model_name
@@ -441,7 +137,7 @@ class MealMCPCLI:
         help_table.add_row("/models", "List available models")
         help_table.add_row("/tools", "List available MCP tools")
         help_table.add_row("/reset", "Reset conversation history")
-        help_table.add_row("/history", "Show conversation history")
+        help_table.add_row("/session", "Show session information")
         help_table.add_row("/model <name>", "Change the current model")
         help_table.add_row("quit/exit/q", "Exit the CLI")
 
@@ -450,7 +146,7 @@ class MealMCPCLI:
     def _show_models(self):
         """Show available OpenRouter models."""
         with Status("[dim]Fetching models...[/dim]"):
-            models = self.client.get_models()
+            models = self.service.get_models()
 
         if not models:
             console.print("[red]Failed to fetch models[/red]")
@@ -485,37 +181,43 @@ class MealMCPCLI:
 
     def _show_tools(self):
         """Show available MCP tools."""
+        tools = self.service.get_available_tools()
+
         tool_table = Table(title="Available MCP Tools")
         tool_table.add_column("Tool Name", style="cyan")
         tool_table.add_column("Description", style="white")
 
-        for tool in MCP_TOOLS[:10]:  # Show first 10 tools
+        for tool in tools[:10]:  # Show first 10 tools
             tool_table.add_row(tool["name"], tool["description"][:80] + "...")
 
         console.print(tool_table)
-        console.print(f"[dim]Showing 10 of {len(MCP_TOOLS)} available tools[/dim]")
+        console.print(f"[dim]Showing 10 of {len(tools)} available tools[/dim]")
 
-    def _show_history(self):
-        """Show conversation history."""
-        if not self.conversation.messages:
-            console.print("[yellow]No conversation history[/yellow]")
+    def _show_session_info(self):
+        """Show session information."""
+        info = self.service.get_session_info(self.session_id)
+
+        if not info.get("exists"):
+            console.print("[yellow]No active session[/yellow]")
             return
 
-        console.print(Panel("Conversation History", style="blue"))
-        for i, msg in enumerate(
-            self.conversation.messages[-10:], 1
-        ):  # Show last 10 messages
-            role = msg["role"].title()
-            content = msg.get("content", "")[:200]  # Truncate long messages
-            if msg.get("tool_calls"):
-                content += f" [Tool calls: {len(msg['tool_calls'])}]"
+        session_table = Table(title="Session Information")
+        session_table.add_column("Property", style="cyan")
+        session_table.add_column("Value", style="white")
 
-            console.print(f"[dim]{i}.[/dim] [bold]{role}[/bold]: {content}")
+        session_table.add_row(
+            "Session ID", info.get("session_id", "Unknown")[:16] + "..."
+        )
+        session_table.add_row("Messages", str(info.get("message_count", 0)))
+        session_table.add_row("Created", info.get("created_at", "Unknown"))
+        session_table.add_row("Last Activity", info.get("last_activity", "Unknown"))
+
+        console.print(session_table)
 
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="MealMCP OpenRouter CLI")
+    parser = argparse.ArgumentParser(description="MealMCP OpenRouter CLI (Refactored)")
     parser.add_argument(
         "--api-key", help="OpenRouter API key (or set OPENROUTER_API_KEY env var)"
     )
@@ -544,7 +246,7 @@ def main():
 
     try:
         # Initialize and start CLI
-        cli = MealMCPCLI(api_key, args.model)
+        cli = OpenRouterCLI(api_key, args.model)
         cli.chat_loop()
 
     except KeyboardInterrupt:

@@ -22,6 +22,7 @@ from pantry_manager_factory import create_pantry_manager
 from pantry_manager_shared import SharedPantryManager
 from web_auth_simple import WebUserManager
 from constants import is_infinite_ingredient
+from flask_openrouter_integration import add_openrouter_routes
 
 
 # Set up comprehensive Flask logging
@@ -325,6 +326,13 @@ def short_datetime_filter(timestamp_str):
     except Exception:
         # Fallback to original string if parsing fails
         return str(timestamp_str)
+
+
+# Add OpenRouter routes for LLM functionality
+add_openrouter_routes(app, requires_auth)
+
+# Store backend in app config for OpenRouter integration
+app.config["PANTRY_BACKEND"] = backend
 
 
 # Authentication routes
