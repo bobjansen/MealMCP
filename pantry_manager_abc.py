@@ -19,23 +19,19 @@ class PantryManager(ABC):
             connection_string: Database connection string (format depends on implementation)
             **kwargs: Additional configuration options
         """
-        pass
 
     # Unit Management
     @abstractmethod
     def list_units(self) -> List[Dict[str, Any]]:
         """List all measurement units available to the user."""
-        pass
 
     @abstractmethod
     def set_unit(self, name: str, base_unit: str, size: float) -> bool:
         """Add or update a measurement unit for the user."""
-        pass
 
     @abstractmethod
     def delete_unit(self, name: str) -> bool:
         """Delete a custom measurement unit."""
-        pass
 
     # Ingredient Management
     @abstractmethod
@@ -50,7 +46,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_ingredient_id(self, name: str) -> Optional[int]:
@@ -63,7 +58,6 @@ class PantryManager(ABC):
         Returns:
             Optional[int]: Ingredient ID if found, None otherwise
         """
-        pass
 
     # Preference Management
     @abstractmethod
@@ -85,7 +79,6 @@ class PantryManager(ABC):
         Raises:
             ValueError: If category, item, or level is empty
         """
-        pass
 
     @abstractmethod
     def update_preference(
@@ -105,7 +98,6 @@ class PantryManager(ABC):
         Raises:
             ValueError: If level is empty
         """
-        pass
 
     @abstractmethod
     def delete_preference(self, preference_id: int) -> bool:
@@ -118,7 +110,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_preferences(self) -> List[Dict[str, Any]]:
@@ -128,7 +119,6 @@ class PantryManager(ABC):
         Returns:
             List[Dict[str, Any]]: List of preferences with their details
         """
-        pass
 
     # Pantry Item Management
     @abstractmethod
@@ -147,7 +137,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def remove_item(
@@ -165,7 +154,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_item_quantity(self, item_name: str, unit: str) -> float:
@@ -179,12 +167,10 @@ class PantryManager(ABC):
         Returns:
             float: Current quantity of the item (can be negative if more removals than additions)
         """
-        pass
 
     @abstractmethod
     def get_total_item_quantity(self, item_name: str, unit: str) -> float:
         """Get total quantity of an item across all units converted to the specified unit."""
-        pass
 
     @abstractmethod
     def get_pantry_contents(self) -> Dict[str, Dict[str, float]]:
@@ -192,9 +178,9 @@ class PantryManager(ABC):
         Get the current contents of the pantry.
 
         Returns:
-            Dict[str, Dict[str, float]]: Dictionary with item names as keys and their quantities by unit as values
+            Dict[str, Dict[str, float]]: Dictionary with item names as keys and
+            their quantities by unit as values
         """
-        pass
 
     @abstractmethod
     def get_transaction_history(
@@ -209,7 +195,6 @@ class PantryManager(ABC):
         Returns:
             List[Dict[str, Any]]: List of transactions with their details
         """
-        pass
 
     # Recipe Management
     @abstractmethod
@@ -235,7 +220,6 @@ class PantryManager(ABC):
         Returns:
             tuple[bool, Optional[str]]: (Success status, Recipe Short ID)
         """
-        pass
 
     @abstractmethod
     def get_recipe(self, recipe_name: str) -> Optional[Dict[str, Any]]:
@@ -248,7 +232,6 @@ class PantryManager(ABC):
         Returns:
             Optional[Dict[str, Any]]: Recipe details including ingredients, or None if not found
         """
-        pass
 
     @abstractmethod
     def get_all_recipes(self) -> List[Dict[str, Any]]:
@@ -256,9 +239,9 @@ class PantryManager(ABC):
         Get lightweight list of all recipes from the database.
 
         Returns:
-            List[Dict[str, Any]]: List of recipes with name, short_id, rating, time_minutes, and ingredient_count
+            List[Dict[str, Any]]: List of recipes with name, short_id, rating,
+            time_minutes, and ingredient_count
         """
-        pass
 
     @abstractmethod
     def edit_recipe(
@@ -283,7 +266,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def rate_recipe(self, recipe_name: str, rating: int) -> bool:
@@ -297,7 +279,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def execute_recipe(self, recipe_name: str) -> tuple[bool, str]:
@@ -310,7 +291,6 @@ class PantryManager(ABC):
         Returns:
             tuple[bool, str]: (Success status, Message with details or error)
         """
-        pass
 
     # Short ID-based Recipe Methods
     @abstractmethod
@@ -324,7 +304,6 @@ class PantryManager(ABC):
         Returns:
             Optional[Dict[str, Any]]: Recipe details including ingredients, or None if not found
         """
-        pass
 
     @abstractmethod
     def get_recipe_short_id(self, recipe_name: str) -> Optional[str]:
@@ -337,7 +316,6 @@ class PantryManager(ABC):
         Returns:
             Optional[str]: Recipe short ID if found, None otherwise
         """
-        pass
 
     @abstractmethod
     def edit_recipe_by_short_id(
@@ -361,7 +339,6 @@ class PantryManager(ABC):
         Returns:
             tuple[bool, str]: (Success status, detailed message)
         """
-        pass
 
     # Meal Planning
     @abstractmethod
@@ -376,7 +353,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_meal_plan(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
@@ -390,7 +366,6 @@ class PantryManager(ABC):
         Returns:
             List[Dict[str, Any]]: List of planned meals with dates and recipe names
         """
-        pass
 
     @abstractmethod
     def get_grocery_list(self) -> List[Dict[str, Any]]:
@@ -400,7 +375,6 @@ class PantryManager(ABC):
         Returns:
             List[Dict[str, Any]]: List of items needed with quantities
         """
-        pass
 
     # Household Characteristics
     @abstractmethod
@@ -415,7 +389,6 @@ class PantryManager(ABC):
                 - notes: additional notes about household
                 - updated_date: last update date
         """
-        pass
 
     @abstractmethod
     def set_household_characteristics(
@@ -432,7 +405,6 @@ class PantryManager(ABC):
         Returns:
             bool: True if successful, False otherwise
         """
-        pass
 
     # Preferred Units
     @abstractmethod
@@ -444,7 +416,6 @@ class PantryManager(ABC):
             Dict[str, str]: Mapping of measurement type ('volume', 'weight', 'count')
             to preferred unit names.
         """
-        pass
 
     @abstractmethod
     def set_preferred_units(
@@ -461,4 +432,3 @@ class PantryManager(ABC):
         Returns:
             bool: True if the update was successful, False otherwise
         """
-        pass

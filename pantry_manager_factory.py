@@ -20,7 +20,7 @@ class PantryManagerFactory:
 
     @classmethod
     def create(
-        self, backend: str = None, connection_string: str = None, **kwargs
+        cls, backend: str = None, connection_string: str = None, **kwargs
     ) -> PantryManager:
         """
         Create a PantryManager instance for single-user local mode.
@@ -62,13 +62,13 @@ class PantryManagerFactory:
             connection_string = os.getenv("PANTRY_DB_PATH", "pantry.db")
 
         # Get backend class
-        if backend not in self._backends:
+        if backend not in cls._backends:
             raise ValueError(
                 f"Unsupported backend: {backend}. "
-                f"Supported backends: {list(self._backends.keys())}"
+                f"Supported backends: {list(cls._backends.keys())}"
             )
 
-        backend_class = self._backends[backend]
+        backend_class = cls._backends[backend]
 
         # Create and return instance
         return backend_class(connection_string, **kwargs)
@@ -147,11 +147,10 @@ def create_pantry_manager_from_url(url: str, **kwargs) -> PantryManager:
         # Remove sqlite:// prefix
         path = url[9:] if url.startswith("sqlite:///") else url[7:]
         return PantryManagerFactory.create("sqlite", path, **kwargs)
-    elif url.startswith(("postgresql://", "postgres://")):
+    if url.startswith(("postgresql://", "postgres://")):
         raise ValueError(
             "PostgreSQL URLs not supported through factory. "
             "Use SharedPantryManager directly for multi-user PostgreSQL scenarios."
         )
-    else:
-        # Assume it's a file path for SQLite
-        return PantryManagerFactory.create("sqlite", url, **kwargs)
+    # Assume it's a file path for SQLite
+    return PantryManagerFactory.create("sqlite", url, **kwargs)

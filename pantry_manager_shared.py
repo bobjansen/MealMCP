@@ -114,7 +114,8 @@ class SharedPantryManager(PantryManager):
     def _validate_unit(self, unit: Any) -> str:
         """Validate unit name."""
         unit = self._validate_string(unit, "Unit", max_length=50)
-        # Allow letters, spaces, periods, forward slashes for units like "cups", "lb", "fl oz", "tbsp"
+        # Allow letters, spaces, periods, forward slashes for units like
+        # "cups", "lb", "fl oz", "tbsp"
         if not re.match(r"^[a-zA-Z\s\./]+$", unit):
             raise ValueError("Unit contains invalid characters")
         return unit
@@ -232,10 +233,9 @@ class SharedPantryManager(PantryManager):
         """Get a database connection. Should be used in a context manager."""
         if self.backend == "postgresql":
             return psycopg2.connect(**self.connection_params)
-        else:
-            conn = sqlite3.connect(self.connection_string)
-            conn.isolation_level = None  # Enable autocommit mode
-            return conn
+        conn = sqlite3.connect(self.connection_string)
+        conn.isolation_level = None  # Enable autocommit mode
+        return conn
 
     def _get_placeholder(self) -> str:
         """Get the parameter placeholder for the current database."""
@@ -248,15 +248,13 @@ class SharedPantryManager(PantryManager):
             cursor = conn.cursor()
             cursor.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS units (
-                    id {'SERIAL PRIMARY KEY' if self.backend == 'postgresql' else 'INTEGER PRIMARY KEY AUTOINCREMENT'},
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    name {'VARCHAR(255)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
-                    base_unit {'VARCHAR(20)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
-                    size REAL NOT NULL,
-                    UNIQUE(user_id, name)
-                )
-                """
+CREATE TABLE IF NOT EXISTS units (
+id {'SERIAL PRIMARY KEY' if self.backend == 'postgresql' else 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+name {'VARCHAR(255)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
+base_unit {'VARCHAR(20)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
+size REAL NOT NULL,
+UNIQUE(user_id, name))"""
             )
             cursor.execute(
                 f"SELECT COUNT(*) FROM units WHERE user_id = {placeholder}",
@@ -274,7 +272,9 @@ class SharedPantryManager(PantryManager):
                 # Use locale-specific units
                 units = get_units_for_locale(user_locale)
                 cursor.executemany(
-                    f"INSERT INTO units (user_id, name, base_unit, size) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})",
+                    f"""
+INSERT INTO units (user_id, name, base_unit, size)
+VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})""",
                     [
                         (self.user_id, u["name"], u["base_unit"], u["size"])
                         for u in units
@@ -408,17 +408,13 @@ class SharedPantryManager(PantryManager):
 
                 cursor.execute(
                     f"""
-                    UPDATE preferences
-                    SET level = {ph}, notes = {ph}
-                    WHERE id = {ph} AND user_id = {ph}
-                """,
+UPDATE preferences
+SET level = {ph}, notes = {ph}
+WHERE id = {ph} AND user_id = {ph}""",
                     (level, notes, preference_id, self.user_id),
                 )
 
-                if self.backend == "postgresql":
-                    return cursor.rowcount > 0
-                else:
-                    return cursor.rowcount > 0
+                return cursor.rowcount > 0
         except Exception as e:
             print(f"Error updating preference: {e}")
             return False
@@ -438,10 +434,7 @@ class SharedPantryManager(PantryManager):
                     (preference_id, self.user_id),
                 )
 
-                if self.backend == "postgresql":
-                    return cursor.rowcount > 0
-                else:
-                    return cursor.rowcount > 0
+                return cursor.rowcount > 0
         except Exception as e:
             print(f"Error deleting preference: {e}")
             return False
@@ -793,7 +786,7 @@ class SharedPantryManager(PantryManager):
                 )
 
                 total_base = 0.0
-                for unit_name, base_unit, size, qty in cursor.fetchall():
+                for _, base_unit, size, qty in cursor.fetchall():
                     if base_unit == target_base and qty:
                         total_base += float(qty) * float(size)
 
@@ -1360,7 +1353,7 @@ class SharedPantryManager(PantryManager):
                     rating,
                     created_date,
                     last_modified,
-                    match_score,
+                    _,
                 ) = recipe
 
                 # Get ingredients
@@ -1603,7 +1596,7 @@ class SharedPantryManager(PantryManager):
             raise ValueError("Rating must be a number")
 
         rating = int(rating)
-        if not (1 <= rating <= 5):
+        if not 1 <= rating <= 5:
             raise ValueError("Rating must be between 1 and 5")
 
         try:
@@ -1625,10 +1618,7 @@ class SharedPantryManager(PantryManager):
                     (rating, now, recipe_name, self.user_id),
                 )
 
-                if self.backend == "postgresql":
-                    return cursor.rowcount > 0
-                else:
-                    return cursor.rowcount > 0
+                return cursor.rowcount > 0
         except Exception as e:
             print(f"Error rating recipe: {e}")
             return False
@@ -1679,8 +1669,7 @@ class SharedPantryManager(PantryManager):
                 return True, f"Successfully made {recipe_name} using:\n" + "\n".join(
                     used_ingredients
                 )
-            else:
-                return False, "Error removing ingredients from pantry"
+            return False, "Error removing ingredients from pantry"
 
         except Exception as e:
             print(f"Error executing recipe: {e}")
@@ -1924,11 +1913,10 @@ class SharedPantryManager(PantryManager):
 
                 if changes:
                     return True, f"Successfully updated {', '.join(changes)}"
-                else:
-                    return (
-                        True,
-                        "No changes were made (all provided values were identical to current values)",
-                    )
+                return (
+                    True,
+                    "No changes were made (all provided values were identical to current values)",
+                )
 
         except ValueError as ve:
             return False, f"Validation error: {str(ve)}"
@@ -2059,7 +2047,7 @@ class SharedPantryManager(PantryManager):
 
                 # Calculate required ingredients
                 required: Dict[tuple[str, str], float] = {}
-                for recipe_name, ingredient_name, quantity, unit in cursor.fetchall():
+                for _, ingredient_name, quantity, unit in cursor.fetchall():
                     key = (ingredient_name, unit)
                     required[key] = required.get(key, 0) + float(quantity)
 
@@ -2139,12 +2127,11 @@ class SharedPantryManager(PantryManager):
                             ].isoformat()
                         transactions.append(row_dict)
                     return transactions
-                else:
-                    columns = [description[0] for description in cursor.description]
-                    transactions = []
-                    for row in cursor.fetchall():
-                        transactions.append(dict(zip(columns, row)))
-                    return transactions
+                columns = [description[0] for description in cursor.description]
+                transactions = []
+                for row in cursor.fetchall():
+                    transactions.append(dict(zip(columns, row)))
+                return transactions
 
         except Exception as e:
             print(f"Error getting transaction history: {e}")
@@ -2177,7 +2164,7 @@ class SharedPantryManager(PantryManager):
                         vol,
                         weight,
                         count,
-                        household_id,
+                        _,
                         notes,
                     ) = result
                     return {
@@ -2192,20 +2179,19 @@ class SharedPantryManager(PantryManager):
                         },
                         "updated_date": datetime.now().isoformat(),
                     }
-                else:
-                    # Return default values if no record exists
-                    return {
-                        "adults": 2,
-                        "children": 0,
-                        "notes": "",
-                        "language": "en",
-                        "updated_date": datetime.now().isoformat(),
-                        "preferred_units": {
-                            "volume": "Milliliter",
-                            "weight": "Gram",
-                            "count": "Piece",
-                        },
-                    }
+                # Return default values if no record exists
+                return {
+                    "adults": 2,
+                    "children": 0,
+                    "notes": "",
+                    "language": "en",
+                    "updated_date": datetime.now().isoformat(),
+                    "preferred_units": {
+                        "volume": "Milliliter",
+                        "weight": "Gram",
+                        "count": "Piece",
+                    },
+                }
         except Exception as e:
             print(f"Error getting household characteristics: {e}")
             return {
@@ -2256,10 +2242,7 @@ class SharedPantryManager(PantryManager):
                     (adults, children, self.user_id),
                 )
 
-                if self.backend == "postgresql":
-                    return cursor.rowcount > 0
-                else:
-                    return cursor.rowcount > 0
+                return cursor.rowcount > 0
         except Exception as e:
             print(f"Error setting household characteristics: {e}")
             return False

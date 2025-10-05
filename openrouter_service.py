@@ -5,12 +5,14 @@ OpenRouter Service - Shared LLM integration for CLI and Flask
 import os
 import json
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
 import requests
 
 from mcp_tools import MCP_TOOLS
 from mcp_tool_router import MCPToolRouter
 from pantry_manager_factory import PantryManagerFactory
+from pantry_manager_shared import SharedPantryManager
 from web_auth_simple import WebUserManager
 from chat_persistence import ChatPersistenceService, get_chat_persistence_service
 
@@ -147,8 +149,6 @@ class ConversationSession:
             else:
                 # Create session in persistence if messages exist but session doesn't
                 if self.messages:
-                    from datetime import datetime
-
                     now = datetime.now()
                     self.created_at = now
                     self.last_activity = now
@@ -257,8 +257,6 @@ class ConversationSession:
 
     def _update_activity(self):
         """Update last activity timestamp."""
-        from datetime import datetime
-
         self.last_activity = datetime.now()
         if not self.created_at:
             self.created_at = self.last_activity
@@ -333,8 +331,6 @@ class OpenRouterService:
 
     def cleanup_old_sessions(self, max_age_hours: int = 24):
         """Remove old inactive sessions."""
-        from datetime import datetime, timedelta
-
         cutoff = datetime.now() - timedelta(hours=max_age_hours)
 
         old_sessions = [
@@ -355,8 +351,6 @@ class OpenRouterService:
 
         if self.user_manager and user_id:
             # For multi-user mode, create user-specific manager
-            from pantry_manager_shared import SharedPantryManager
-
             db_url = os.getenv("PANTRY_DATABASE_URL")
             return SharedPantryManager(db_url, user_id, "postgresql")
 
@@ -604,9 +598,8 @@ class OpenRouterService:
                     response_data["tool_calls"] = tool_results
                     responses.append(response_data)
                     continue  # Continue for follow-up
-                else:
-                    responses.append(response_data)
-                    break  # No more tool calls, we're done
+                responses.append(response_data)
+                break  # No more tool calls, we're done
 
             except Exception as e:
                 logger.error(f"Chat error on iteration {iteration}: {e}")

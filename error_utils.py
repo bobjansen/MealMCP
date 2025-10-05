@@ -150,16 +150,10 @@ def safe_float_conversion(
 class ConfigurationError(Exception):
     """Raised when configuration is invalid."""
 
-    pass
-
 
 class DatabaseConnectionError(Exception):
     """Raised when database connection fails."""
 
-    pass
-
 
 class ValidationError(Exception):
     """Raised when input validation fails."""
-
-    pass

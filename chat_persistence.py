@@ -3,13 +3,13 @@ Chat Persistence Service - Handle saving and loading chat history from database
 """
 
 import json
-import sqlite3
 import logging
-from typing import Dict, List, Any, Optional, Union
+import os
+import sqlite3
 from datetime import datetime
+from typing import Dict, List, Any, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,7 @@ class ChatPersistenceService:
             return psycopg2.connect(
                 self.connection_string, cursor_factory=RealDictCursor
             )
-        else:
-            return sqlite3.connect(self.connection_string)
+        return sqlite3.connect(self.connection_string)
 
     def save_session(
         self,
@@ -70,34 +69,31 @@ class ChatPersistenceService:
                     if self.user_id:
                         cursor.execute(
                             """
-                            INSERT INTO chat_sessions (id, user_id, created_at, last_activity, model, message_count)
-                            VALUES (%s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (id) DO UPDATE SET
-                                last_activity = EXCLUDED.last_activity,
-                                model = EXCLUDED.model,
-                                message_count = EXCLUDED.message_count
-                        """,
+INSERT INTO chat_sessions (id, user_id, created_at, last_activity, model, message_count)
+VALUES (%s, %s, %s, %s, %s, %s)
+ON CONFLICT (id) DO UPDATE SET
+last_activity = EXCLUDED.last_activity,
+model = EXCLUDED.model,
+message_count = EXCLUDED.message_count""",
                             (session_id, self.user_id, now, now, model, message_count),
                         )
                     else:
                         cursor.execute(
                             """
-                            INSERT INTO chat_sessions (id, created_at, last_activity, model, message_count)
-                            VALUES (%s, %s, %s, %s, %s)
-                            ON CONFLICT (id) DO UPDATE SET
-                                last_activity = EXCLUDED.last_activity,
-                                model = EXCLUDED.model,
-                                message_count = EXCLUDED.message_count
-                        """,
+INSERT INTO chat_sessions (id, created_at, last_activity, model, message_count)
+VALUES (%s, %s, %s, %s, %s)
+ON CONFLICT (id) DO UPDATE SET
+last_activity = EXCLUDED.last_activity,
+model = EXCLUDED.model,
+message_count = EXCLUDED.message_count""",
                             (session_id, now, now, model, message_count),
                         )
                 else:
                     # SQLite - single user mode only
                     cursor.execute(
                         """
-                        INSERT OR REPLACE INTO ChatSessions (id, created_at, last_activity, model, message_count)
-                        VALUES (?, ?, ?, ?, ?)
-                    """,
+INSERT OR REPLACE INTO ChatSessions (id, created_at, last_activity, model, message_count)
+VALUES (?, ?, ?, ?, ?)""",
                         (session_id, now, now, model, message_count),
                     )
 
@@ -150,10 +146,9 @@ class ChatPersistenceService:
                 if self.backend == "postgresql":
                     cursor.execute(
                         """
-                        INSERT INTO chat_messages
-                        (session_id, role, content, tool_calls, tool_call_id, tool_name, timestamp, sequence)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
+INSERT INTO chat_messages
+(session_id, role, content, tool_calls, tool_call_id, tool_name, timestamp, sequence)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
                         (
                             session_id,
                             role,
@@ -168,10 +163,9 @@ class ChatPersistenceService:
                 else:
                     cursor.execute(
                         """
-                        INSERT INTO ChatMessages 
-                        (session_id, role, content, tool_calls, tool_call_id, tool_name, timestamp, sequence)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
+INSERT INTO ChatMessages
+(session_id, role, content, tool_calls, tool_call_id, tool_name, timestamp, sequence)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             session_id,
                             role,
@@ -211,19 +205,17 @@ class ChatPersistenceService:
                 # Build query with optional limit
                 if self.backend == "postgresql":
                     query = """
-                        SELECT role, content, tool_calls, tool_call_id, tool_name, sequence
-                        FROM chat_messages 
-                        WHERE session_id = %s 
-                        ORDER BY sequence ASC
-                    """
+SELECT role, content, tool_calls, tool_call_id, tool_name, sequence
+FROM chat_messages
+WHERE session_id = %s
+ORDER BY sequence ASC"""
                     params = [session_id]
                 else:
                     query = """
-                        SELECT role, content, tool_calls, tool_call_id, tool_name, sequence
-                        FROM ChatMessages 
-                        WHERE session_id = ? 
-                        ORDER BY sequence ASC
-                    """
+SELECT role, content, tool_calls, tool_call_id, tool_name, sequence
+FROM ChatMessages
+WHERE session_id = ?
+ORDER BY sequence ASC"""
                     params = [session_id]
 
                 if limit:
@@ -241,7 +233,6 @@ class ChatPersistenceService:
                         tool_calls_json = row["tool_calls"]
                         tool_call_id = row["tool_call_id"]
                         tool_name = row["tool_name"]
-                        sequence = row["sequence"]
                     else:
                         # SQLite returns tuples
                         (
@@ -250,7 +241,7 @@ class ChatPersistenceService:
                             tool_calls_json,
                             tool_call_id,
                             tool_name,
-                            sequence,
+                            _,
                         ) = row
 
                     message = {"role": role}
@@ -299,10 +290,9 @@ class ChatPersistenceService:
 
                 if self.backend == "postgresql":
                     query = """
-                        SELECT created_at, last_activity, model, message_count
-                        FROM chat_sessions 
-                        WHERE id = %s
-                    """
+SELECT created_at, last_activity, model, message_count
+FROM chat_sessions
+WHERE id = %s"""
                     if self.user_id:
                         query += " AND user_id = %s"
                         cursor.execute(query, (session_id, self.user_id))
@@ -311,10 +301,9 @@ class ChatPersistenceService:
                 else:
                     cursor.execute(
                         """
-                        SELECT created_at, last_activity, model, message_count
-                        FROM ChatSessions 
-                        WHERE id = ?
-                    """,
+SELECT created_at, last_activity, model, message_count
+FROM ChatSessions
+WHERE id = ?""",
                         (session_id,),
                     )
 
@@ -344,8 +333,7 @@ class ChatPersistenceService:
                         "model": model,
                         "message_count": message_count,
                     }
-                else:
-                    return {"exists": False}
+                return {"exists": False}
 
         except Exception as e:
             logger.error(f"Failed to get session info for {session_id}: {e}")
@@ -373,10 +361,9 @@ class ChatPersistenceService:
                     # Reset message count
                     cursor.execute(
                         """
-                        UPDATE chat_sessions 
-                        SET message_count = 0, last_activity = %s 
-                        WHERE id = %s
-                    """,
+UPDATE chat_sessions
+SET message_count = 0, last_activity = %s
+WHERE id = %s""",
                         (datetime.now().isoformat(), session_id),
                     )
                 else:
@@ -387,10 +374,9 @@ class ChatPersistenceService:
                     # Reset message count
                     cursor.execute(
                         """
-                        UPDATE ChatSessions 
-                        SET message_count = 0, last_activity = ? 
-                        WHERE id = ?
-                    """,
+UPDATE ChatSessions
+SET message_count = 0, last_activity = ?
+WHERE id = ?""",
                         (datetime.now().isoformat(), session_id),
                     )
 
@@ -424,9 +410,8 @@ class ChatPersistenceService:
                     # Count sessions to be deleted
                     cursor.execute(
                         """
-                        SELECT COUNT(*) FROM chat_sessions 
-                        WHERE last_activity < %s
-                    """,
+SELECT COUNT(*) FROM chat_sessions
+WHERE last_activity < %s""",
                         (cutoff_iso,),
                     )
                     count = cursor.fetchone()[0]
@@ -434,18 +419,16 @@ class ChatPersistenceService:
                     # Delete old sessions (messages will be deleted by CASCADE)
                     cursor.execute(
                         """
-                        DELETE FROM chat_sessions 
-                        WHERE last_activity < %s
-                    """,
+DELETE FROM chat_sessions
+WHERE last_activity < %s""",
                         (cutoff_iso,),
                     )
                 else:
                     # Count sessions to be deleted
                     cursor.execute(
                         """
-                        SELECT COUNT(*) FROM ChatSessions 
-                        WHERE last_activity < ?
-                    """,
+SELECT COUNT(*) FROM ChatSessions
+WHERE last_activity < ?""",
                         (cutoff_iso,),
                     )
                     count = cursor.fetchone()[0]
@@ -453,9 +436,8 @@ class ChatPersistenceService:
                     # Delete old sessions (messages will be deleted by CASCADE)
                     cursor.execute(
                         """
-                        DELETE FROM ChatSessions 
-                        WHERE last_activity < ?
-                    """,
+DELETE FROM ChatSessions
+WHERE last_activity < ?""",
                         (cutoff_iso,),
                     )
 
@@ -487,6 +469,5 @@ def get_chat_persistence_service(
         if not connection_string:
             raise ValueError("PANTRY_DATABASE_URL must be set for PostgreSQL backend")
         return ChatPersistenceService(backend, connection_string, user_id)
-    else:
-        db_path = os.getenv("PANTRY_DB_PATH", "pantry.db")
-        return ChatPersistenceService("sqlite", db_path, None)
+    db_path = os.getenv("PANTRY_DB_PATH", "pantry.db")
+    return ChatPersistenceService("sqlite", db_path, None)

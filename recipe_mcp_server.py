@@ -77,9 +77,8 @@ class RecipeDataManagerFactory:
             return SharedPantryManager(
                 connection_string, effective_user_id, backend="postgresql"
             )
-        else:
-            # Use factory for SQLite single-user scenarios
-            return create_pantry_manager(backend, connection_string, **kwargs)
+        # Use factory for SQLite single-user scenarios
+        return create_pantry_manager(backend, connection_string, **kwargs)
 
 
 # Global factory instance
@@ -159,9 +158,8 @@ class RecipeMCPServer(UnifiedMCPServer):
                 self.context.data_managers[user_id] = data_manager
 
             return user_id, self.context.data_managers[user_id]
-        else:
-            # For SQLite, use the parent implementation
-            return super().get_user_data_manager(user_id)
+        # For SQLite, use the parent implementation
+        return super().get_user_data_manager(user_id)
 
     # Backwards compatibility methods for recipe-specific API
     def get_user_pantry(self, user_id=None, token=None):

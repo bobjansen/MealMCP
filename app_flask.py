@@ -87,9 +87,8 @@ def format_quantity(value):
         # Check if it's a whole number
         if float_val.is_integer():
             return str(int(float_val))
-        else:
-            # Remove trailing zeros from decimal
-            return f"{float_val:g}"
+        # Remove trailing zeros from decimal
+        return f"{float_val:g}"
 
     return str(value)
 
@@ -355,8 +354,7 @@ def login():
             session["username"] = user_info["username"]
             logger.info(f"User {user_info['username']} logged in successfully")
             return redirect(url_for("index"))
-        else:
-            flash("Invalid username or password.", "error")
+        flash("Invalid username or password.", "error")
 
     return render_template("auth/login.html")
 
@@ -394,9 +392,8 @@ def register():
         if success:
             flash("Account created successfully! Please log in.", "success")
             return redirect(url_for("login"))
-        else:
-            flash(message, "error")
-            return render_template("auth/register.html", invite_code=invite_code)
+        flash(message, "error")
+        return render_template("auth/register.html", invite_code=invite_code)
 
     return render_template("auth/register.html", invite_code=invite_code)
 
@@ -628,9 +625,9 @@ def index():
         if "username" in session:
             context["username"] = session["username"]
         return render_template("index.html", **context)
-    else:
-        # User is not logged in, show landing page
-        return render_template("landing.html")
+
+    # User is not logged in, show landing page
+    return render_template("landing.html")
 
 
 @app.route("/dashboard")
@@ -740,6 +737,7 @@ def add_pantry_item():
     }
     logger.info(f"Pantry add request started: {json.dumps(request_info, indent=2)}")
 
+    # pylint: disable=line-too-long
     try:
         user_pantry = get_current_user_pantry()
         if not user_pantry:
@@ -832,6 +830,7 @@ def remove_pantry_item():
     }
     logger.info(f"Pantry remove request started: {json.dumps(request_info, indent=2)}")
 
+    # pylint: disable=line-too-long
     try:
         user_pantry = get_current_user_pantry()
         if not user_pantry:
@@ -944,7 +943,8 @@ def view_recipe(recipe_name):
         needed_quantity = ingredient["quantity"]
         ingredient_name = ingredient["name"]
 
-        # Skip infinite ingredients entirely (e.g., water, salt) - users know these are always available
+        # Skip infinite ingredients entirely (e.g., water, salt) - users know
+        # these are always available
         if is_infinite_ingredient(ingredient_name, i18n.LANG):
             continue
 
@@ -1024,9 +1024,8 @@ def add_recipe():
     if user_pantry.add_recipe(name, instructions, time_minutes, ingredients):
         flash(f'Recipe "{name}" added successfully!', "success")
         return redirect(url_for("recipes"))
-    else:
-        flash("Error adding recipe.", "error")
-        return redirect(url_for("add_recipe_form"))
+    flash("Error adding recipe.", "error")
+    return redirect(url_for("add_recipe_form"))
 
 
 @app.route("/recipes/edit/<recipe_name>")
@@ -1077,9 +1076,8 @@ def edit_recipe(recipe_name):
     if user_pantry.edit_recipe(recipe_name, instructions, time_minutes, ingredients):
         flash(f'Recipe "{recipe_name}" updated successfully!', "success")
         return redirect(url_for("view_recipe", recipe_name=recipe_name))
-    else:
-        flash("Error updating recipe.", "error")
-        return redirect(url_for("edit_recipe_form", recipe_name=recipe_name))
+    flash("Error updating recipe.", "error")
+    return redirect(url_for("edit_recipe_form", recipe_name=recipe_name))
 
 
 @app.route("/recipes/rate/<recipe_name>", methods=["POST"])
@@ -1211,9 +1209,7 @@ def update_household_size():
         flash("Number of children cannot be negative.", "error")
         return redirect(url_for("preferences"))
 
-    success, message = auth_manager.set_household_size(
-        session["user_id"], adults, children
-    )
+    success, _ = auth_manager.set_household_size(session["user_id"], adults, children)
 
     if success:
         flash("Household size updated successfully!", "success")
@@ -1233,7 +1229,7 @@ def update_household_goals():
 
     goals = request.form.get("goals", "").strip()
 
-    success, message = auth_manager.set_household_goals(session["user_id"], goals)
+    success, _ = auth_manager.set_household_goals(session["user_id"], goals)
 
     if success:
         flash(t("Household goals updated successfully!"), "success")
@@ -1255,5 +1251,5 @@ def inject_globals():
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("FLASK_RUN_PORT", 5000))
+    port = int(os.getenv("FLASK_RUN_PORT", "5000"))
     app.run(debug=True, port=port, host="0.0.0.0")
