@@ -416,19 +416,3 @@ class PantryManager(ABC):
             Dict[str, str]: Mapping of measurement type ('volume', 'weight', 'count')
             to preferred unit names.
         """
-
-    @abstractmethod
-    def set_preferred_units(
-        self, volume_unit: str, weight_unit: str, count_unit: str
-    ) -> bool:
-        """
-        Set preferred measurement units for the household.
-
-        Args:
-            volume_unit: Preferred volume unit name
-            weight_unit: Preferred weight unit name
-            count_unit: Preferred count unit name
-
-        Returns:
-            bool: True if the update was successful, False otherwise
-        """

@@ -1796,35 +1796,3 @@ class SQLitePantryManager(PantryManager):
         except Exception as e:
             print(f"Error getting preferred units: {e}")
         return {"volume": "Milliliter", "weight": "Gram", "count": "Piece"}
-
-    def set_preferred_units(
-        self, volume_unit: str, weight_unit: str, count_unit: str
-    ) -> bool:
-        """Set preferred units for the household."""
-        validate_required_params(
-            volume_unit=volume_unit, weight_unit=weight_unit, count_unit=count_unit
-        )
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    UPDATE HouseholdCharacteristics
-                    SET volume_unit = ?, weight_unit = ?, count_unit = ?, updated_date = datetime('now')
-                    WHERE id = 1
-                    """,
-                    (volume_unit, weight_unit, count_unit),
-                )
-                if cursor.rowcount == 0:
-                    cursor.execute(
-                        """
-                        INSERT INTO HouseholdCharacteristics
-                        (id, adults, children, notes, updated_date, volume_unit, weight_unit, count_unit)
-                        VALUES (1, 2, 0, '', datetime('now'), ?, ?, ?)
-                        """,
-                        (volume_unit, weight_unit, count_unit),
-                    )
-                return True
-        except Exception as e:
-            print(f"Error setting preferred units: {e}")
-            return False

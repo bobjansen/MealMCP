@@ -2273,27 +2273,3 @@ WHERE id = {ph} AND user_id = {ph}""",
                     "count": count or "Piece",
                 }
             return {"volume": "Milliliter", "weight": "Gram", "count": "Piece"}
-
-    @safe_execute("set preferred units", default_return=False)
-    def set_preferred_units(
-        self, volume_unit: str, weight_unit: str, count_unit: str
-    ) -> bool:
-        """Set preferred units for the household."""
-        validate_required_params(
-            volume_unit=volume_unit, weight_unit=weight_unit, count_unit=count_unit
-        )
-        volume_unit = self._validate_unit(volume_unit)
-        weight_unit = self._validate_unit(weight_unit)
-        count_unit = self._validate_unit(count_unit)
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            ph = self._get_placeholder()
-            cursor.execute(
-                f"""
-                UPDATE users
-                SET preferred_volume_unit = {ph}, preferred_weight_unit = {ph}, preferred_count_unit = {ph}
-                WHERE id = {ph}
-                """,
-                (volume_unit, weight_unit, count_unit, self.user_id),
-            )
-            return cursor.rowcount > 0

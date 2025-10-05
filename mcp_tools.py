@@ -314,28 +314,6 @@ MCP_TOOLS: List[Dict[str, Any]] = [
             "required": [],
         },
     },
-    {
-        "name": "set_preferred_units",
-        "description": "Set the household's preferred default units for new recipes and pantry items",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "volume_unit": {
-                    "type": "string",
-                    "description": "Preferred unit for volume measurements (must be a volume unit with base_unit 'ml')",
-                },
-                "weight_unit": {
-                    "type": "string",
-                    "description": "Preferred unit for weight measurements (must be a weight unit with base_unit 'g')",
-                },
-                "count_unit": {
-                    "type": "string",
-                    "description": "Preferred unit for count measurements (must be a count unit with base_unit 'count')",
-                },
-            },
-            "required": ["volume_unit", "weight_unit", "count_unit"],
-        },
-    },
     # === PANTRY MANAGEMENT (INDIVIDUAL) ===
     {
         "name": "add_pantry_item",
