@@ -386,19 +386,27 @@ class WebUserManager:
                         return False, "User not found"
 
                     household_id = result[0]
-                    if not household_id:
-                        return False, "User has no household"
 
-                    # Update household characteristics
+                    # If user has no household_id, make them a household owner
+                    if not household_id:
+                        cursor.execute(
+                            "UPDATE users SET household_id = id WHERE id = %s",
+                            (user_id,),
+                        )
+                        household_id = user_id
+
+                    # Insert or update household characteristics
                     cursor.execute(
-                        "UPDATE household_characteristics SET adults = %s, children = %s, updated_at = CURRENT_TIMESTAMP WHERE household_id = %s",
-                        (adults, children, household_id),
+                        """
+                        INSERT INTO household_characteristics (household_id, adults, children, updated_at)
+                        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (household_id) DO UPDATE
+                        SET adults = EXCLUDED.adults, children = EXCLUDED.children, updated_at = CURRENT_TIMESTAMP
+                        """,
+                        (household_id, adults, children),
                     )
 
-                    if cursor.rowcount > 0:
-                        return True, "Household size updated successfully"
-                    else:
-                        return False, "Household characteristics not found"
+                    return True, "Household size updated successfully"
 
         except Exception as e:
             return False, f"Error updating household size: {str(e)}"
@@ -470,19 +478,27 @@ class WebUserManager:
                         return False, "User not found"
 
                     household_id = result[0]
-                    if not household_id:
-                        return False, "User has no household"
 
-                    # Update household goals/notes
+                    # If user has no household_id, make them a household owner
+                    if not household_id:
+                        cursor.execute(
+                            "UPDATE users SET household_id = id WHERE id = %s",
+                            (user_id,),
+                        )
+                        household_id = user_id
+
+                    # Insert or update household goals/notes
                     cursor.execute(
-                        "UPDATE household_characteristics SET notes = %s, updated_at = CURRENT_TIMESTAMP WHERE household_id = %s",
-                        (goals, household_id),
+                        """
+                        INSERT INTO household_characteristics (household_id, notes, updated_at)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (household_id) DO UPDATE
+                        SET notes = EXCLUDED.notes, updated_at = CURRENT_TIMESTAMP
+                        """,
+                        (household_id, goals),
                     )
 
-                    if cursor.rowcount > 0:
-                        return True, "Household goals updated successfully"
-                    else:
-                        return False, "Household characteristics not found"
+                    return True, "Household goals updated successfully"
 
         except Exception as e:
             return False, f"Error updating household goals: {str(e)}"
