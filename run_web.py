@@ -31,11 +31,27 @@ def main():
     backend = os.getenv("PANTRY_BACKEND", "sqlite")
     strategy = os.getenv("PANTRY_DB_STRATEGY", "shared")
 
-    # Generate secret key if not provided
+    # Generate or load persistent secret key if not provided
     if not os.getenv("FLASK_SECRET_KEY"):
-        secret_key = secrets.token_urlsafe(32)
-        os.environ["FLASK_SECRET_KEY"] = secret_key
-        print(f"Generated Flask secret key: {secret_key}")
+        secret_key_file = ".flask_secret_key"
+        try:
+            if os.path.exists(secret_key_file):
+                with open(secret_key_file, "r") as f:
+                    secret_key = f.read().strip()
+                print("✅ Loaded Flask secret key from file")
+            else:
+                secret_key = secrets.token_urlsafe(32)
+                with open(secret_key_file, "w") as f:
+                    f.write(secret_key)
+                os.chmod(secret_key_file, 0o600)
+                print("🔑 Generated and saved new Flask secret key")
+
+            os.environ["FLASK_SECRET_KEY"] = secret_key
+        except Exception as e:
+            print(f"⚠️  Warning: Could not manage persistent secret key: {e}")
+            secret_key = secrets.token_urlsafe(32)
+            os.environ["FLASK_SECRET_KEY"] = secret_key
+            print("🔑 Generated temporary Flask secret key")
 
     # Set Flask environment
     if not os.getenv("FLASK_ENV"):
@@ -94,8 +110,11 @@ def main():
             sys.exit(1)
 
     print("=" * 60)
+    # Get port configuration
+    port = int(os.getenv("PORT", os.getenv("FLASK_RUN_PORT", 5000)))
+
     print("🚀 Starting web server...")
-    print("📍 URL: http://localhost:5000")
+    print(f"📍 URL: http://localhost:{port}")
 
     if backend == "postgresql":
         print("👆 Visit the URL above to register your account")
@@ -108,7 +127,7 @@ def main():
     try:
         from app_flask import app
 
-        app.run(host="0.0.0.0", port=5000, debug=True)
+        app.run(host="0.0.0.0", port=port, debug=True)
     except KeyboardInterrupt:
         print("\n👋 Server stopped. Goodbye!")
     except Exception as e:

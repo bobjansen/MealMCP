@@ -115,18 +115,43 @@ def log_error_with_context(error: Exception, context: str, extra_info: dict = No
         logger.error(f"Original error in {context}: {error}")
 
 
-# Generate secret key if not provided
+# Generate or load persistent secret key
 secret_key = os.getenv("FLASK_SECRET_KEY")
 if not secret_key:
-    secret_key = secrets.token_urlsafe(32)
-    os.environ["FLASK_SECRET_KEY"] = secret_key
-    logger.info("Generated Flask secret key")
+    # Try to load from file first
+    secret_key_file = ".flask_secret_key"
+    try:
+        if os.path.exists(secret_key_file):
+            with open(secret_key_file, "r") as f:
+                secret_key = f.read().strip()
+            logger.info("Loaded Flask secret key from file")
+        else:
+            # Generate new key and save it
+            secret_key = secrets.token_urlsafe(32)
+            with open(secret_key_file, "w") as f:
+                f.write(secret_key)
+            # Make file readable only by owner
+            os.chmod(secret_key_file, 0o600)
+            logger.info("Generated and saved new Flask secret key")
+    except Exception as e:
+        logger.error(f"Error handling secret key file: {e}")
+        # Fallback to temporary key
+        secret_key = secrets.token_urlsafe(32)
+        logger.warning(
+            "Using temporary secret key - sessions will not persist across restarts"
+        )
 else:
-    logger.info("Using existing Flask secret key")
+    logger.info("Using Flask secret key from environment variable")
 
 
 app = Flask(__name__, static_folder="assets")
 app.secret_key = secret_key
+
+# Configure session to be permanent and last longer
+from datetime import timedelta
+
+app.permanent_session_lifetime = timedelta(days=7)  # Sessions last 7 days
+app.config["SESSION_PERMANENT"] = True
 
 # Add custom template filters
 app.jinja_env.filters["format_quantity"] = format_quantity
@@ -136,7 +161,14 @@ backend = os.getenv("PANTRY_BACKEND", "sqlite")
 connection_string = os.getenv("PANTRY_DATABASE_URL", "pantry.db")
 
 # Initialize authentication manager
-auth_manager = WebUserManager(backend=backend, connection_string=connection_string)
+try:
+    auth_manager = WebUserManager(backend=backend, connection_string=connection_string)
+    logger.info(
+        f"Authentication manager initialized successfully for {backend} backend"
+    )
+except Exception as e:
+    logger.error(f"Failed to initialize authentication manager: {e}")
+    raise
 
 # For SQLite mode, create a single pantry manager
 if backend == "sqlite":
@@ -156,8 +188,15 @@ def get_current_user_pantry():
     if "user_id" not in session:
         return None
 
-    user_info = auth_manager.get_user_by_id(session["user_id"])
-    if not user_info:
+    try:
+        user_info = auth_manager.get_user_by_id(session["user_id"])
+        if not user_info:
+            logger.warning(
+                f"User ID {session['user_id']} not found in database, session may be stale"
+            )
+            return None
+    except Exception as e:
+        logger.error(f"Database error getting user {session.get('user_id')}: {e}")
         return None
 
     # Set language based on user preference
@@ -216,7 +255,23 @@ def requires_auth(f):
             return f(*args, **kwargs)
 
         if "user_id" not in session:
+            logger.info("User not authenticated, redirecting to login")
             flash("Please log in to access this page.", "warning")
+            return redirect(url_for("login"))
+
+        # Verify user still exists in database
+        try:
+            user_info = auth_manager.get_user_by_id(session["user_id"])
+            if not user_info:
+                logger.warning(
+                    f"User ID {session['user_id']} not found in database, clearing session"
+                )
+                session.clear()
+                flash("Your session has expired. Please log in again.", "warning")
+                return redirect(url_for("login"))
+        except Exception as e:
+            logger.error(f"Database error during authentication check: {e}")
+            flash("A database error occurred. Please try logging in again.", "error")
             return redirect(url_for("login"))
 
         return f(*args, **kwargs)
@@ -290,8 +345,10 @@ def login():
         success, user_info = auth_manager.authenticate_user(username, password)
 
         if success:
+            session.permanent = True  # Make session permanent
             session["user_id"] = user_info["id"]
             session["username"] = user_info["username"]
+            logger.info(f"User {user_info['username']} logged in successfully")
             return redirect(url_for("index"))
         else:
             flash("Invalid username or password.", "error")
@@ -1149,4 +1206,5 @@ def inject_globals():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.getenv("FLASK_RUN_PORT", 5000))
+    app.run(debug=True, port=port, host="0.0.0.0")
