@@ -134,6 +134,12 @@ class ChatPersistenceService:
             bool: True if successful, False otherwise
         """
         try:
+            # Ensure session exists before saving message
+            session_info = self.get_session_info(session_id)
+            if not session_info.get("exists"):
+                logger.warning(f"Session {session_id} doesn't exist, creating it now")
+                self.save_session(session_id)
+
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 now = datetime.now().isoformat()
@@ -144,7 +150,7 @@ class ChatPersistenceService:
                 if self.backend == "postgresql":
                     cursor.execute(
                         """
-                        INSERT INTO chat_messages 
+                        INSERT INTO chat_messages
                         (session_id, role, content, tool_calls, tool_call_id, tool_name, timestamp, sequence)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
