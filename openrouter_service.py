@@ -574,16 +574,30 @@ class OpenRouterService:
             return {"exists": False}
 
         session = self.sessions[session_id]
+
+        # Handle both datetime objects and ISO strings
+        created_at = session.created_at
+        if created_at:
+            created_at = (
+                created_at.isoformat()
+                if hasattr(created_at, "isoformat")
+                else created_at
+            )
+
+        last_activity = session.last_activity
+        if last_activity:
+            last_activity = (
+                last_activity.isoformat()
+                if hasattr(last_activity, "isoformat")
+                else last_activity
+            )
+
         return {
             "exists": True,
             "session_id": session_id,
             "message_count": len(session.messages),
-            "created_at": (
-                session.created_at.isoformat() if session.created_at else None
-            ),
-            "last_activity": (
-                session.last_activity.isoformat() if session.last_activity else None
-            ),
+            "created_at": created_at,
+            "last_activity": last_activity,
         }
 
 
