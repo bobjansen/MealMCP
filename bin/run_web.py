@@ -25,6 +25,9 @@ import sys
 import secrets
 from pathlib import Path
 
+# Add parent directory to path so we can import from main package
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 
 def main():
     # Set default environment variables

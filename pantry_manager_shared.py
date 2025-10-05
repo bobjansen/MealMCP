@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from pantry_manager_abc import PantryManager
-from short_id_utils import parse_short_id
+from scripts.short_id_utils import parse_short_id
 from constants import (
     PREFERENCE_CATEGORIES,
     MAX_INGREDIENT_NAME_LENGTH,

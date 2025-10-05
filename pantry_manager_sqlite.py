@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
-from short_id_utils import parse_short_id
+from scripts.short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
 from constants import DEFAULT_UNITS, is_infinite_ingredient
 import i18n

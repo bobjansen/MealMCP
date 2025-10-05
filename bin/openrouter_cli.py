@@ -7,9 +7,14 @@ This CLI app uses the shared OpenRouterService for LLM integration.
 
 import os
 import sys
+from pathlib import Path
 import argparse
 import logging
 import uuid
+
+# Add parent directory to path so we can import from main package
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.panel import Panel

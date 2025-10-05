@@ -5,17 +5,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Common Development Commands
 
 ### Running the Application
-ALl scripts and applications run through uv using `uv run`
+All scripts and applications run through uv using `uv run`
 
-### Some applications
-- **Flask Web Interface (Recommended)**: `uv run run_web.py` - Smart launcher with backend detection and validation
-- **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000
-- **OpenRouter CLI**: `uv run openrouter_cli.py` - Interactive CLI with LLM integration via OpenRouter
-- **Unified MCP Server (Recommended)**: `uv run run_mcp.py [mode]` - Single server supporting all transport modes
-  - `uv run run_mcp.py` - FastMCP local mode (default)
-  - `uv run run_mcp.py http --port 8080` - HTTP REST API server
-  - `uv run run_mcp.py oauth --multiuser` - OAuth 2.1 multi-user server
-  - `uv run run_mcp.py sse` - Server-Sent Events server
+### Main Applications (in `bin/`)
+- **Flask Web Interface (Recommended)**: `uv run bin/run_web.py` - Smart launcher with backend detection and validation
+- **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000 (now includes AI Assistant at /chat)
+- **OpenRouter CLI**: `uv run bin/openrouter_cli.py` - Interactive CLI with LLM integration via OpenRouter using shared service layer
+- **OpenRouter CLI (Legacy)**: `uv run bin/openrouter_cli_legacy.py` - Original CLI implementation (deprecated)
+- **Unified MCP Server (Recommended)**: `uv run bin/run_mcp.py [mode]` - Single server supporting all transport modes
+  - `uv run bin/run_mcp.py` - FastMCP local mode (default)
+  - `uv run bin/run_mcp.py http --port 8080` - HTTP REST API server
+  - `uv run bin/run_mcp.py oauth --multiuser` - OAuth 2.1 multi-user server
+  - `uv run bin/run_mcp.py sse` - Server-Sent Events server
+- **Password CLI**: `uv run bin/cli.py` - Update user passwords in PostgreSQL database
+- **Uvicorn Server**: `uvicorn bin.uvicorn_app:app` - Alternative ASGI server entry point
+
+### Utility Scripts (in `scripts/`)
+- **Token Cleanup**: `uv run scripts/cleanup_tokens.py` - Remove expired OAuth tokens
+- **Database Population**: `uv run scripts/populate_default_db.py` - Populate database with sample data
+- **Short ID Migration**: `uv run scripts/migrate_add_short_ids.py` - Migrate database to add short IDs
+- **OAuth Test Setup**: `uv run scripts/setup_oauth_test_user.py` - Create OAuth test user
+- **Schema Validation**: `uv run scripts/validate_postgresql_schema.py` - Validate PostgreSQL schema
+- **System Check**: `uv run scripts/check.py` - Run system checks
+- **OAuth Debugging**: `uv run scripts/oauth_sequence_tracer.py` - Trace OAuth sequences
 
 ### Testing
 - **Run All Tests**: `pytest` or `uv run pytest` - Runs all tests (both recipe-specific and MCP core tests)

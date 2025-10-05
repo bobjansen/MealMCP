@@ -10,8 +10,9 @@ import argparse
 import getpass
 from werkzeug.security import generate_password_hash
 
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path so we can import from main package
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def hash_password(password: str) -> str:

@@ -8,7 +8,7 @@ import pytest
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from short_id_utils import (  # noqa: E402
+from scripts.short_id_utils import (  # noqa: E402
     generate_short_id,
     parse_short_id,
     is_valid_short_id,
