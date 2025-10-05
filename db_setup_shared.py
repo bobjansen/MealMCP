@@ -8,10 +8,10 @@ import sqlite3
 import psycopg2
 from typing import Iterable, Union, Type
 from db_schema_definitions import (
-    MULTI_USER_POSTGRESQL_SCHEMAS,
-    MULTI_USER_SQLITE_SCHEMAS,
     MULTI_USER_POSTGRESQL_INDEXES,
+    MULTI_USER_POSTGRESQL_SCHEMAS,
     MULTI_USER_SQLITE_INDEXES,
+    MULTI_USER_SQLITE_SCHEMAS,
     MULTI_USER_DEFAULTS,
 )
 from error_utils import safe_execute
@@ -88,37 +88,56 @@ def setup_shared_database(connection: Union[str, object, None] = None) -> bool:
         return False
 
 
+def _setup_shared_database_impl(cursor, dialect: str) -> None:
+    """Shared implementation for setting up multi-user database schema.
+
+    Args:
+        cursor: Database cursor (PostgreSQL or SQLite)
+        dialect: Either 'postgres' or 'sqlite'
+    """
+    # Select appropriate schemas and indexes
+    if dialect == "postgres":
+        schemas = MULTI_USER_POSTGRESQL_SCHEMAS
+        indexes = MULTI_USER_POSTGRESQL_INDEXES
+        varchar_type = "VARCHAR(50)"
+    elif dialect == "sqlite":
+        schemas = MULTI_USER_SQLITE_SCHEMAS
+        indexes = MULTI_USER_SQLITE_INDEXES
+        varchar_type = "TEXT"
+    else:
+        raise ValueError(f"Unsupported dialect: {dialect}")
+
+    # Create all tables using centralized schema definitions
+    for _, schema in schemas.items():
+        _execute_with_reporting(cursor, schema)
+
+    # Add additional columns to existing users table if they don't exist
+    columns_to_add = [
+        ("household_id", "INTEGER REFERENCES users(id)"),
+        ("household_adults", "INTEGER DEFAULT 2"),
+        ("household_children", "INTEGER DEFAULT 0"),
+        ("preferred_volume_unit", f"{varchar_type} DEFAULT 'Milliliter'"),
+        ("preferred_weight_unit", f"{varchar_type} DEFAULT 'Gram'"),
+        ("preferred_count_unit", f"{varchar_type} DEFAULT 'Piece'"),
+    ]
+    for column, definition in columns_to_add:
+        _add_column_if_not_exists(cursor, "users", column, definition, dialect=dialect)
+
+    # Create indexes for better performance
+    for index_sql in indexes:
+        _execute_with_reporting(cursor, index_sql)
+
+    # Insert default data
+    for default_sql in MULTI_USER_DEFAULTS:
+        _execute_with_reporting(cursor, default_sql)
+
+
 @safe_execute("setup PostgreSQL shared database", default_return=False, log_errors=True)
 def _setup_postgresql_shared(connection_string: str) -> bool:
     """Set up PostgreSQL schema for shared database using centralized schema definitions."""
     with psycopg2.connect(connection_string) as conn:
         with conn.cursor() as cursor:
-            # Create all tables using centralized schema definitions
-            for _, schema in MULTI_USER_POSTGRESQL_SCHEMAS.items():
-                _execute_with_reporting(cursor, schema)
-
-            # Add additional columns to existing users table if they don't exist
-            columns_to_add = [
-                ("household_id", "INTEGER REFERENCES users(id)"),
-                ("household_adults", "INTEGER DEFAULT 2"),
-                ("household_children", "INTEGER DEFAULT 0"),
-                ("preferred_volume_unit", "VARCHAR(50) DEFAULT 'Milliliter'"),
-                ("preferred_weight_unit", "VARCHAR(50) DEFAULT 'Gram'"),
-                ("preferred_count_unit", "VARCHAR(50) DEFAULT 'Piece'"),
-            ]
-            for column, definition in columns_to_add:
-                _add_column_if_not_exists(
-                    cursor, "users", column, definition, dialect="postgres"
-                )
-
-            # Create indexes for better performance
-            for index_sql in MULTI_USER_POSTGRESQL_INDEXES:
-                _execute_with_reporting(cursor, index_sql)
-
-            # Insert default data
-            for default_sql in MULTI_USER_DEFAULTS:
-                _execute_with_reporting(cursor, default_sql)
-
+            _setup_shared_database_impl(cursor, dialect="postgres")
     return True
 
 
@@ -127,33 +146,7 @@ def _setup_sqlite_shared(db_path: str) -> bool:
     """Set up SQLite schema for shared database using centralized schema definitions."""
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-
-        # Create all tables using centralized schema definitions
-        for _, schema in MULTI_USER_SQLITE_SCHEMAS.items():
-            _execute_with_reporting(cursor, schema)
-
-        # Add additional columns to existing users table if they don't exist
-        columns_to_add = [
-            ("household_id", "INTEGER REFERENCES users(id)"),
-            ("household_adults", "INTEGER DEFAULT 2"),
-            ("household_children", "INTEGER DEFAULT 0"),
-            ("preferred_volume_unit", "TEXT DEFAULT 'Milliliter'"),
-            ("preferred_weight_unit", "TEXT DEFAULT 'Gram'"),
-            ("preferred_count_unit", "TEXT DEFAULT 'Piece'"),
-        ]
-        for column, definition in columns_to_add:
-            _add_column_if_not_exists(
-                cursor, "users", column, definition, dialect="sqlite"
-            )
-
-        # Create indexes for better performance
-        for index_sql in MULTI_USER_SQLITE_INDEXES:
-            _execute_with_reporting(cursor, index_sql)
-
-        # Insert default data
-        for default_sql in MULTI_USER_DEFAULTS:
-            _execute_with_reporting(cursor, default_sql)
-
+        _setup_shared_database_impl(cursor, dialect="sqlite")
     return True
 
 
