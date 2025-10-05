@@ -3,11 +3,8 @@
 Test script for OpenRouter integration (CLI + Flask)
 """
 
-import os
 import json
-import threading
-import time
-import requests
+from app_flask import app
 from openrouter_service import OpenRouterService, get_openrouter_service
 from openrouter_cli import OpenRouterCLI
 
@@ -73,8 +70,6 @@ def test_flask_integration():
     print("=" * 40)
 
     try:
-        from app_flask import app
-        from flask_openrouter_integration import add_openrouter_routes
 
         print("✅ Flask app loaded successfully")
 

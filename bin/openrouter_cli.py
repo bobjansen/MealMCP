@@ -21,8 +21,7 @@ from rich.panel import Panel
 from rich.status import Status
 from rich.table import Table
 
-from openrouter_service import get_openrouter_service, is_openrouter_available
-from mcp_tools import MCP_TOOLS
+from openrouter_service import get_openrouter_service
 
 # Set up logging
 logging.basicConfig(level=logging.WARNING)

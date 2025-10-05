@@ -148,9 +148,6 @@ else:
 app = Flask(__name__, static_folder="assets")
 app.secret_key = secret_key
 
-# Configure session to be permanent and last longer
-from datetime import timedelta
-
 app.permanent_session_lifetime = timedelta(days=7)  # Sessions last 7 days
 app.config["SESSION_PERMANENT"] = True
 

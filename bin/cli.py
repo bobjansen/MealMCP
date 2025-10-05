@@ -4,14 +4,14 @@ Password update utility for MealMCP PostgreSQL users.
 Allows updating user passwords in the multi-user PostgreSQL database.
 """
 
-import sys
-import os
 import argparse
 import getpass
+import sys
 from werkzeug.security import generate_password_hash
 
 # Add parent directory to path so we can import from main package
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
@@ -113,9 +113,9 @@ def list_users(connection_string: str, verbose: bool = True) -> bool:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT id, username, email, is_active, created_date, 
+                    SELECT id, username, email, is_active, created_date,
                            household_adults, household_children
-                    FROM users 
+                    FROM users
                     ORDER BY id
                     """
                 )

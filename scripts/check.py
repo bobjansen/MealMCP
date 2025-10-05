@@ -89,10 +89,10 @@ def main():
 
     # 2. Ruff Analysis
     ruff_targets = [
+        "bin/",
+        "scripts/",
         "tests/",
         "app_flask.py",
-        "cleanup_tokens.py",
-        "cli.py",
         "config.py",
         "constants.py",
         "datastore_postgresql.py",
@@ -104,17 +104,11 @@ def main():
         "mcp_server.py",
         "mcp_tool_router.py",
         "mcp_tools.py",
-        "openrouter_cli.py",
         "pantry_manager_abc.py",
         "pantry_manager_factory.py",
         "pantry_manager_shared.py",
         "pantry_manager_sqlite.py",
         "recipe_mcp_server.py",
-        "run_mcp.py",
-        "run_web.py",
-        "setup_oauth_test_user.py",
-        "short_id_utils.py",
-        "uvicorn_app.py",
         "web_auth_simple.py",
         "wsgi.py",
     ]
