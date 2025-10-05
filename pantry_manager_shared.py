@@ -1127,12 +1127,44 @@ class SharedPantryManager(PantryManager):
                     # Get unit_id for the unit name
                     unit_id = self.get_unit_id(ingredient["unit"])
                     if unit_id is None:
-                        # Get available units to suggest
+                        # Fallback: try to find a sensible default unit
                         available_units = self.list_units()
-                        unit_names = [u["name"] for u in available_units]
-                        raise ValueError(
-                            f"Unit '{ingredient['unit']}' not found. Available units: {', '.join(unit_names)}"
-                        )
+                        if available_units:
+                            # Try to find Gram, Piece, or the first available unit
+                            for preferred in ["Gram", "Piece", "Stuk"]:
+                                fallback = next(
+                                    (
+                                        u
+                                        for u in available_units
+                                        if u["name"] == preferred
+                                    ),
+                                    None,
+                                )
+                                if fallback:
+                                    unit_id = (
+                                        fallback["id"]
+                                        if "id" in fallback
+                                        else self.get_unit_id(fallback["name"])
+                                    )
+                                    print(
+                                        f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback['name']}' instead"
+                                    )
+                                    break
+
+                            # If still no match, use first available unit
+                            if unit_id is None and available_units:
+                                fallback_unit = available_units[0]["name"]
+                                unit_id = self.get_unit_id(fallback_unit)
+                                print(
+                                    f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback_unit}' instead"
+                                )
+
+                        # If still no unit found, skip this ingredient
+                        if unit_id is None:
+                            print(
+                                f"Warning: Skipping ingredient '{ingredient['name']}' - no valid units available"
+                            )
+                            continue
 
                     cursor.execute(
                         f"""
@@ -1503,12 +1535,44 @@ class SharedPantryManager(PantryManager):
                     # Get unit_id for the unit name
                     unit_id = self.get_unit_id(ingredient["unit"])
                     if unit_id is None:
-                        # Get available units to suggest
+                        # Fallback: try to find a sensible default unit
                         available_units = self.list_units()
-                        unit_names = [u["name"] for u in available_units]
-                        raise ValueError(
-                            f"Unit '{ingredient['unit']}' not found. Available units: {', '.join(unit_names)}"
-                        )
+                        if available_units:
+                            # Try to find Gram, Piece, or the first available unit
+                            for preferred in ["Gram", "Piece", "Stuk"]:
+                                fallback = next(
+                                    (
+                                        u
+                                        for u in available_units
+                                        if u["name"] == preferred
+                                    ),
+                                    None,
+                                )
+                                if fallback:
+                                    unit_id = (
+                                        fallback["id"]
+                                        if "id" in fallback
+                                        else self.get_unit_id(fallback["name"])
+                                    )
+                                    print(
+                                        f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback['name']}' instead"
+                                    )
+                                    break
+
+                            # If still no match, use first available unit
+                            if unit_id is None and available_units:
+                                fallback_unit = available_units[0]["name"]
+                                unit_id = self.get_unit_id(fallback_unit)
+                                print(
+                                    f"Warning: Unit '{ingredient['unit']}' not found, using '{fallback_unit}' instead"
+                                )
+
+                        # If still no unit found, skip this ingredient
+                        if unit_id is None:
+                            print(
+                                f"Warning: Skipping ingredient '{ingredient['name']}' - no valid units available"
+                            )
+                            continue
 
                     cursor.execute(
                         f"""
