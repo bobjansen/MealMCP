@@ -100,9 +100,16 @@ For production multi-user deployment:
 
 ### Running the Flask Web Interface (Recommended)
 
+The Flask web interface includes:
+- Recipe browsing and management
+- Pantry inventory tracking
+- Meal planning calendar
+- Grocery list generation
+- AI Assistant chat (requires `OPENROUTER_API_KEY`)
+
 **Quick Start (SQLite - Single User):**
 ```bash
-python run_web.py
+uv run bin/run_web.py
 ```
 Access at `http://localhost:5000` - No login required
 
@@ -110,13 +117,20 @@ Access at `http://localhost:5000` - No login required
 ```bash
 export PANTRY_BACKEND=postgresql
 export PANTRY_DATABASE_URL=postgresql://user:pass@host:5432/meal_manager
-python run_web.py
+uv run bin/run_web.py
 ```
 Access at `http://localhost:5000` - Registration/login required
 
+**With AI Assistant (Optional):**
+```bash
+export OPENROUTER_API_KEY=your-api-key-here
+uv run bin/run_web.py
+```
+Then navigate to `/chat` for the AI assistant interface
+
 **Direct Flask Startup:**
 ```bash
-python app_flask.py
+uv run app_flask.py
 ```
 
 ### Running the Legacy Dash Interface
