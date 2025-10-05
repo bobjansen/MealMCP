@@ -68,13 +68,20 @@ class OpenRouterClient:
             payload["tool_choice"] = tool_choice
 
         try:
+            logger.debug(
+                f"Sending chat completion request with {len(messages)} messages"
+            )
             response = self.session.post(
                 f"{self.base_url}/chat/completions", json=payload
             )
             response.raise_for_status()
             return response.json()
-        except Exception as e:
+        except requests.exceptions.HTTPError as e:
             logger.error(f"Chat completion failed: {e}")
+            logger.error(
+                f"Response content: {e.response.text if e.response else 'N/A'}"
+            )
+            logger.error(f"Payload messages: {json.dumps(messages, indent=2)}")
             raise
 
 

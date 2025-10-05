@@ -229,15 +229,15 @@ class ChatPersistenceService:
                 messages = []
                 for row in rows:
                     if self.backend == "postgresql":
-                        (
-                            role,
-                            content,
-                            tool_calls_json,
-                            tool_call_id,
-                            tool_name,
-                            sequence,
-                        ) = row
+                        # RealDictCursor returns dictionaries
+                        role = row["role"]
+                        content = row["content"]
+                        tool_calls_json = row["tool_calls"]
+                        tool_call_id = row["tool_call_id"]
+                        tool_name = row["tool_name"]
+                        sequence = row["sequence"]
                     else:
+                        # SQLite returns tuples
                         (
                             role,
                             content,
@@ -249,7 +249,10 @@ class ChatPersistenceService:
 
                     message = {"role": role}
 
-                    if content:
+                    # For tool messages, content is required even if empty
+                    if role == "tool":
+                        message["content"] = content or ""
+                    elif content:
                         message["content"] = content
 
                     if tool_calls_json:
@@ -312,9 +315,20 @@ class ChatPersistenceService:
                 row = cursor.fetchone()
                 if row:
                     if self.backend == "postgresql":
-                        created_at, last_activity, model, message_count = row
+                        # RealDictCursor returns dictionaries
+                        created_at = row["created_at"]
+                        last_activity = row["last_activity"]
+                        model = row["model"]
+                        message_count = row["message_count"]
                     else:
+                        # SQLite returns tuples
                         created_at, last_activity, model, message_count = row
+
+                    # Convert datetime objects to ISO format strings
+                    if hasattr(created_at, "isoformat"):
+                        created_at = created_at.isoformat()
+                    if hasattr(last_activity, "isoformat"):
+                        last_activity = last_activity.isoformat()
 
                     return {
                         "exists": True,
