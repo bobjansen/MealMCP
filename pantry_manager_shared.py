@@ -12,10 +12,8 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
+import i18n
 from pantry_manager_abc import PantryManager
-
-logger = logging.getLogger(__name__)
-from scripts.short_id_utils import parse_short_id
 from constants import (
     PREFERENCE_CATEGORIES,
     MAX_INGREDIENT_NAME_LENGTH,
@@ -24,12 +22,13 @@ from constants import (
     MAX_NOTES_LENGTH,
     MAX_QUANTITY_VALUE,
     MAX_TIME_MINUTES,
-    DEFAULT_UNITS,
     get_units_for_locale,
     is_infinite_ingredient,
 )
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
-import i18n
+from scripts.short_id_utils import parse_short_id
+
+logger = logging.getLogger(__name__)
 
 
 class SharedPantryManager(PantryManager):

@@ -371,7 +371,7 @@ class MCPToolRouter:
                     "recipe_name": arguments["name"],
                 }
             else:
-                print(f"   ✗ Failed to add recipe (no exception, but success=False)")
+                print("   ✗ Failed to add recipe (no exception, but success=False)")
                 return {"status": "error", "message": t("Failed to add recipe")}
         except Exception as e:
             print(f"   ✗ Exception during add_recipe: {type(e).__name__}: {str(e)}")

@@ -5,11 +5,12 @@ from typing import Any, Dict, List, Optional
 
 from pantry_manager_abc import PantryManager
 
-logger = logging.getLogger(__name__)
 from scripts.short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
-from constants import DEFAULT_UNITS, get_units_for_locale, is_infinite_ingredient
+from constants import get_units_for_locale, is_infinite_ingredient
 import i18n
+
+logger = logging.getLogger(__name__)
 
 
 class SQLitePantryManager(PantryManager):
