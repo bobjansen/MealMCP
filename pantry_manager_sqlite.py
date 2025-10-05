@@ -225,13 +225,23 @@ class SQLitePantryManager(PantryManager):
             return result[0] if result else None
 
     def get_unit_id(self, name: str) -> Optional[int]:
-        """Get the ID of a unit by name."""
+        """Get the ID of a unit by name (case-insensitive)."""
         validate_required_params(name=name)
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            # Try exact match first
             cursor.execute(
                 "SELECT id FROM Units WHERE name = ?",
+                (name,),
+            )
+            result = cursor.fetchone()
+            if result:
+                return result[0]
+
+            # Try case-insensitive match
+            cursor.execute(
+                "SELECT id FROM Units WHERE LOWER(name) = LOWER(?)",
                 (name,),
             )
             result = cursor.fetchone()
@@ -763,7 +773,12 @@ class SQLitePantryManager(PantryManager):
                     # Get unit_id for the unit name
                     unit_id = self.get_unit_id(ingredient["unit"])
                     if unit_id is None:
-                        raise ValueError(f"Unit '{ingredient['unit']}' not found")
+                        # Get available units to suggest
+                        available_units = self.list_units()
+                        unit_names = [u["name"] for u in available_units]
+                        raise ValueError(
+                            f"Unit '{ingredient['unit']}' not found. Available units: {', '.join(unit_names)}"
+                        )
 
                     cursor.execute(
                         """
@@ -1223,7 +1238,12 @@ class SQLitePantryManager(PantryManager):
                     # Get unit_id for the unit name
                     unit_id = self.get_unit_id(ingredient["unit"])
                     if unit_id is None:
-                        raise ValueError(f"Unit '{ingredient['unit']}' not found")
+                        # Get available units to suggest
+                        available_units = self.list_units()
+                        unit_names = [u["name"] for u in available_units]
+                        raise ValueError(
+                            f"Unit '{ingredient['unit']}' not found. Available units: {', '.join(unit_names)}"
+                        )
 
                     cursor.execute(
                         """

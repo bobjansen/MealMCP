@@ -495,16 +495,30 @@ class SharedPantryManager(PantryManager):
             return None
 
     def get_unit_id(self, name: str) -> Optional[int]:
-        """Get the ID of a unit by name for the current user."""
+        """Get the ID of a unit by name for the current user (case-insensitive)."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
+                # Try exact match first
                 cursor.execute(
                     f"""
                     SELECT id FROM units
                     WHERE name = {ph} AND user_id = {ph}
+                """,
+                    (name, self.user_id),
+                )
+
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+
+                # Try case-insensitive match
+                cursor.execute(
+                    f"""
+                    SELECT id FROM units
+                    WHERE LOWER(name) = LOWER({ph}) AND user_id = {ph}
                 """,
                     (name, self.user_id),
                 )
@@ -1113,8 +1127,11 @@ class SharedPantryManager(PantryManager):
                     # Get unit_id for the unit name
                     unit_id = self.get_unit_id(ingredient["unit"])
                     if unit_id is None:
+                        # Get available units to suggest
+                        available_units = self.list_units()
+                        unit_names = [u["name"] for u in available_units]
                         raise ValueError(
-                            f"Unit '{ingredient['unit']}' not found for user"
+                            f"Unit '{ingredient['unit']}' not found. Available units: {', '.join(unit_names)}"
                         )
 
                     cursor.execute(
@@ -1486,8 +1503,11 @@ class SharedPantryManager(PantryManager):
                     # Get unit_id for the unit name
                     unit_id = self.get_unit_id(ingredient["unit"])
                     if unit_id is None:
+                        # Get available units to suggest
+                        available_units = self.list_units()
+                        unit_names = [u["name"] for u in available_units]
                         raise ValueError(
-                            f"Unit '{ingredient['unit']}' not found for user"
+                            f"Unit '{ingredient['unit']}' not found. Available units: {', '.join(unit_names)}"
                         )
 
                     cursor.execute(
