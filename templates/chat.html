@@ -150,11 +150,110 @@
     font-size: 0.85rem;
     margin-bottom: 1rem;
 }
+
+/* Markdown styling */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.message-content h1 { font-size: 1.5rem; }
+.message-content h2 { font-size: 1.3rem; }
+.message-content h3 { font-size: 1.1rem; }
+.message-content h4 { font-size: 1rem; }
+
+.message-content p {
+    margin-bottom: 0.75rem;
+}
+
+.message-content ul,
+.message-content ol {
+    margin-bottom: 0.75rem;
+    padding-left: 1.5rem;
+}
+
+.message-content li {
+    margin-bottom: 0.25rem;
+}
+
+.message-content code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.message-content pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 0.75rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-bottom: 0.75rem;
+}
+
+.message-content pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+.message-content blockquote {
+    border-left: 3px solid #ccc;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: #666;
+}
+
+.message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.message-content table th,
+.message-content table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.message-content table th {
+    background-color: rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+}
+
+.message-content strong {
+    font-weight: 600;
+}
+
+.message-content em {
+    font-style: italic;
+}
+
+.message-content hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 1rem 0;
+}
 </style>
 {% endblock %}
 
 {% block scripts %}
+<!-- Markdown rendering library -->
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 <script>
+    // Configure marked for safe rendering
+    marked.setOptions({
+        breaks: true,
+        gfm: true,
+        headerIds: false,
+        mangle: false
+    });
+
     function handleKeyPress(event) {
         if (event.key === 'Enter') {
             sendMessage();
@@ -163,6 +262,11 @@
 
     function setMessage(text) {
         document.getElementById('messageInput').value = text;
+    }
+
+    function renderMarkdown(text) {
+        // Render markdown to HTML
+        return marked.parse(text);
     }
 
     function addMessage(content, type = 'user', isHtml = false) {
@@ -174,31 +278,29 @@
         const iconColor = type === 'user' ? 'text-primary' : 'text-primary';
         const name = type === 'user' ? 'You' : 'AI Assistant';
 
+        // Render content based on type
+        let renderedContent;
         if (isHtml) {
-            messageDiv.innerHTML = `
-                <div class="d-flex">
-                    <div class="me-3">
-                        <i class="${icon} ${iconColor} fs-5"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <strong class="${iconColor}">${name}</strong>
-                        <div class="mt-2">${content}</div>
-                    </div>
-                </div>
-            `;
+            renderedContent = content;
+        } else if (type === 'assistant') {
+            // Render markdown for assistant messages
+            renderedContent = renderMarkdown(content);
         } else {
-            messageDiv.innerHTML = `
-                <div class="d-flex">
-                    <div class="me-3">
-                        <i class="${icon} ${iconColor} fs-5"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <strong class="${iconColor}">${name}</strong>
-                        <div class="mt-2">${escapeHtml(content)}</div>
-                    </div>
-                </div>
-            `;
+            // Escape HTML for user messages
+            renderedContent = escapeHtml(content);
         }
+
+        messageDiv.innerHTML = `
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="${icon} ${iconColor} fs-5"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <strong class="${iconColor}">${name}</strong>
+                    <div class="mt-2 message-content">${renderedContent}</div>
+                </div>
+            </div>
+        `;
 
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
