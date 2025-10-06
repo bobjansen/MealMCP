@@ -72,21 +72,39 @@
          data-name="{{ recipe.name|lower }}"
          data-time="{{ recipe.time_minutes }}"
          data-rating="{{ recipe.rating|default(0) }}">
-        <div class="card h-100">
+        <div class="card h-100 clickable-card" onclick="window.location='{{ url_for('view_recipe', recipe_name=recipe.name) }}'">
             <div class="card-body">
-                <h5 class="card-title">{{ recipe.name }}</h5>
+                <h5 class="card-title">
+                    {{ recipe.name }}
+                </h5>
                 <p class="card-text">
                     <i class="fas fa-clock"></i> {{ recipe.time_minutes }} {{ t('minutes') }}
                 </p>
                 {% if recipe.rating and recipe.rating > 0 %}
                 <p class="card-text">
-                    <i class="fas fa-star text-warning"></i>
-                    {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
-                    ({{ recipe.rating }}/5)
+                    <a href="#" class="text-decoration-none rating-text-link"
+                       data-bs-toggle="modal"
+                       data-bs-target="#rateModal"
+                       data-recipe-name="{{ recipe.name }}"
+                       data-current-rating="{{ recipe.rating }}"
+                       title="{{ t('Click to rate') }}"
+                       onclick="event.stopPropagation();">
+                        <i class="fas fa-star text-warning"></i>
+                        {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
+                        ({{ recipe.rating }}/5)
+                    </a>
                 </p>
                 {% else %}
-                <p class="card-text text-muted">
-                    <i class="fas fa-star-o"></i> {{ t('Not rated') }}
+                <p class="card-text">
+                    <a href="#" class="text-decoration-none text-muted rating-text-link"
+                       data-bs-toggle="modal"
+                       data-bs-target="#rateModal"
+                       data-recipe-name="{{ recipe.name }}"
+                       data-current-rating="0"
+                       title="{{ t('Click to rate') }}"
+                       onclick="event.stopPropagation();">
+                        <i class="fas fa-star-o"></i> {{ t('Not rated') }}
+                    </a>
                 </p>
                 {% endif %}
                 <p class="card-text">
@@ -96,11 +114,13 @@
             <div class="card-footer">
                 <div class="btn-group w-100" role="group">
                     <a href="{{ url_for('view_recipe', recipe_name=recipe.name) }}"
-                       class="btn btn-outline-primary btn-sm">
+                       class="btn btn-outline-primary btn-sm"
+                       onclick="event.stopPropagation();">
                         <i class="fas fa-eye"></i> {{ t('View') }}
                     </a>
                     <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}"
-                       class="btn btn-outline-secondary btn-sm">
+                       class="btn btn-outline-secondary btn-sm"
+                       onclick="event.stopPropagation();">
                         <i class="fas fa-edit"></i> {{ t('Edit') }}
                     </a>
                 </div>
@@ -120,6 +140,62 @@
 </div>
 {% endif %}
 
+<!-- Rate Recipe Modal -->
+<div class="modal fade" id="rateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-star"></i> {{ t('Rate Recipe') }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rateForm" method="POST">
+                <div class="modal-body">
+                    <p><strong id="modalRecipeName"></strong></p>
+                    <div class="mb-3">
+                        <label for="modalRating" class="form-label">{{ t('Your Rating:') }}</label>
+                        <select name="rating" id="modalRating" class="form-select" required>
+                            <option value="">{{ t('Select rating...') }}</option>
+                            <option value="1">1 ★ - {{ t('Poor') }}</option>
+                            <option value="2">2 ★★ - {{ t('Fair') }}</option>
+                            <option value="3">3 ★★★ - {{ t('Good') }}</option>
+                            <option value="4">4 ★★★★ - {{ t('Very Good') }}</option>
+                            <option value="5">5 ★★★★★ - {{ t('Excellent') }}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-star"></i> {{ t('Rate Recipe') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.clickable-card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recipe-card:hover .clickable-card {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.rating-text-link {
+    cursor: pointer;
+}
+
+.rating-text-link:hover {
+    opacity: 0.8;
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchFilter = document.getElementById('searchFilter');
@@ -130,6 +206,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const filteredCount = document.getElementById('filteredCount');
     const filteredNumber = document.getElementById('filteredNumber');
     const recipeCards = Array.from(document.querySelectorAll('.recipe-card'));
+
+    // Rating modal handling
+    const rateModal = document.getElementById('rateModal');
+    const rateForm = document.getElementById('rateForm');
+    const modalRecipeName = document.getElementById('modalRecipeName');
+    const modalRating = document.getElementById('modalRating');
+
+    rateModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const recipeName = button.getAttribute('data-recipe-name');
+        const currentRating = button.getAttribute('data-current-rating');
+
+        modalRecipeName.textContent = recipeName;
+        rateForm.action = `/recipes/rate/${encodeURIComponent(recipeName)}`;
+
+        // Set current rating if exists
+        if (currentRating && currentRating !== '0') {
+            modalRating.value = currentRating;
+        } else {
+            modalRating.value = '';
+        }
+    });
 
     function applyFiltersAndSort() {
         const searchTerm = searchFilter.value.toLowerCase();

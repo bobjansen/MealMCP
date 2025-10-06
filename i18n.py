@@ -367,6 +367,7 @@ TRANSLATIONS = {
         "Any": "Any",
         "recipes": "recipes",
         "shown": "shown",
+        "Click to rate": "Click to rate",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -730,6 +731,7 @@ TRANSLATIONS = {
         "Any": "Alle",
         "recipes": "recepten",
         "shown": "getoond",
+        "Click to rate": "Klik om te beoordelen",
     },
 }
 

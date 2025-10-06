@@ -45,11 +45,19 @@
                         <h6><i class="fas fa-star"></i> {{ t('Rating') }}</h6>
                         {% if recipe.rating and recipe.rating > 0 %}
                         <p>
-                            {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
-                            ({{ recipe.rating }}/5)
+                            <a href="#ratingSection" onclick="setTimeout(function() { document.getElementById('rating').focus(); }, 300);"
+                               class="text-decoration-none rating-link" title="{{ t('Click to rate') }}">
+                                {% for i in range(recipe.rating|int) %}★{% endfor %}{% for i in range(5 - recipe.rating|int) %}☆{% endfor %}
+                                ({{ recipe.rating }}/5)
+                            </a>
                         </p>
                         {% else %}
-                        <p class="text-muted">{{ t('Not rated yet') }}</p>
+                        <p class="text-muted">
+                            <a href="#ratingSection" onclick="setTimeout(function() { document.getElementById('rating').focus(); }, 300);"
+                               class="text-decoration-none text-muted rating-link" title="{{ t('Click to rate') }}">
+                                {{ t('Not rated yet') }}
+                            </a>
+                        </p>
                         {% endif %}
                     </div>
                 </div>
@@ -118,7 +126,7 @@
         </div>
 
         <!-- Rating Card -->
-        <div class="card mb-3">
+        <div class="card mb-3" id="ratingSection">
             <div class="card-header">
                 <h6 class="mb-0"><i class="fas fa-star"></i> {{ t('Rate This Recipe') }}</h6>
             </div>
@@ -221,4 +229,11 @@
         </div>
     </div>
 </div>
+
+<style>
+.rating-link:hover {
+    color: #ffc107 !important;
+    cursor: pointer;
+}
+</style>
 {% endblock %}
