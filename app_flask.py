@@ -989,9 +989,9 @@ def add_recipe():
             )
 
     if user_pantry.add_recipe(name, instructions, time_minutes, ingredients, servings):
-        flash(f'Recipe "{name}" added successfully!', "success")
+        flash(t('Recipe "{name}" added successfully!').format(name=name), "success")
         return redirect(url_for("recipes"))
-    flash("Error adding recipe.", "error")
+    flash(t("Error adding recipe."), "error")
     return redirect(url_for("add_recipe_form"))
 
 
@@ -1055,9 +1055,12 @@ def edit_recipe(recipe_name):
     ):
         # Use the new name if it was changed, otherwise use the original
         final_name = name_to_update if name_to_update else recipe_name
-        flash(f'Recipe "{final_name}" updated successfully!', "success")
+        flash(
+            t('Recipe "{name}" updated successfully!').format(name=final_name),
+            "success",
+        )
         return redirect(url_for("view_recipe", recipe_name=final_name))
-    flash("Error updating recipe.", "error")
+    flash(t("Error updating recipe."), "error")
     return redirect(url_for("edit_recipe_form", recipe_name=recipe_name))
 
 
@@ -1073,9 +1076,14 @@ def rate_recipe(recipe_name):
     rating = int(request.form.get("rating", 0))
 
     if user_pantry.rate_recipe(recipe_name, rating):
-        flash(f'Recipe "{recipe_name}" rated {rating} stars!', "success")
+        flash(
+            t('Recipe "{name}" rated {rating} stars!').format(
+                name=recipe_name, rating=rating
+            ),
+            "success",
+        )
     else:
-        flash("Error rating recipe.", "error")
+        flash(t("Error rating recipe."), "error")
 
     return redirect(url_for("view_recipe", recipe_name=recipe_name))
 
@@ -1090,10 +1098,13 @@ def delete_recipe(recipe_name):
         return redirect(url_for("logout"))
 
     if user_pantry.delete_recipe(recipe_name):
-        flash(f'Recipe "{recipe_name}" deleted successfully!', "success")
+        flash(
+            t('Recipe "{name}" deleted successfully!').format(name=recipe_name),
+            "success",
+        )
         return redirect(url_for("recipes"))
     else:
-        flash("Error deleting recipe.", "error")
+        flash(t("Error deleting recipe."), "error")
         return redirect(url_for("view_recipe", recipe_name=recipe_name))
 
 
