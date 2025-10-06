@@ -11,9 +11,67 @@
 </div>
 
 {% if recipes %}
-<div class="row">
+<!-- Filter and Sort Controls -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <!-- Search Filter -->
+            <div class="col-md-4">
+                <label for="searchFilter" class="form-label">{{ t('Search') }}</label>
+                <input type="text" class="form-control" id="searchFilter" placeholder="{{ t('Search recipes...') }}">
+            </div>
+
+            <!-- Sort By -->
+            <div class="col-md-3">
+                <label for="sortBy" class="form-label">{{ t('Sort By') }}</label>
+                <select class="form-select" id="sortBy">
+                    <option value="name-asc">{{ t('Name (A-Z)') }}</option>
+                    <option value="name-desc">{{ t('Name (Z-A)') }}</option>
+                    <option value="time-asc">{{ t('Time (Low to High)') }}</option>
+                    <option value="time-desc">{{ t('Time (High to Low)') }}</option>
+                    <option value="rating-desc">{{ t('Rating (High to Low)') }}</option>
+                    <option value="rating-asc">{{ t('Rating (Low to High)') }}</option>
+                </select>
+            </div>
+
+            <!-- Rating Filter -->
+            <div class="col-md-3">
+                <label for="ratingFilter" class="form-label">{{ t('Minimum Rating') }}</label>
+                <select class="form-select" id="ratingFilter">
+                    <option value="0">{{ t('All Ratings') }}</option>
+                    <option value="1">1+ ★</option>
+                    <option value="2">2+ ★★</option>
+                    <option value="3">3+ ★★★</option>
+                    <option value="4">4+ ★★★★</option>
+                    <option value="5">5 ★★★★★</option>
+                </select>
+            </div>
+
+            <!-- Max Time Filter -->
+            <div class="col-md-2">
+                <label for="maxTimeFilter" class="form-label">{{ t('Max Time (min)') }}</label>
+                <input type="number" class="form-control" id="maxTimeFilter" placeholder="{{ t('Any') }}" min="0">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recipe Count Display -->
+<div class="mb-3">
+    <small class="text-muted">
+        <span id="recipeCount">{{ recipes|length }}</span> {{ t('recipes') }}
+        <span id="filteredCount" style="display: none;">
+            (<span id="filteredNumber">0</span> {{ t('shown') }})
+        </span>
+    </small>
+</div>
+
+<div class="row" id="recipeContainer">
     {% for recipe in recipes %}
-    <div class="col-md-6 col-lg-4 mb-4">
+    <div class="col-md-6 col-lg-4 mb-4 recipe-card"
+         data-name="{{ recipe.name|lower }}"
+         data-time="{{ recipe.time_minutes }}"
+         data-rating="{{ recipe.rating|default(0) }}">
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title">{{ recipe.name }}</h5>
@@ -37,11 +95,11 @@
             </div>
             <div class="card-footer">
                 <div class="btn-group w-100" role="group">
-                    <a href="{{ url_for('view_recipe', recipe_name=recipe.name) }}" 
+                    <a href="{{ url_for('view_recipe', recipe_name=recipe.name) }}"
                        class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-eye"></i> {{ t('View') }}
                     </a>
-                    <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}" 
+                    <a href="{{ url_for('edit_recipe_form', recipe_name=recipe.name) }}"
                        class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-edit"></i> {{ t('Edit') }}
                     </a>
@@ -61,4 +119,96 @@
     </a>
 </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchFilter = document.getElementById('searchFilter');
+    const sortBy = document.getElementById('sortBy');
+    const ratingFilter = document.getElementById('ratingFilter');
+    const maxTimeFilter = document.getElementById('maxTimeFilter');
+    const recipeContainer = document.getElementById('recipeContainer');
+    const filteredCount = document.getElementById('filteredCount');
+    const filteredNumber = document.getElementById('filteredNumber');
+    const recipeCards = Array.from(document.querySelectorAll('.recipe-card'));
+
+    function applyFiltersAndSort() {
+        const searchTerm = searchFilter.value.toLowerCase();
+        const minRating = parseFloat(ratingFilter.value);
+        const maxTime = maxTimeFilter.value ? parseInt(maxTimeFilter.value) : null;
+        const sortValue = sortBy.value;
+
+        let visibleCards = recipeCards.filter(card => {
+            const name = card.dataset.name;
+            const time = parseInt(card.dataset.time);
+            const rating = parseFloat(card.dataset.rating);
+
+            // Search filter
+            if (searchTerm && !name.includes(searchTerm)) {
+                return false;
+            }
+
+            // Rating filter
+            if (minRating > 0 && rating < minRating) {
+                return false;
+            }
+
+            // Time filter
+            if (maxTime !== null && time > maxTime) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // Sort
+        const [sortKey, sortDir] = sortValue.split('-');
+        visibleCards.sort((a, b) => {
+            let aVal, bVal;
+
+            if (sortKey === 'name') {
+                aVal = a.dataset.name;
+                bVal = b.dataset.name;
+            } else if (sortKey === 'time') {
+                aVal = parseInt(a.dataset.time);
+                bVal = parseInt(b.dataset.time);
+            } else if (sortKey === 'rating') {
+                aVal = parseFloat(a.dataset.rating);
+                bVal = parseFloat(b.dataset.rating);
+            }
+
+            if (sortDir === 'asc') {
+                return aVal > bVal ? 1 : -1;
+            } else {
+                return aVal < bVal ? 1 : -1;
+            }
+        });
+
+        // Hide all cards first
+        recipeCards.forEach(card => card.style.display = 'none');
+
+        // Show and reorder visible cards
+        visibleCards.forEach(card => {
+            card.style.display = 'block';
+            recipeContainer.appendChild(card);
+        });
+
+        // Update count display
+        const totalCards = recipeCards.length;
+        const visibleCount = visibleCards.length;
+
+        if (visibleCount < totalCards) {
+            filteredNumber.textContent = visibleCount;
+            filteredCount.style.display = 'inline';
+        } else {
+            filteredCount.style.display = 'none';
+        }
+    }
+
+    // Add event listeners
+    searchFilter.addEventListener('input', applyFiltersAndSort);
+    sortBy.addEventListener('change', applyFiltersAndSort);
+    ratingFilter.addEventListener('change', applyFiltersAndSort);
+    maxTimeFilter.addEventListener('input', applyFiltersAndSort);
+});
+</script>
 {% endblock %}
