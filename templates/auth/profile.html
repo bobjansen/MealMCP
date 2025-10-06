@@ -87,19 +87,6 @@
             </div>
         </div>
 
-        <!-- Household Units Card -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-home"></i> {{ t('Household Units') }}</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted mb-3">{{ t('Manage preferred measurement units for this household') }}</p>
-                <a href="{{ url_for('household') }}" class="btn btn-primary">
-                    <i class="fas fa-cogs"></i> {{ t('Manage Household Units') }}
-                </a>
-            </div>
-        </div>
-
         <!-- Change Password Card -->
         <div class="card">
             <div class="card-header">
@@ -148,7 +135,7 @@
     document.getElementById('confirm_password').addEventListener('input', function() {
         const newPassword = document.getElementById('new_password').value;
         const confirmPassword = this.value;
-        
+
         if (newPassword !== confirmPassword) {
             this.setCustomValidity('Passwords do not match');
         } else {
