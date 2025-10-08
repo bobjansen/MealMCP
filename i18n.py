@@ -365,9 +365,11 @@ TRANSLATIONS = {
         "All Ratings": "All Ratings",
         "Max Time (min)": "Max Time (min)",
         "Any": "Any",
-        "recipes": "recipes",
         "shown": "shown",
         "Click to rate": "Click to rate",
+        "Enter date in mm-dd-yyyy format": "Enter date in mm-dd-yyyy format",
+        "Format": "Format",
+        "Selected": "Selected",
     },
     "nl": {
         "Food Preferences": "Voedselvoorkeuren",
@@ -540,7 +542,6 @@ TRANSLATIONS = {
         "Set up your": "Stel uw",
         "food preferences": "voedselvoorkeuren",
         "Create and manage": "Maak en beheer",
-        "recipes": "recepten",
         "Plan your": "Plan uw",
         "weekly meals": "wekelijkse maaltijden",
         "Add ingredients to your": "Voeg ingrediënten toe aan uw",
@@ -729,9 +730,11 @@ TRANSLATIONS = {
         "All Ratings": "Alle Beoordelingen",
         "Max Time (min)": "Max Tijd (min)",
         "Any": "Alle",
-        "recipes": "recepten",
         "shown": "getoond",
         "Click to rate": "Klik om te beoordelen",
+        "Enter date in mm-dd-yyyy format": "Voer datum in als mm-dd-jjjj",
+        "Format": "Formaat",
+        "Selected": "Geselecteerd",
     },
 }
 
@@ -749,3 +752,112 @@ def t(text: str, lang: str | None = None) -> str:
     """Translate text to the active language."""
     lang = lang or LANG
     return TRANSLATIONS.get(lang, TRANSLATIONS["en"]).get(text, text)
+
+
+# Day names for date formatting
+DAY_NAMES = {
+    "en": {
+        "Monday": "Monday",
+        "Tuesday": "Tuesday",
+        "Wednesday": "Wednesday",
+        "Thursday": "Thursday",
+        "Friday": "Friday",
+        "Saturday": "Saturday",
+        "Sunday": "Sunday",
+    },
+    "nl": {
+        "Monday": "Maandag",
+        "Tuesday": "Dinsdag",
+        "Wednesday": "Woensdag",
+        "Thursday": "Donderdag",
+        "Friday": "Vrijdag",
+        "Saturday": "Zaterdag",
+        "Sunday": "Zondag",
+    },
+}
+
+# Month names for date formatting
+MONTH_NAMES = {
+    "en": {
+        "January": "January",
+        "February": "February",
+        "March": "March",
+        "April": "April",
+        "May": "May",
+        "June": "June",
+        "July": "July",
+        "August": "August",
+        "September": "September",
+        "October": "October",
+        "November": "November",
+        "December": "December",
+    },
+    "nl": {
+        "January": "Januari",
+        "February": "Februari",
+        "March": "Maart",
+        "April": "April",
+        "May": "Mei",
+        "June": "Juni",
+        "July": "Juli",
+        "August": "Augustus",
+        "September": "September",
+        "October": "Oktober",
+        "November": "November",
+        "December": "December",
+    },
+}
+
+# Short month names
+MONTH_NAMES_SHORT = {
+    "en": {
+        "Jan": "Jan",
+        "Feb": "Feb",
+        "Mar": "Mar",
+        "Apr": "Apr",
+        "May": "May",
+        "Jun": "Jun",
+        "Jul": "Jul",
+        "Aug": "Aug",
+        "Sep": "Sep",
+        "Oct": "Oct",
+        "Nov": "Nov",
+        "Dec": "Dec",
+    },
+    "nl": {
+        "Jan": "Jan",
+        "Feb": "Feb",
+        "Mar": "Mrt",
+        "Apr": "Apr",
+        "May": "Mei",
+        "Jun": "Jun",
+        "Jul": "Jul",
+        "Aug": "Aug",
+        "Sep": "Sep",
+        "Oct": "Okt",
+        "Nov": "Nov",
+        "Dec": "Dec",
+    },
+}
+
+
+def get_day_name(english_day_name: str, lang: str | None = None) -> str:
+    """Get localized day name."""
+    lang = lang or LANG
+    return DAY_NAMES.get(lang, DAY_NAMES["en"]).get(english_day_name, english_day_name)
+
+
+def get_month_name(english_month_name: str, lang: str | None = None) -> str:
+    """Get localized month name."""
+    lang = lang or LANG
+    return MONTH_NAMES.get(lang, MONTH_NAMES["en"]).get(
+        english_month_name, english_month_name
+    )
+
+
+def get_month_name_short(english_month_short: str, lang: str | None = None) -> str:
+    """Get localized short month name."""
+    lang = lang or LANG
+    return MONTH_NAMES_SHORT.get(lang, MONTH_NAMES_SHORT["en"]).get(
+        english_month_short, english_month_short
+    )

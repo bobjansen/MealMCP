@@ -290,6 +290,60 @@ def strftime_filter(date_str, format="%A"):
         return date_str
 
 
+@app.template_filter("localized_date")
+def localized_date_filter(date_str, format_type="full"):
+    """
+    Format date string with localized day/month names.
+
+    Args:
+        date_str: ISO date string or date object
+        format_type:
+            - "full" (Monday, January 15, 2025)
+            - "short" (Jan 15)
+            - "short_with_year" (Jan 15, 2025)
+            - "day" (Monday)
+            - "numeric" (10-08-2025)
+            - "numeric_short" (10-08)
+
+    Returns:
+        Localized date string
+    """
+    from i18n import get_day_name, get_month_name, get_month_name_short
+
+    try:
+        if isinstance(date_str, str):
+            date_obj = datetime.fromisoformat(date_str).date()
+        else:
+            date_obj = date_str
+
+        # Get English names first
+        english_day = date_obj.strftime("%A")
+        english_month = date_obj.strftime("%B")
+        english_month_short = date_obj.strftime("%b")
+
+        # Get localized names
+        day_name = get_day_name(english_day)
+        month_name = get_month_name(english_month)
+        month_name_short = get_month_name_short(english_month_short)
+
+        if format_type == "day":
+            return day_name
+        elif format_type == "short":
+            return f"{month_name_short} {date_obj.day}"
+        elif format_type == "short_with_year":
+            return f"{month_name_short} {date_obj.day}, {date_obj.year}"
+        elif format_type == "full":
+            return f"{day_name}, {month_name} {date_obj.day}, {date_obj.year}"
+        elif format_type == "numeric":
+            return f"{date_obj.month:02d}-{date_obj.day:02d}-{date_obj.year}"
+        elif format_type == "numeric_short":
+            return f"{date_obj.month:02d}-{date_obj.day:02d}"
+        else:
+            return date_str
+    except Exception:  # pylint: disable=broad-except
+        return date_str
+
+
 @app.template_filter("markdown")
 def markdown_filter(text):
     """Convert markdown text to HTML."""

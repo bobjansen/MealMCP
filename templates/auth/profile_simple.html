@@ -30,8 +30,8 @@
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <strong>Account Created:</strong>
-                        <p class="text-muted">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
+                        <strong>{{ t('Account Created') }}:</strong>
+                        <p class="text-muted">{{ (user.created_at | localized_date('numeric')) if user.created_at else 'N/A' }}</p>
                     </div>
                     <div class="col-md-6">
                         <strong>Status:</strong>

@@ -18,7 +18,7 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-calendar-week"></i> {{ t("This Week's Meal Plan") }}
-                    <small class="text-muted">({{ start_date.strftime('%b %d') }} - {{ end_date.strftime('%b %d, %Y') }})</small>
+                    <small class="text-muted">({{ start_date | localized_date('numeric_short') }} - {{ end_date | localized_date('numeric') }})</small>
                 </h5>
             </div>
             <div class="card-body">
@@ -36,11 +36,8 @@
                         <tbody>
                             {% for meal in meal_plan %}
                             <tr id="meal-row-{{ loop.index }}">
-                                <td>{{ meal.date }}</td>
-                                <td>
-                                    {% set day_name = meal.date | strftime('%A') %}
-                                    {{ day_name }}
-                                </td>
+                                <td>{{ meal.date | localized_date('numeric') }}</td>
+                                <td>{{ meal.date | localized_date('day') }}</td>
                                 <td>
                                     <!-- Display mode -->
                                     <div class="meal-display-{{ loop.index }}">
@@ -125,7 +122,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="meal_date" class="form-label">{{ t('Date') }}</label>
-                            <input type="date" class="form-control" id="meal_date" name="meal_date" 
+                            <input type="date" class="form-control" id="meal_date" name="meal_date"
                                    required min="{{ start_date.isoformat() }}">
                         </div>
                         <div class="col-md-6 mb-3">
@@ -232,7 +229,7 @@ function printGroceryList() {
 
     const printContent = `
         <h2>{{ t('Grocery List') }}</h2>
-        <p><strong>{{ t('Week of:') }}</strong> {{ start_date.strftime('%B %d, %Y') }}</p>
+        <p><strong>{{ t('Week of:') }}</strong> {{ start_date | localized_date('numeric') }}</p>
         <ul>
             ${groceryItems.map(item => `<li>${item}</li>`).join('')}
         </ul>
