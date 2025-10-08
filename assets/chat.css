@@ -1,0 +1,113 @@
+/* Shared chat styles */
+.message {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: white;
+}
+
+.message.user {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.message.assistant {
+    background-color: #f3e5f5;
+    border-left: 4px solid #9c27b0;
+}
+
+.message.tool {
+    background-color: #e8f5e8;
+    border-left: 4px solid #4caf50;
+    font-size: 0.9rem;
+}
+
+.thinking {
+    padding: 1rem;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+/* Markdown content styling */
+.message-content ul,
+.message-content ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.message-content li {
+    margin-bottom: 0.25rem;
+}
+
+.message-content p {
+    margin-bottom: 0.75rem;
+}
+
+.message-content code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.message-content h1 { font-size: 1.5rem; }
+.message-content h2 { font-size: 1.3rem; }
+.message-content h3 { font-size: 1.1rem; }
+.message-content h4 { font-size: 1rem; }
+
+.message-content blockquote {
+    border-left: 3px solid #ccc;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: #666;
+}
+
+.message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.message-content table th,
+.message-content table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.message-content table th {
+    background-color: rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+}
+
+.message-content strong {
+    font-weight: 600;
+}
+
+.message-content em {
+    font-style: italic;
+}
+
+.message-content hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 1rem 0;
+}

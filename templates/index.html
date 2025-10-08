@@ -85,6 +85,63 @@
 <div class="row mt-4">
     <div class="col-12">
         <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-robot"></i> {{ t('AI Assistant') }}
+                </h4>
+            </div>
+            <div class="card-body p-0">
+                <!-- Chat Container -->
+                <div id="dashboardChatContainer" class="dashboard-chat-container">
+                    <div class="message assistant">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-robot text-primary fs-5"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <strong class="text-primary">AI Assistant</strong>
+                                <div class="mt-2">
+                                    {{ t('Get personalized meal recommendations, recipe suggestions, and cooking help from your AI assistant') }}
+                                    <ul class="mt-2 mb-0">
+                                        <li>{{ t('Find and suggest recipes') }}</li>
+                                        <li>{{ t('Manage your pantry inventory') }}</li>
+                                        <li>{{ t('Plan meals for the week') }}</li>
+                                        <li>{{ t('Generate grocery lists') }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Input -->
+                <div class="p-3 border-top">
+                    <div class="input-group">
+                        <input type="text" id="dashboardMessageInput" class="form-control"
+                               placeholder="{{ t('Ask me about recipes, meal planning, or your pantry...') }}"
+                               onkeypress="handleDashboardKeyPress(event)">
+                        <button id="dashboardSendBtn" class="btn btn-primary" onclick="sendDashboardMessage()">
+                            <i class="fas fa-paper-plane"></i> {{ t('Send') }}
+                        </button>
+                    </div>
+
+                    <!-- Quick suggestions -->
+                    <div class="mt-2">
+                        <small class="text-muted d-block mb-1"><strong>{{ t('Try asking:') }}</strong></small>
+                        <span class="badge bg-light text-dark me-1 mb-1" onclick="setDashboardMessage(this.textContent)" style="cursor: pointer;">{{ t('What recipes can I make with chicken?') }}</span>
+                        <span class="badge bg-light text-dark me-1 mb-1" onclick="setDashboardMessage(this.textContent)" style="cursor: pointer;">{{ t('Plan meals for this week') }}</span>
+                        <span class="badge bg-light text-dark me-1 mb-1" onclick="setDashboardMessage(this.textContent)" style="cursor: pointer;">{{ t('What\'s in my pantry?') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if is_first_login %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-info-circle"></i> {{ t('Getting Started') }}
@@ -116,4 +173,64 @@
         </div>
     </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+<style>
+.dashboard-chat-container {
+    overflow-y: auto;
+    padding: 0.5rem;
+    max-height: 400px;
+    min-height: 200px;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column-reverse; /* Reverse order: newest at top */
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script src="{{ url_for('static', filename='chat.js') }}"></script>
+<script>
+    // Initialize chat interface
+    const dashboardChat = new ChatInterface(
+        'dashboardChatContainer',
+        'dashboardMessageInput',
+        'dashboardSendBtn',
+        'dashboard'
+    );
+
+    const labels = {
+        user: '{{ t("You") }}',
+        assistant: '{{ t("AI Assistant") }}',
+        tool: '{{ t("Tool") }}',
+        executed: '{{ t("Executed successfully") }}',
+        thinking: '{{ t("Thinking...") }}',
+        error: '{{ t("Error") }}'
+    };
+
+    function handleDashboardKeyPress(event) {
+        if (event.key === 'Enter') {
+            dashboardChat.sendMessage(labels);
+        }
+    }
+
+    function setDashboardMessage(text) {
+        dashboardChat.setMessage(text);
+    }
+
+    function sendDashboardMessage() {
+        dashboardChat.sendMessage(labels);
+    }
+
+    // Load history on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => dashboardChat.loadHistory(labels));
+    } else {
+        dashboardChat.loadHistory(labels);
+    }
+</script>
 {% endblock %}

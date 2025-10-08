@@ -406,7 +406,10 @@ def login():
             session.permanent = True  # Make session permanent
             session["user_id"] = user_info["id"]
             session["username"] = user_info["username"]
-            logger.info(f"User {user_info['username']} logged in successfully")
+            session["is_first_login"] = user_info.get("is_first_login", False)
+            logger.info(
+                f"User {user_info['username']} logged in successfully (first login: {user_info.get('is_first_login', False)})"
+            )
             return redirect(url_for("index"))
         flash("Invalid username or password.", "error")
 
@@ -636,7 +639,7 @@ def index():
     """Main dashboard or landing page."""
     if backend == "sqlite":
         # For SQLite mode, go directly to dashboard
-        context = {"backend": backend}
+        context = {"backend": backend, "is_first_login": False}
         return render_template("index.html", **context)
 
     if "user_id" in session:
@@ -644,6 +647,8 @@ def index():
         context = {"backend": backend}
         if "username" in session:
             context["username"] = session["username"]
+        # Get and clear is_first_login flag (only show once)
+        context["is_first_login"] = session.pop("is_first_login", False)
         return render_template("index.html", **context)
 
     # User is not logged in, show landing page
@@ -654,7 +659,7 @@ def index():
 @requires_auth
 def dashboard():
     """Main dashboard page (protected)."""
-    context = {"backend": backend}
+    context = {"backend": backend, "is_first_login": False}
     if backend == "postgresql" and "username" in session:
         context["username"] = session["username"]
     return render_template("index.html", **context)

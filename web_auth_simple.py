@@ -132,14 +132,14 @@ class WebUserManager:
         """Authenticate user with username and password."""
         if self.backend == "sqlite":
             # In SQLite mode, no authentication needed
-            return True, {"id": 1, "username": "local_user"}
+            return True, {"id": 1, "username": "local_user", "is_first_login": False}
 
         try:
             with psycopg2.connect(self.connection_string) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT id, username, email, password_hash, is_active
+                        SELECT id, username, email, password_hash, is_active, last_login
                         FROM users WHERE username = %s
                     """,
                         (username,),
@@ -149,16 +149,29 @@ class WebUserManager:
                     if not user:
                         return False, None
 
-                    user_id, username, email, password_hash, is_active = user
+                    user_id, username, email, password_hash, is_active, last_login = (
+                        user
+                    )
 
                     if not is_active:
                         return False, None
 
                     if check_password_hash(password_hash, password):
+                        # Check if this is the first login (last_login is NULL)
+                        is_first_login = last_login is None
+
+                        # Update last_login timestamp
+                        cursor.execute(
+                            "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s",
+                            (user_id,),
+                        )
+                        conn.commit()
+
                         return True, {
                             "id": user_id,
                             "username": username,
                             "email": email,
+                            "is_first_login": is_first_login,
                         }
                     else:
                         return False, None

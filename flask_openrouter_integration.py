@@ -15,35 +15,6 @@ logger = logging.getLogger(__name__)
 def add_openrouter_routes(app, requires_auth_decorator):
     """Add OpenRouter routes to the Flask app."""
 
-    @app.route("/chat")
-    @requires_auth_decorator
-    def chat_interface():
-        """Main chat interface page."""
-        if not is_openrouter_available():
-            return render_template_string(
-                """
-            <div class="container mt-5">
-                <div class="alert alert-warning">
-                    <h4>🤖 AI Assistant Not Available</h4>
-                    <p>To use the AI assistant, set the <code>OPENROUTER_API_KEY</code> environment variable.</p>
-                    <p>Get your API key from <a href="https://openrouter.ai" target="_blank">OpenRouter.ai</a></p>
-                </div>
-            </div>
-            """
-            )
-
-        # Get user ID and create session ID based on user
-        backend = app.config.get("PANTRY_BACKEND", "sqlite")
-        if backend == "postgresql" and "user_id" in session:
-            user_id = session["user_id"]
-            session_id = f"user_{user_id}"
-        else:
-            # Single user mode - use fixed session
-            user_id = None
-            session_id = "single_user"
-
-        return render_template("chat.html")
-
     @app.route("/api/chat", methods=["POST"])
     @requires_auth_decorator
     def api_chat():

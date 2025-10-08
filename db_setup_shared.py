@@ -112,6 +112,7 @@ def _setup_shared_database_impl(cursor, dialect: str) -> None:
         _execute_with_reporting(cursor, schema)
 
     # Add additional columns to existing users table if they don't exist
+    timestamp_type = "TIMESTAMP" if dialect == "postgres" else "TIMESTAMP"
     columns_to_add = [
         ("household_id", "INTEGER REFERENCES users(id)"),
         ("household_adults", "INTEGER DEFAULT 2"),
@@ -119,6 +120,7 @@ def _setup_shared_database_impl(cursor, dialect: str) -> None:
         ("preferred_volume_unit", f"{varchar_type} DEFAULT 'Milliliter'"),
         ("preferred_weight_unit", f"{varchar_type} DEFAULT 'Gram'"),
         ("preferred_count_unit", f"{varchar_type} DEFAULT 'Piece'"),
+        ("last_login", f"{timestamp_type} DEFAULT NULL"),
     ]
     for column, definition in columns_to_add:
         _add_column_if_not_exists(cursor, "users", column, definition, dialect=dialect)
