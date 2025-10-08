@@ -244,117 +244,16 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='recipe.js') }}"></script>
 <script>
-// Store units data for JavaScript access, organized by category
-const allUnits = {{ units|tojson }};
-const unitsByCategory = {
-    common: [],
-    volume: [],
-    weight: [],
-    other: []
+// Initialize recipe units and labels
+initializeRecipeUnits({{ units|tojson }});
+window.recipeLabels = {
+    selectUnit: '{{ t("Select unit...") }}',
+    common: '{{ t("Common Cooking") }}',
+    volume: '{{ t("Volume") }}',
+    weight: '{{ t("Weight") }}',
+    other: '{{ t("Other") }}'
 };
-
-// Organize units by category
-['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'].forEach(unit => {
-    if (allUnits.includes(unit)) unitsByCategory.common.push(unit);
-});
-['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'].forEach(unit => {
-    if (allUnits.includes(unit)) unitsByCategory.volume.push(unit);
-});
-['Kilogram', 'Pound'].forEach(unit => {
-    if (allUnits.includes(unit)) unitsByCategory.weight.push(unit);
-});
-
-// Calculate other units (those not in any other category)
-const allCategorizedUnits = [...unitsByCategory.common, ...unitsByCategory.volume, ...unitsByCategory.weight];
-unitsByCategory.other = allUnits.filter(unit => !allCategorizedUnits.includes(unit));
-
-function buildUnitsOptions() {
-    let options = '<option value="">{{ t("Select unit...") }}</option>';
-    
-    // Common Cooking Units
-    if (unitsByCategory.common.length > 0) {
-        options += '<optgroup label="🍽️ {{ t("Common Cooking") }}">';
-        unitsByCategory.common.forEach(unit => {
-            options += `<option value="${unit}">${unit}</option>`;
-        });
-        options += '</optgroup>';
-    }
-    
-    // Volume Units
-    if (unitsByCategory.volume.length > 0) {
-        options += '<optgroup label="🥤 {{ t("Volume") }}">';
-        unitsByCategory.volume.forEach(unit => {
-            options += `<option value="${unit}">${unit}</option>`;
-        });
-        options += '</optgroup>';
-    }
-    
-    // Weight Units
-    if (unitsByCategory.weight.length > 0) {
-        options += '<optgroup label="⚖️ {{ t("Weight") }}">';
-        unitsByCategory.weight.forEach(unit => {
-            options += `<option value="${unit}">${unit}</option>`;
-        });
-        options += '</optgroup>';
-    }
-    
-    // Other Units
-    if (unitsByCategory.other.length > 0) {
-        options += '<optgroup label="📦 {{ t("Other") }}">';
-        unitsByCategory.other.forEach(unit => {
-            options += `<option value="${unit}">${unit}</option>`;
-        });
-        options += '</optgroup>';
-    }
-    
-    return options;
-}
-
-function addIngredient() {
-    const container = document.getElementById('ingredients-container');
-    const newRow = document.createElement('div');
-    newRow.className = 'ingredient-row mb-2';
-    
-    newRow.innerHTML = `
-        <div class="row">
-            <div class="col-md-4">
-                <input type="text" class="form-control" name="ingredient_name[]" 
-                       placeholder="Ingredient name" required>
-            </div>
-            <div class="col-md-3">
-                <input type="number" class="form-control" name="ingredient_quantity[]" 
-                       placeholder="Quantity" step="0.01" required>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" name="ingredient_unit[]" required>
-                    ${buildUnitsOptions()}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="button" class="btn btn-outline-danger w-100" onclick="removeIngredient(this)">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    container.appendChild(newRow);
-}
-
-function removeIngredient(button) {
-    const ingredientRow = button.closest('.ingredient-row');
-    const container = document.getElementById('ingredients-container');
-    
-    // Don't remove if it's the last ingredient
-    if (container.children.length > 1) {
-        ingredientRow.remove();
-    } else {
-        // Clear the inputs instead of removing the row
-        const inputs = ingredientRow.querySelectorAll('input, select');
-        inputs.forEach(input => {
-            input.value = '';
-        });
-    }
-}
 </script>
 {% endblock %}
