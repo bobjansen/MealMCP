@@ -139,7 +139,7 @@ class WebUserManager:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT id, username, email, password_hash, is_active, last_login
+                        SELECT id, username, email, password_hash, is_active, last_login, is_admin
                         FROM users WHERE username = %s
                     """,
                         (username,),
@@ -149,9 +149,15 @@ class WebUserManager:
                     if not user:
                         return False, None
 
-                    user_id, username, email, password_hash, is_active, last_login = (
-                        user
-                    )
+                    (
+                        user_id,
+                        username,
+                        email,
+                        password_hash,
+                        is_active,
+                        last_login,
+                        is_admin,
+                    ) = user
 
                     if not is_active:
                         return False, None
@@ -172,6 +178,7 @@ class WebUserManager:
                             "username": username,
                             "email": email,
                             "is_first_login": is_first_login,
+                            "is_admin": bool(is_admin),
                         }
                     else:
                         return False, None

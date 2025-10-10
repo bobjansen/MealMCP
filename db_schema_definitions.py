@@ -123,6 +123,7 @@ MULTI_USER_POSTGRESQL_SCHEMAS = {
             password_hash VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE,
+            is_admin BOOLEAN DEFAULT FALSE,
             preferred_language VARCHAR(10) DEFAULT 'en',
             household_id INTEGER REFERENCES users(id),
             last_login TIMESTAMP DEFAULT NULL
@@ -265,6 +266,7 @@ MULTI_USER_SQLITE_SCHEMAS = {
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT 1,
+            is_admin BOOLEAN DEFAULT 0,
             preferred_language TEXT DEFAULT 'en',
             household_id INTEGER REFERENCES users(id),
             last_login TIMESTAMP DEFAULT NULL

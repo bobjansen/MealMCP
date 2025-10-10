@@ -26,11 +26,12 @@ function renderMarkdown(text) {
 }
 
 class ChatInterface {
-    constructor(containerId, inputId, sendBtnId, thinkingPrefix = '') {
+    constructor(containerId, inputId, sendBtnId, thinkingPrefix = '', isAdmin = false) {
         this.container = document.getElementById(containerId);
         this.input = document.getElementById(inputId);
         this.sendBtn = document.getElementById(sendBtnId);
         this.thinkingId = thinkingPrefix + 'Thinking';
+        this.isAdmin = isAdmin;
 
         if (!this.container || !this.input || !this.sendBtn) {
             console.error('Chat interface elements not found');
@@ -69,6 +70,11 @@ class ChatInterface {
     }
 
     addToolMessage(toolName, labels = { tool: 'Tool', executed: 'Executed successfully' }) {
+        // Only show tool messages to admin users
+        if (!this.isAdmin) {
+            return;
+        }
+
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message tool';
         messageDiv.innerHTML = `

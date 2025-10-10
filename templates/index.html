@@ -200,7 +200,8 @@
         'dashboardChatContainer',
         'dashboardMessageInput',
         'dashboardSendBtn',
-        'dashboard'
+        'dashboard',
+        {{ 'true' if is_admin else 'false' }}  // Pass is_admin flag
     );
 
     const labels = {

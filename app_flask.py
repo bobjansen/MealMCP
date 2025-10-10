@@ -407,8 +407,9 @@ def login():
             session["user_id"] = user_info["id"]
             session["username"] = user_info["username"]
             session["is_first_login"] = user_info.get("is_first_login", False)
+            session["is_admin"] = user_info.get("is_admin", False)
             logger.info(
-                f"User {user_info['username']} logged in successfully (first login: {user_info.get('is_first_login', False)})"
+                f"User {user_info['username']} logged in successfully (first login: {user_info.get('is_first_login', False)}, admin: {user_info.get('is_admin', False)})"
             )
             return redirect(url_for("index"))
         flash("Invalid username or password.", "error")
@@ -639,7 +640,7 @@ def index():
     """Main dashboard or landing page."""
     if backend == "sqlite":
         # For SQLite mode, go directly to dashboard
-        context = {"backend": backend, "is_first_login": False}
+        context = {"backend": backend, "is_first_login": False, "is_admin": False}
         return render_template("index.html", **context)
 
     if "user_id" in session:
@@ -649,6 +650,7 @@ def index():
             context["username"] = session["username"]
         # Get and clear is_first_login flag (only show once)
         context["is_first_login"] = session.pop("is_first_login", False)
+        context["is_admin"] = session.get("is_admin", False)
         return render_template("index.html", **context)
 
     # User is not logged in, show landing page
