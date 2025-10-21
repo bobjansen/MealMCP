@@ -92,7 +92,7 @@ class MCPToolConverter:
 
     @staticmethod
     def convert_mcp_tools_to_openai(
-        mcp_tools: List[Dict[str, Any]]
+        mcp_tools: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """Convert MCP tool definitions to OpenAI function calling format."""
         openai_tools = []
@@ -474,9 +474,14 @@ class OpenRouterService:
 
     def _build_system_message(self, user_id: Optional[int] = None) -> str:
         """Build system message with user profile context."""
+        # Get current date for context
+        today = datetime.now().strftime("%A, %B %d, %Y")
+
         system_parts = [
             "You are a helpful AI assistant for meal planning and recipe management.",
             "You have access to tools to help users manage their pantry, recipes, meal plans, and preferences.",
+            f"\nToday's date is: {today}",
+            "When planning meals or setting dates, use this as the reference for 'today', 'tomorrow', etc.",
         ]
 
         # Add user profile information if available
@@ -551,10 +556,20 @@ class OpenRouterService:
         """Process a chat message and return the response with any tool calls."""
         session = self.get_session(session_id, user_id)
 
-        # Add system message at the start of conversation if this is the first message
+        # Update or add system message with current date
+        system_content = self._build_system_message(user_id)
         if len(session.get_messages()) == 0:
-            system_content = self._build_system_message(user_id)
+            # First message - add system message
             session.messages.insert(0, {"role": "system", "content": system_content})
+        else:
+            # Update existing system message to reflect current date
+            if session.messages[0]["role"] == "system":
+                session.messages[0]["content"] = system_content
+            else:
+                # System message missing, add it
+                session.messages.insert(
+                    0, {"role": "system", "content": system_content}
+                )
 
         session.add_user_message(message)
 
