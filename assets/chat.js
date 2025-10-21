@@ -67,12 +67,13 @@ class ChatInterface {
             </div>
         `;
 
-        this.container.appendChild(messageDiv);
+        // Prepend new messages at the top for newest-first ordering
+        this.container.insertBefore(messageDiv, this.container.firstChild);
         this.scrollToTop();
     }
 
     scrollToTop() {
-        // Since we use flex-direction: column-reverse, scrollTop = 0 shows the newest messages
+        // Scroll to top to show newest messages (which are prepended at the top)
         if (!this.bulkLoading) {
             this.container.scrollTop = 0;
         }
@@ -97,7 +98,8 @@ class ChatInterface {
                 </div>
             </div>
         `;
-        this.container.appendChild(messageDiv);
+        // Prepend tool messages at the top
+        this.container.insertBefore(messageDiv, this.container.firstChild);
         this.scrollToTop();
     }
 
@@ -106,7 +108,8 @@ class ChatInterface {
         thinkingDiv.className = 'thinking';
         thinkingDiv.id = this.thinkingId;
         thinkingDiv.innerHTML = `<i class="fas fa-brain"></i> ${thinkingText}`;
-        this.container.appendChild(thinkingDiv);
+        // Prepend thinking indicator at the top
+        this.container.insertBefore(thinkingDiv, this.container.firstChild);
         this.scrollToTop();
     }
 
@@ -118,7 +121,15 @@ class ChatInterface {
     }
 
     clearMessages() {
-        this.container.innerHTML = '';
+        // Clear all messages but preserve any static welcome message
+        const messages = this.container.querySelectorAll('.message, .thinking');
+        messages.forEach(msg => {
+            // Only remove dynamically added messages (those without specific IDs)
+            // Keep the initial static welcome message which doesn't have a timestamp or dynamic marker
+            if (!msg.hasAttribute('data-static')) {
+                msg.remove();
+            }
+        });
     }
 
     async sendMessage(labels = {}) {
@@ -188,12 +199,11 @@ class ChatInterface {
                 // Set bulk loading flag to prevent scrolling on each message
                 this.bulkLoading = true;
 
-                // Reverse for newest-first display (with column-reverse CSS)
-                const reversedMessages = [...data.messages].reverse();
+                console.log('Loading', data.messages.length, 'messages'); // Debug log
 
-                console.log('Loading', reversedMessages.length, 'messages'); // Debug log
-
-                for (const message of reversedMessages) {
+                // Process messages in chronological order (oldest to newest)
+                // Since addMessage prepends, this will result in newest messages at the top
+                for (const message of data.messages) {
                     if (message.role === 'user') {
                         this.addMessage(message.content, 'user', labels);
                     } else if (message.role === 'assistant') {
@@ -210,7 +220,7 @@ class ChatInterface {
                 // Reset bulk loading flag
                 this.bulkLoading = false;
 
-                // Scroll to top once after loading all messages
+                // Scroll to top once after loading all messages to show the newest
                 this.scrollToTop();
             } else {
                 console.log('No chat history found'); // Debug log
