@@ -32,6 +32,7 @@ class ChatInterface {
         this.sendBtn = document.getElementById(sendBtnId);
         this.thinkingId = thinkingPrefix + 'Thinking';
         this.isAdmin = isAdmin;
+        this.bulkLoading = false;
 
         if (!this.container || !this.input || !this.sendBtn) {
             console.error('Chat interface elements not found');
@@ -67,6 +68,14 @@ class ChatInterface {
         `;
 
         this.container.appendChild(messageDiv);
+        this.scrollToTop();
+    }
+
+    scrollToTop() {
+        // Since we use flex-direction: column-reverse, scrollTop = 0 shows the newest messages
+        if (!this.bulkLoading) {
+            this.container.scrollTop = 0;
+        }
     }
 
     addToolMessage(toolName, labels = { tool: 'Tool', executed: 'Executed successfully' }) {
@@ -89,6 +98,7 @@ class ChatInterface {
             </div>
         `;
         this.container.appendChild(messageDiv);
+        this.scrollToTop();
     }
 
     addThinking(thinkingText = 'Thinking...') {
@@ -97,6 +107,7 @@ class ChatInterface {
         thinkingDiv.id = this.thinkingId;
         thinkingDiv.innerHTML = `<i class="fas fa-brain"></i> ${thinkingText}`;
         this.container.appendChild(thinkingDiv);
+        this.scrollToTop();
     }
 
     removeThinking() {
@@ -174,6 +185,9 @@ class ChatInterface {
             if (data.messages && data.messages.length > 0) {
                 this.clearMessages();
 
+                // Set bulk loading flag to prevent scrolling on each message
+                this.bulkLoading = true;
+
                 // Reverse for newest-first display (with column-reverse CSS)
                 const reversedMessages = [...data.messages].reverse();
 
@@ -192,6 +206,12 @@ class ChatInterface {
                         }
                     }
                 }
+
+                // Reset bulk loading flag
+                this.bulkLoading = false;
+
+                // Scroll to top once after loading all messages
+                this.scrollToTop();
             } else {
                 console.log('No chat history found'); // Debug log
             }
