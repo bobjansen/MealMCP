@@ -35,7 +35,7 @@ def add_openrouter_routes(app, requires_auth_decorator):
                 return jsonify({"error": "Message is required"}), 400
 
             message = data["message"]
-            model = "deepseek/deepseek-chat-v3.1:free"
+            model = "deepseek/deepseek-chat-v3-0324"
 
             # Get user ID and create session ID based on user
             backend = app.config.get("PANTRY_BACKEND", "sqlite")
