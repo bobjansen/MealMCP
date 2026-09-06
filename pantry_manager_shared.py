@@ -28,6 +28,10 @@ from constants import (
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
 from scripts.short_id_utils import parse_short_id
 from db import get_database
+from db_schema_definitions import (
+    MULTI_USER_POSTGRESQL_SCHEMAS,
+    MULTI_USER_SQLITE_SCHEMAS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -242,18 +246,13 @@ class SharedPantryManager(PantryManager):
     def _initialize_units(self) -> None:
         """Ensure units table exists and user has default units."""
         placeholder = self._get_placeholder()
+        if self.backend == "postgresql":
+            units_schema = MULTI_USER_POSTGRESQL_SCHEMAS["units"]
+        else:
+            units_schema = MULTI_USER_SQLITE_SCHEMAS["units"]
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"""
-CREATE TABLE IF NOT EXISTS units (
-id {'SERIAL PRIMARY KEY' if self.backend == 'postgresql' else 'INTEGER PRIMARY KEY AUTOINCREMENT'},
-user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-name {'VARCHAR(255)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
-base_unit {'VARCHAR(20)' if self.backend == 'postgresql' else 'TEXT'} NOT NULL,
-size REAL NOT NULL,
-UNIQUE(user_id, name))"""
-            )
+            cursor.execute(units_schema)
             cursor.execute(
                 f"SELECT COUNT(*) FROM units WHERE user_id = {placeholder}",
                 (self.user_id,),

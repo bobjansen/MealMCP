@@ -9,6 +9,7 @@ from scripts.short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
 from constants import get_units_for_locale, is_infinite_ingredient
 from db import get_database
+from db_schema_definitions import SINGLE_USER_SCHEMAS
 import i18n
 
 logger = logging.getLogger(__name__)
@@ -46,16 +47,7 @@ class SQLitePantryManager(PantryManager):
         """Populate units table with defaults if empty."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS Units (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL UNIQUE,
-                    base_unit TEXT NOT NULL,
-                    size REAL NOT NULL
-                )
-                """
-            )
+            cursor.execute(SINGLE_USER_SCHEMAS["units"])
             cursor.execute("SELECT COUNT(*) FROM Units")
             if cursor.fetchone()[0] == 0:
                 # Use locale-specific units (default to English for SQLite single-user mode)
