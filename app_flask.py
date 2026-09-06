@@ -3,7 +3,6 @@ import os
 import secrets
 import logging
 import traceback
-from functools import wraps
 from pathlib import Path
 from i18n import t, set_lang
 import i18n
@@ -19,8 +18,8 @@ from flask import (
 )
 from datetime import date, timedelta, datetime
 from pantry_manager_factory import create_pantry_manager
-from pantry_manager_shared import SharedPantryManager
 from web_auth_simple import WebUserManager
+from auth_session import AuthContext, configure_session
 from constants import is_infinite_ingredient
 from flask_openrouter_integration import add_openrouter_routes
 
@@ -173,47 +172,16 @@ if backend == "sqlite":
 else:
     pantry = None  # Will be created per-user session
 
-
-def get_current_user_pantry():
-    """Get the current user's pantry manager."""
-    if backend == "sqlite":
-        # For SQLite mode, check for session language preference
-        session_lang = session.get("language", "en")
-        set_lang(session_lang)
-        return pantry
-
-    if "user_id" not in session:
-        return None
-
-    try:
-        user_info = auth_manager.get_user_by_id(session["user_id"])
-        if not user_info:
-            logger.warning(
-                f"User ID {session['user_id']} not found in database, session may be stale"
-            )
-            return None
-    except Exception as e:
-        logger.error(f"Database error getting user {session.get('user_id')}: {e}")
-        return None
-
-    # Set language based on user preference
-    set_lang(user_info.get("preferred_language", "en"))
-
-    # Determine household owner id - defaults to user's own id
-    household_id = user_info.get("household_id") or user_info["id"]
-
-    # Use SharedPantryManager scoped to household id for PostgreSQL
-    return SharedPantryManager(
-        connection_string=connection_string,
-        user_id=household_id,
-        backend="postgresql",
-    )
+# Session cookie hardening + per-request auth/user context
+configure_session(app)
+auth_ctx = AuthContext(backend, auth_manager, connection_string, pantry)
+requires_auth = auth_ctx.requires_auth
+get_current_user_pantry = auth_ctx.current_pantry
 
 
 @app.before_request
 def set_language():
     """Set language before each request."""
-    # Log incoming request for debugging
     if (
         request.endpoint
         and request.endpoint.startswith("pantry")
@@ -222,11 +190,8 @@ def set_language():
         logger.info(
             f"Incoming request: {request.method} {request.path} from {request.remote_addr}"
         )
-        logger.info(f"Request headers: {dict(request.headers)}")
         if request.method == "POST" and request.form:
-            # Log form data but be careful with sensitive information
-            form_data = dict(request.form)
-            logger.info(f"Form data keys: {list(form_data.keys())}")
+            logger.info(f"Form data keys: {list(request.form.keys())}")
 
     if backend == "sqlite":
         # For SQLite mode, use session language
@@ -241,39 +206,6 @@ def set_language():
             set_lang("en")
     else:
         set_lang("en")
-
-
-def requires_auth(f):
-    """Decorator to require authentication in PostgreSQL mode."""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if backend == "sqlite":
-            return f(*args, **kwargs)
-
-        if "user_id" not in session:
-            logger.info("User not authenticated, redirecting to login")
-            flash("Please log in to access this page.", "warning")
-            return redirect(url_for("login"))
-
-        # Verify user still exists in database
-        try:
-            user_info = auth_manager.get_user_by_id(session["user_id"])
-            if not user_info:
-                logger.warning(
-                    f"User ID {session['user_id']} not found in database, clearing session"
-                )
-                session.clear()
-                flash("Your session has expired. Please log in again.", "warning")
-                return redirect(url_for("login"))
-        except Exception as e:
-            logger.error(f"Database error during authentication check: {e}")
-            flash("A database error occurred. Please try logging in again.", "error")
-            return redirect(url_for("login"))
-
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 # Custom Jinja2 filters
@@ -403,11 +335,7 @@ def login():
         success, user_info = auth_manager.authenticate_user(username, password)
 
         if success:
-            session.permanent = True  # Make session permanent
-            session["user_id"] = user_info["id"]
-            session["username"] = user_info["username"]
-            session["is_first_login"] = user_info.get("is_first_login", False)
-            session["is_admin"] = user_info.get("is_admin", False)
+            auth_ctx.login(user_info)
             logger.info(
                 f"User {user_info['username']} logged in successfully (first login: {user_info.get('is_first_login', False)}, admin: {user_info.get('is_admin', False)})"
             )
@@ -460,7 +388,7 @@ def register():
 def logout():
     """User logout."""
     if backend == "postgresql":
-        session.clear()
+        auth_ctx.logout()
         flash("You have been logged out.", "info")
     return redirect(url_for("index"))
 
