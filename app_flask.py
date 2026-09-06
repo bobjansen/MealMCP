@@ -563,6 +563,21 @@ def delete_unit():
     return redirect(url_for("units_management"))
 
 
+@app.route("/healthz")
+def healthz():
+    """Liveness/readiness probe: verifies the DB is reachable."""
+    try:
+        if backend == "postgresql":
+            from db import get_database
+
+            with get_database("postgresql", connection_string).connection() as conn:
+                conn.cursor().execute("SELECT 1")
+        return {"status": "ok", "backend": backend}, 200
+    except Exception as e:  # pragma: no cover - infra probe
+        logger.error(f"healthz failed: {e}")
+        return {"status": "error"}, 503
+
+
 @app.route("/")
 def index():
     """Main dashboard or landing page."""
