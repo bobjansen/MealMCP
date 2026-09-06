@@ -1,6 +1,6 @@
 # MealMCP: Intelligent Meal Planning and Pantry Management
 
-MealMCP is a sophisticated meal planning and pantry management system that leverages Large Language Models (LLMs) for business logic. The application provides multiple interfaces: a Model Context Protocol (MCP) server for integration with Claude Desktop client, a modern Flask web interface with multi-user authentication support, and a legacy Dash web interface for direct user interaction.
+MealMCP is a sophisticated meal planning and pantry management system that leverages Large Language Models (LLMs) for business logic. The application provides multiple interfaces: a Model Context Protocol (MCP) server for integration with Claude Desktop client, and a modern Flask web interface with multi-user authentication support.
 
 ![MealMCP Interface](example.png)
 
@@ -9,7 +9,7 @@ MealMCP is a sophisticated meal planning and pantry management system that lever
 - 🧾 Recipe Management
 - 🥘 Meal Planning
 - 🗄️ Pantry Inventory Tracking
-- 📊 Interactive Web Dashboard (Flask & Dash)
+- 📊 Interactive Flask Web Dashboard
 - 👥 Multi-User Authentication (PostgreSQL mode)
 - 🔐 Single-User Local Mode (SQLite mode)
 - 🤖 LLM-powered Intelligence
@@ -44,15 +44,7 @@ A modern Flask-based web interface offering:
 - **Smart Launcher**: `run_web.py` with backend validation and helpful startup messages
 - **User Data Isolation**: Secure separation of user data in multi-user mode
 
-#### 3. Legacy Dash Web Application (`app.py`)
-Original web interface built with Dash offering:
-- Interactive recipe management
-- Visual pantry inventory
-- Recipe formatting and display
-- User-friendly forms and tables
-- Single-user mode only
-
-#### 4. Pantry Manager System
+#### 3. Pantry Manager System
 Multiple implementations for different use cases:
 
 **`SQLitePantryManager`**: Single-user SQLite backend
@@ -132,12 +124,6 @@ Then navigate to `/chat` for the AI assistant interface
 ```bash
 uv run app_flask.py
 ```
-
-### Running the Legacy Dash Interface
-```bash
-uv run app.py
-```
-Access the web interface at `http://localhost:8050` (Single-user only)
 
 ### Using the MCP Server
 

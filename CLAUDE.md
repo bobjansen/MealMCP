@@ -11,7 +11,7 @@ All scripts and applications run through uv using `uv run`
 - **Flask Web Interface (Recommended)**: `uv run bin/run_web.py` - Smart launcher with backend detection and validation
 - **Flask Web Interface (Direct)**: `uv run app_flask.py` - Direct Flask app startup on http://localhost:5000 (now includes AI Assistant at /chat)
 - **OpenRouter CLI**: `uv run bin/openrouter_cli.py` - Interactive CLI with LLM integration via OpenRouter using shared service layer
-- **OpenRouter CLI (Legacy)**: `uv run bin/openrouter_cli_legacy.py` - Original CLI implementation (deprecated)
+- **OpenRouter CLI (Legacy)**: `uv run legacy/openrouter_cli_legacy.py` - Original CLI implementation (deprecated, kept for reference)
 - **Unified MCP Server (Recommended)**: `uv run bin/run_mcp.py [mode]` - Single server supporting all transport modes
   - `uv run bin/run_mcp.py` - FastMCP local mode (default)
   - `uv run bin/run_mcp.py http --port 8080` - HTTP REST API server
@@ -73,11 +73,6 @@ All scripts and applications run through uv using `uv run`
 - Routes: Preferences, Pantry Management, Recipes, Meal Planning, User Authentication
 - Uses `SharedPantryManager` for user data isolation in PostgreSQL mode
 - Includes authentication decorators and session management
-
-**Legacy Dash Web App (`app.py`)**
-- Original multi-tab interface built with Dash and Bootstrap components
-- Single-user only, no authentication support
-- Uses callback-driven architecture with `@app.callback` decorators
 
 ### Database Schema
 
