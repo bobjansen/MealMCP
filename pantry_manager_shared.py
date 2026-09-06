@@ -27,8 +27,13 @@ from constants import (
 )
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
 from scripts.short_id_utils import parse_short_id
+from db import get_database
 
 logger = logging.getLogger(__name__)
+
+# Tracks (connection_string, backend, user_id) tuples whose unit table has been
+# ensured/seeded in this process, so __init__ stays cheap on repeated creation.
+_initialized_units: set = set()
 
 
 class SharedPantryManager(PantryManager):
@@ -46,30 +51,22 @@ class SharedPantryManager(PantryManager):
             backend: 'sqlite' or 'postgresql'
             **kwargs: Additional configuration options
         """
+        self._db = get_database(backend, connection_string)
         self.connection_string = connection_string
         self.user_id = user_id
-        self.backend = backend
-        self.connection_params = kwargs
+        self.backend = self._db.backend
 
-        if backend == "postgresql" and connection_string.startswith(
-            ("postgresql://", "postgres://")
-        ):
-            parsed = urlparse(connection_string)
-            self.connection_params.update(
-                {
-                    "host": parsed.hostname,
-                    "port": parsed.port or 5432,
-                    "database": parsed.path.lstrip("/"),
-                    "user": parsed.username,
-                    "password": parsed.password,
-                }
-            )
-
-        try:
-            self._initialize_units()
-        except Exception:
-            # Defer database errors until operations are attempted
-            pass
+        # Unit table creation / per-user seeding only needs to happen once per
+        # process for a given database + user, not on every instantiation (these
+        # managers are created per web request).
+        init_key = (self.connection_string, self.backend, self.user_id)
+        if init_key not in _initialized_units:
+            try:
+                self._initialize_units()
+                _initialized_units.add(init_key)
+            except Exception:
+                # Defer database errors until operations are attempted
+                pass
 
     # Input Validation Methods
     def _validate_string(
@@ -230,12 +227,13 @@ class SharedPantryManager(PantryManager):
         )
 
     def _get_connection(self):
-        """Get a database connection. Should be used in a context manager."""
-        if self.backend == "postgresql":
-            return psycopg2.connect(**self.connection_params)
-        conn = sqlite3.connect(self.connection_string)
-        conn.isolation_level = None  # Enable autocommit mode
-        return conn
+        """Return a pooled connection context manager.
+
+        Use as ``with self._get_connection() as conn``: the block commits on
+        success, rolls back on error, and releases the connection back to the
+        pool (PostgreSQL) or closes it (SQLite).
+        """
+        return self._db.connection()
 
     def _get_placeholder(self) -> str:
         """Get the parameter placeholder for the current database."""

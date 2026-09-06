@@ -2,9 +2,9 @@ import os
 import secrets
 import smtplib
 from typing import Dict, Optional, Tuple
-import psycopg2
 from flask import url_for
 from werkzeug.security import generate_password_hash, check_password_hash
+from db import get_database
 from db_setup_shared import setup_shared_database
 
 
@@ -21,9 +21,18 @@ class WebUserManager:
         """
         self.backend = backend
         self.connection_string = connection_string
+        self._db = (
+            get_database(backend, connection_string)
+            if backend == "postgresql" and connection_string
+            else None
+        )
 
         if backend == "postgresql" and connection_string:
             self._init_shared_database()
+
+    def _connect(self):
+        """Return a pooled connection context manager for the shared database."""
+        return self._db.connection()
 
     def _init_shared_database(self):
         """Initialize the shared database with user-scoped tables."""
@@ -68,7 +77,7 @@ class WebUserManager:
         try:
             password_hash = generate_password_hash(password)
 
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     household_id = None
                     if invite_code:
@@ -135,7 +144,7 @@ class WebUserManager:
             return True, {"id": 1, "username": "local_user", "is_first_login": False}
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
@@ -193,7 +202,7 @@ class WebUserManager:
             return False
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         "SELECT 1 FROM users WHERE username = %s", (username,)
@@ -208,7 +217,7 @@ class WebUserManager:
             return False
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("SELECT 1 FROM users WHERE email = %s", (email,))
                     return cursor.fetchone() is not None
@@ -222,7 +231,7 @@ class WebUserManager:
 
         secret = secrets.token_urlsafe(16)
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
@@ -270,7 +279,7 @@ class WebUserManager:
             return {"id": 1, "username": "local_user"}
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
@@ -315,7 +324,7 @@ class WebUserManager:
             return False, "New password must be at least 8 characters long"
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     # Verify old password
                     cursor.execute(
@@ -346,7 +355,7 @@ class WebUserManager:
             return "en"  # Default language for SQLite mode
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         "SELECT preferred_language FROM users WHERE id = %s", (user_id,)
@@ -366,7 +375,7 @@ class WebUserManager:
             return False, "Unsupported language. Available: en, nl"
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         "UPDATE users SET preferred_language = %s WHERE id = %s",
@@ -394,7 +403,7 @@ class WebUserManager:
             return False, "Number of children cannot be negative"
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     # Get user's household_id first
                     cursor.execute(
@@ -437,7 +446,7 @@ class WebUserManager:
             return 2, 0  # Default values for SQLite mode
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
@@ -463,7 +472,7 @@ class WebUserManager:
             return None  # Not available in SQLite mode
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
                         """
@@ -486,7 +495,7 @@ class WebUserManager:
             return False, "Household goals not available in SQLite mode"
 
         try:
-            with psycopg2.connect(self.connection_string) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     # Get user's household_id first
                     cursor.execute(

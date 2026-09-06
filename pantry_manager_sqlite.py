@@ -8,9 +8,13 @@ from pantry_manager_abc import PantryManager
 from scripts.short_id_utils import parse_short_id
 from error_utils import safe_execute, validate_required_params
 from constants import get_units_for_locale, is_infinite_ingredient
+from db import get_database
 import i18n
 
 logger = logging.getLogger(__name__)
+
+# (db_path) values whose Units table has been ensured/seeded this process.
+_initialized_units: set = set()
 
 
 class SQLitePantryManager(PantryManager):
@@ -25,17 +29,18 @@ class SQLitePantryManager(PantryManager):
             **kwargs: Additional configuration options (ignored for SQLite)
         """
         self.db_path = connection_string
-        try:
-            self._initialize_units()
-        except Exception:
-            # Defer database errors until actual operations
-            pass
+        self._db = get_database("sqlite", connection_string)
+        if self.db_path not in _initialized_units:
+            try:
+                self._initialize_units()
+                _initialized_units.add(self.db_path)
+            except Exception:
+                # Defer database errors until actual operations
+                pass
 
     def _get_connection(self):
-        """Get a database connection. Should be used in a context manager."""
-        conn = sqlite3.connect(self.db_path)
-        conn.isolation_level = None  # Enable autocommit mode
-        return conn
+        """Return a connection context manager (opened per use, closed on exit)."""
+        return self._db.connection()
 
     def _initialize_units(self) -> None:
         """Populate units table with defaults if empty."""

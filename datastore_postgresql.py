@@ -7,6 +7,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from db import get_database
 from werkzeug.security import check_password_hash, generate_password_hash
 from mcpnp.auth.datastore import OAuthDatastore
 
@@ -16,11 +17,12 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
 
     def __init__(self, connection_url: str):
         self.connection_url = connection_url
+        self._db = get_database("postgresql", connection_url)
         self.init_database()
 
     def init_database(self) -> None:
         """Initialize PostgreSQL database schema."""
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 # OAuth clients table
                 cursor.execute(
@@ -74,7 +76,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
     ) -> None:
         """Register a new OAuth client."""
         redirect_uris_json = json.dumps(redirect_uris)
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
@@ -87,7 +89,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
 
     def validate_client(self, client_id: str, client_secret: str = None) -> bool:
         """Validate client credentials."""
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 if client_secret:
                     cursor.execute(
@@ -108,7 +110,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
 
     def get_client_redirect_uris(self, client_id: str) -> List[str]:
         """Get redirect URIs for a client."""
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "SELECT redirect_uris FROM oauth_clients WHERE client_id = %s",
@@ -122,7 +124,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
     def create_user(self, username: str, password: str, email: str = None) -> str:
         """Create a new user account. Returns user ID."""
         password_hash = generate_password_hash(password, method="scrypt")
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 try:
                     cursor.execute(
@@ -140,7 +142,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
 
     def authenticate_user(self, username: str, password: str) -> Optional[str]:
         """Authenticate user credentials. Returns user ID if valid."""
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     "SELECT id, username, password_hash FROM users WHERE username = %s",
@@ -158,7 +160,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
 
     def save_token(self, token: str, token_type: str, token_data: Dict) -> None:
         """Save token to persistent storage."""
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
@@ -185,7 +187,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
         access_tokens = {}
         refresh_tokens = {}
 
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "SELECT token, token_type, token_data FROM oauth_tokens WHERE expires_at > %s",
@@ -203,7 +205,7 @@ class PostgreSQLOAuthDatastore(OAuthDatastore):
 
     def remove_token(self, token: str) -> None:
         """Remove token from storage."""
-        with psycopg2.connect(self.connection_url) as conn:
+        with self._db.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("DELETE FROM oauth_tokens WHERE token = %s", (token,))
                 conn.commit()

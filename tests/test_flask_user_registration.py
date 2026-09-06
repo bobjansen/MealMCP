@@ -94,7 +94,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertTrue(response.location.endswith("/"))
 
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_registration_form_displays_in_postgresql_mode(self, mock_connect):
         """Test that registration form displays correctly in PostgreSQL mode."""
         # Mock database connection
@@ -121,7 +121,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
 
     @patch("web_auth_simple.WebUserManager.email_exists")
     @patch("web_auth_simple.WebUserManager.user_exists")
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_successful_user_registration(
         self, mock_connect, mock_user_exists, mock_email_exists
     ):
@@ -159,7 +159,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Account created successfully", response.data)
 
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_registration_validation_empty_fields(self, mock_connect):
         """Test registration validation for empty fields."""
         # Mock database connection
@@ -217,7 +217,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Please fill in all fields", response.data)
 
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_registration_password_mismatch(self, mock_connect):
         """Test registration validation for password mismatch."""
         # Mock database connection
@@ -331,7 +331,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
 
     @patch("web_auth_simple.WebUserManager.email_exists")
     @patch("web_auth_simple.WebUserManager.user_exists")
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_registration_language_validation(
         self, mock_connect, mock_user_exists, mock_email_exists
     ):
@@ -369,7 +369,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Account created successfully", response.data)
 
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_registration_database_error(self, mock_connect):
         """Test handling of database errors during registration."""
         # Mock database connection that raises an exception
@@ -399,7 +399,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
 
     @patch("web_auth_simple.WebUserManager.email_exists")
     @patch("web_auth_simple.WebUserManager.user_exists")
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_login_redirect_after_successful_registration(
         self, mock_connect, mock_user_exists, mock_email_exists
     ):
@@ -437,7 +437,7 @@ class TestFlaskUserRegistration(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertTrue(response.location.endswith("/login"))
 
-    @patch("web_auth_simple.psycopg2.connect")
+    @patch("web_auth_simple.WebUserManager._connect")
     def test_registration_preserves_invite_code_on_error(self, mock_connect):
         """Test that invite code is preserved when there are validation errors."""
         # Mock database connection
