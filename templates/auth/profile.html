@@ -51,6 +51,7 @@
             <div class="card-body">
                 <p class="text-muted mb-3">{{ t('Choose your preferred language for the interface') }}</p>
                 <form method="POST" action="{{ url_for('change_language') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row align-items-end">
                         <div class="col-md-6 mb-3">
                             <label for="language" class="form-label">{{ t('Language') }}</label>
@@ -105,6 +106,7 @@
                 {% endwith %}
 
                 <form method="POST" action="{{ url_for('change_password') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="old_password" class="form-label">{{ t('Current Password') }}</label>

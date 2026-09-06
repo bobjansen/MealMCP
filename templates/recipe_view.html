@@ -132,6 +132,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('rate_recipe', recipe_name=recipe.name) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="rating" class="form-label">{{ t('Your Rating:') }}</label>
                         <select name="rating" id="rating" class="form-select" required>
@@ -196,6 +197,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
                 <form method="POST" action="{{ url_for('execute_recipe', recipe_name=recipe.name) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-success">
                         <i class="fas fa-play"></i> {{ t('Make Recipe') }}
                     </button>
@@ -221,6 +223,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
                 <form method="POST" action="{{ url_for('delete_recipe', recipe_name=recipe.name) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash"></i> {{ t('Delete Recipe') }}
                     </button>

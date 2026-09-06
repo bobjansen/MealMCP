@@ -18,6 +18,7 @@ from flask import (
 )
 from datetime import date, timedelta, datetime
 from pantry_manager_factory import create_pantry_manager
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from web_auth_simple import WebUserManager
 from auth_session import AuthContext, configure_session
 from constants import is_infinite_ingredient
@@ -172,11 +173,28 @@ if backend == "sqlite":
 else:
     pantry = None  # Will be created per-user session
 
+# CSRF protection for all state-changing form/JSON requests. Templates render
+# the token via {{ csrf_token() }}; chat.js sends it in the X-CSRFToken header.
+csrf = CSRFProtect(app)
+
 # Session cookie hardening + per-request auth/user context
 configure_session(app)
 auth_ctx = AuthContext(backend, auth_manager, connection_string, pantry)
 requires_auth = auth_ctx.requires_auth
 get_current_user_pantry = auth_ctx.current_pantry
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    """Turn a missing/stale CSRF token into a friendly redirect instead of a bare 400."""
+    logger.warning(f"CSRF validation failed: {error.description}")
+    if request.path.startswith("/api/"):
+        return {"error": "CSRF validation failed. Reload the page and try again."}, 400
+    flash(
+        t("Your session expired or the form was stale. Please try again."),
+        "warning",
+    )
+    return redirect(request.referrer or url_for("index"))
 
 
 @app.before_request

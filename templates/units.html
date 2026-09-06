@@ -35,6 +35,7 @@
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ url_for('add_unit') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label for="name" class="form-label">{{ t('Unit Name') }}</label>
                                 <input type="text" class="form-control" id="name" name="name" 
@@ -183,6 +184,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('add_unit') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="edit_name" class="form-label">{{ t('Unit Name') }}</label>
@@ -237,6 +239,7 @@
                     {{ t('Cancel') }}
                 </button>
                 <form method="POST" action="{{ url_for('delete_unit') }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" id="delete_unit_input" name="name">
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash"></i> {{ t('Delete Unit') }}

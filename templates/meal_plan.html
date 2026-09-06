@@ -49,6 +49,7 @@
                                     <!-- Edit mode -->
                                     <div class="meal-edit-{{ loop.index }}" style="display: none;">
                                         <form method="POST" action="{{ url_for('set_meal_plan') }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="meal_date" value="{{ meal.date }}">
                                             <select name="recipe_name" class="form-select form-select-sm" required>
                                                 <option value="{{ meal.recipe }}" selected>{{ meal.recipe }}</option>
@@ -77,6 +78,7 @@
                                         <form method="POST" action="{{ url_for('clear_meal_plan') }}"
                                               class="d-inline"
                                               onsubmit="return confirm('{{ t('Are you sure you want to clear this meal?') }}')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="meal_date" value="{{ meal.date }}">
                                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                                 <i class="fas fa-trash"></i> {{ t('Clear') }}
@@ -118,6 +120,7 @@
                 </h5>
             </div>
             <form method="POST" action="{{ url_for('set_meal_plan') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">

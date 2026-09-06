@@ -19,6 +19,7 @@
         {% endwith %}
 
         <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label class="form-label" for="volume_unit">{{ t('Preferred Volume Unit') }}</label>
                 <select class="form-select" id="volume_unit" name="volume_unit">

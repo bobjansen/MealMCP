@@ -147,10 +147,12 @@ class ChatInterface {
         this.addThinking(labels.thinking || 'Thinking...');
 
         try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
                 },
                 body: JSON.stringify({ message: message })
             });

@@ -15,6 +15,7 @@ dependencies = [
     "beautifulsoup4>=4.13.4",
     "requests>=2.31.0",
     "rich>=13.0.0",
+    "flask-wtf>=1.2.1",
 ]
 
 [project.optional-dependencies]

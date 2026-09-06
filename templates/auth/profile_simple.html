@@ -61,6 +61,7 @@
                 {% endwith %}
 
                 <form method="POST" action="{{ url_for('change_password') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="old_password" class="form-label">Current Password</label>

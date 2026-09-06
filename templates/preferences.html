@@ -23,6 +23,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('update_household_size') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="adults" class="form-label">{{ t('Number of Adults') }}</label>
                         <input type="number" class="form-control" id="adults" name="adults"
@@ -54,6 +55,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('update_household_goals') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="goals" class="form-label">{{ t('Goals, dietary preferences, and other information') }}</label>
                         <textarea class="form-control" id="goals" name="goals" rows="6"
@@ -81,6 +83,7 @@
                 </h5>
             </div>
             <form method="POST" action="{{ url_for('add_preference') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="category" class="form-label">{{ t('Category') }}</label>

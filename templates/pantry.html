@@ -21,6 +21,7 @@
                 </h5>
             </div>
             <form method="POST" action="{{ url_for('add_pantry_item') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="item_name" class="form-label">{{ t('Item Name') }}</label>
@@ -97,6 +98,7 @@
                 </h5>
             </div>
             <form method="POST" action="{{ url_for('remove_pantry_item') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="remove_item_name" class="form-label">{{ t('Item Name') }}</label>

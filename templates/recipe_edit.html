@@ -24,6 +24,7 @@
                 </h2>
             </div>
             <form method="POST" action="{{ url_for('edit_recipe', recipe_name=recipe.name) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="name" class="form-label">{{ t('Recipe Name') }}</label>
