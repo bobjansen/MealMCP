@@ -1,4 +1,3 @@
-import sqlite3
 import logging
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional

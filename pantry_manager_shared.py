@@ -3,14 +3,11 @@ Shared database PantryManager implementation.
 All users share one database with user_id scoping for data isolation.
 """
 
-import sqlite3
-import psycopg2
 import psycopg2.extras
 import re
 import logging
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
 
 import i18n
 from pantry_manager_abc import PantryManager
