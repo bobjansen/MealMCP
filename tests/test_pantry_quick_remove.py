@@ -8,14 +8,20 @@ from werkzeug.routing import Map
 
 import app_flask
 from db_setup import setup_database
+from db_setup_shared import setup_shared_database
+from pantry_manager_shared import SharedPantryManager
 from pantry_manager_sqlite import SQLitePantryManager
 
 
-@pytest.fixture
-def pantry_client(tmp_path, monkeypatch):
+@pytest.fixture(params=["local", "shared"])
+def pantry_client(tmp_path, monkeypatch, request):
     db_path = str(tmp_path / "pantry.db")
-    setup_database(db_path)
-    pantry = SQLitePantryManager(db_path)
+    if request.param == "shared":
+        assert setup_shared_database(db_path)
+        pantry = SharedPantryManager(db_path, user_id=7, backend="sqlite")
+    else:
+        setup_database(db_path)
+        pantry = SQLitePantryManager(db_path)
     assert pantry.add_item("Milk", 1.5, "Liter")
     assert pantry.add_item("Flour", 500, "Gram")
     monkeypatch.setattr(app_flask, "get_current_user_pantry", lambda: pantry)
@@ -129,3 +135,25 @@ def test_existing_partial_removal_still_works(pantry_client):
     )
     assert response.status_code == 302
     assert pantry.get_item_quantity("Milk", "Liter") == 1
+
+
+def test_shared_removal_preserves_other_households_stock(tmp_path, monkeypatch, caplog):
+    db_path = str(tmp_path / "shared.db")
+    assert setup_shared_database(db_path)
+    owner = SharedPantryManager(db_path, user_id=1, backend="sqlite")
+    other = SharedPantryManager(db_path, user_id=2, backend="sqlite")
+    assert owner.add_item("Spinazie", 250, "Gram")
+    assert other.add_item("Spinazie", 750, "Gram")
+    monkeypatch.setattr(app_flask, "get_current_user_pantry", lambda: owner)
+    monkeypatch.setattr(app_flask.auth_ctx, "backend", "sqlite")
+    monkeypatch.setitem(app_flask.app.config, "TESTING", True)
+    monkeypatch.setitem(app_flask.app.config, "WTF_CSRF_ENABLED", False)
+    with caplog.at_level("INFO", logger="app_flask"):
+        response = app_flask.app.test_client().post(
+            "/pantry/remove",
+            data={"remove_all": "1", "item_name": "Spinazie", "unit": "Gram"},
+        )
+    assert response.status_code == 302
+    assert "Spinazie" not in owner.get_pantry_contents()
+    assert other.get_item_quantity("Spinazie", "Gram") == 750
+    assert "Removed all 250.0 Gram of 'Spinazie' from pantry" in caplog.text

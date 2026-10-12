@@ -648,8 +648,9 @@ WHERE id = {ph} AND user_id = {ph}""",
     def get_item_quantity(self, item_name: str, unit: str) -> float:
         """Get the current quantity of an item in the pantry for the current user."""
         try:
-            # Normalize the unit name to match database entries
-            normalized_unit = self._normalize_unit_name(unit)
+            # Match add_item/remove_item: shared transactions store validated
+            # unit names directly, without SQLitePantryManager's normalization.
+            stored_unit = self._validate_unit(unit)
 
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -669,13 +670,15 @@ WHERE id = {ph} AND user_id = {ph}""",
                     FROM pantry_transactions
                     WHERE ingredient_id = {ph} AND unit = {ph} AND user_id = {ph}
                 """,
-                    (ingredient_id, normalized_unit, self.user_id),
+                    (ingredient_id, stored_unit, self.user_id),
                 )
 
                 result = cursor.fetchone()[0]
                 return float(result) if result is not None else 0.0
         except Exception as e:
-            print(f"Error getting item quantity: {e}")
+            logger.exception(
+                "Error getting item quantity for %r (%r): %s", item_name, unit, e
+            )
             return 0.0
 
     def get_total_item_quantity(self, item_name: str, unit: str) -> float:

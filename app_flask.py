@@ -854,14 +854,28 @@ def remove_pantry_item():
         if request.form.get("remove_all") == "1":
             # Read the current household balance, never a browser-supplied amount.
             quantity = user_pantry.get_pantry_contents().get(item_name, {}).get(unit, 0)
+            logger.info(
+                "Whole-item removal: item=%r unit=%r current_quantity=%s",
+                item_name,
+                unit,
+                quantity,
+            )
             if quantity > 0:
                 if user_pantry.remove_item(item_name, quantity, unit):
+                    logger.info(
+                        "Removed all %s %s of %r from pantry", quantity, unit, item_name
+                    )
                     flash(
                         t('Removed "{name}" from pantry.').format(name=item_name),
                         "success",
                     )
                 else:
+                    logger.error(
+                        "Whole-item removal failed for %r (%r)", item_name, unit
+                    )
                     flash(t("Error removing item from pantry."), "error")
+            else:
+                logger.warning("No current pantry balance for %r (%r)", item_name, unit)
             return redirect(url_for("pantry_view"))
 
         # Parse and validate quantity
