@@ -391,6 +391,8 @@ TRANSLATIONS = {
     },
     "nl": {
         "Share shopping list": "Boodschappenlijst delen",
+        'Removed "{name}" from pantry.': '"{name}" uit de voorraad verwijderd.',
+        "Remove {name} from pantry": "{name} uit de voorraad verwijderen",
         "Tap items as you put them in your basket. Ticks are saved on this device.": "Vink artikelen aan zodra je ze in je mandje legt. Vinkjes worden op dit apparaat opgeslagen.",
         "{count} of {total} items in your basket": "{count} van {total} artikelen in je mandje",
         "Share on WhatsApp": "Delen via WhatsApp",

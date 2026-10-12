@@ -12,7 +12,7 @@
 </div>
 
 <div class="row">
-    <div class="col-lg-6">
+    <div class="col-lg-6 order-2 order-lg-1">
         <!-- Add Item Form -->
         <div class="card mb-4">
             <div class="card-header">
@@ -90,85 +90,9 @@
             </form>
         </div>
 
-        <!-- Remove Item Form -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-minus"></i> {{ t('Remove Item from Pantry') }}
-                </h5>
-            </div>
-            <form method="POST" action="{{ url_for('remove_pantry_item') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="remove_item_name" class="form-label">{{ t('Item Name') }}</label>
-                        <input type="text" class="form-control" id="remove_item_name" name="item_name" required>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="remove_quantity" class="form-label">{{ t('Quantity') }}</label>
-                            <input type="number" class="form-control" id="remove_quantity" name="quantity"
-                                   step="0.01" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="remove_unit" class="form-label">{{ t('Unit') }}</label>
-                            <select name="unit" id="remove_unit" class="form-select" required>
-                                <option value="">{{ t('Select unit...') }}</option>
-
-                                <!-- Most Common Cooking Units -->
-                                <optgroup label="🍽️ {{ t('Common Cooking') }}">
-                                    {% for unit in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece'] %}
-                                        {% if unit in units %}
-                                        <option value="{{ unit }}">{{ unit }}</option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </optgroup>
-
-                                <!-- Volume Units -->
-                                <optgroup label="🥤 {{ t('Volume') }}">
-                                    {% for unit in ['Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon'] %}
-                                        {% if unit in units %}
-                                        <option value="{{ unit }}">{{ unit }}</option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </optgroup>
-
-                                <!-- Weight Units -->
-                                <optgroup label="⚖️ {{ t('Weight') }}">
-                                    {% for unit in ['Kilogram', 'Pound'] %}
-                                        {% if unit in units %}
-                                        <option value="{{ unit }}">{{ unit }}</option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </optgroup>
-
-                                <!-- Custom/Other Units -->
-                                <optgroup label="📦 {{ t('Other') }}">
-                                    {% for unit in units %}
-                                        {% if unit not in ['Teaspoon', 'Tablespoon', 'Cup', 'Gram', 'Ounce', 'Piece', 'Milliliter', 'Liter', 'Fluid ounce', 'Pint', 'Quart', 'Gallon', 'Kilogram', 'Pound'] %}
-                                        <option value="{{ unit }}">{{ unit }}</option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </optgroup>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="remove_notes" class="form-label">{{ t('Notes (optional)') }}</label>
-                        <input type="text" class="form-control" id="remove_notes" name="notes"
-                               placeholder="{{ t('e.g., used for cooking') }}">
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-warning w-100">
-                        <i class="fas fa-minus"></i> {{ t('Remove from Pantry') }}
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 
-    <div class="col-lg-6">
+    <div class="col-lg-6 order-1 order-lg-2">
         <!-- Current Pantry Contents -->
         <div class="card mb-4">
             <div class="card-header">
@@ -185,6 +109,7 @@
                                 <th>{{ t('Item') }}</th>
                                 <th>{{ t('Quantity') }}</th>
                                 <th>{{ t('Unit') }}</th>
+                                <th>{{ t('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -194,6 +119,18 @@
                                     <td>{{ item_name }}</td>
                                     <td>{{ quantity|format_quantity }}</td>
                                     <td>{{ unit }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('remove_all_pantry_item') }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="item_name" value="{{ item_name }}">
+                                            <input type="hidden" name="unit" value="{{ unit }}">
+                                            <button type="submit" class="btn btn-outline-danger text-nowrap"
+                                                    style="min-height: 44px; min-width: 44px;"
+                                                    aria-label="{{ t('Remove {name} from pantry').format(name=item_name) }}">
+                                                <i class="fas fa-trash" aria-hidden="true"></i> {{ t('Remove') }}
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             {% endfor %}
