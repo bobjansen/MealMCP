@@ -25,6 +25,13 @@ from constants import (
 from error_utils import safe_execute, safe_float_conversion, validate_required_params
 from scripts.short_id_utils import parse_short_id
 from db import get_database
+from ingredient_names import (
+    ingredient_key,
+    matching_ingredient_ids,
+    combine_ingredient_rows,
+    combine_requirements,
+    combine_recipe_ingredients,
+)
 from db_schema_definitions import (
     MULTI_USER_POSTGRESQL_SCHEMAS,
     MULTI_USER_SQLITE_SCHEMAS,
@@ -333,6 +340,9 @@ VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})""",
         name = self._validate_ingredient_name(name)
         default_unit = self._validate_unit(default_unit)
 
+        if self.get_ingredient_id(name) is not None:
+            return True
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -465,20 +475,8 @@ WHERE id = {ph} AND user_id = {ph}""",
     def get_ingredient_id(self, name: str) -> Optional[int]:
         """Get the ID of an ingredient by name for the current user."""
         try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                ph = self._get_placeholder()
-
-                cursor.execute(
-                    f"""
-                    SELECT id FROM ingredients
-                    WHERE name = {ph} AND user_id = {ph}
-                """,
-                    (name, self.user_id),
-                )
-
-                result = cursor.fetchone()
-                return result[0] if result else None
+            ids = matching_ingredient_ids(self, name)
+            return ids[0] if ids else None
         except Exception as e:
             print(f"Error getting ingredient ID: {e}")
             return None
@@ -656,9 +654,10 @@ WHERE id = {ph} AND user_id = {ph}""",
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
-                ingredient_id = self.get_ingredient_id(item_name)
-                if ingredient_id is None:
+                ingredient_ids = matching_ingredient_ids(self, item_name)
+                if not ingredient_ids:
                     return 0.0
+                placeholders = ", ".join([ph] * len(ingredient_ids))
 
                 cursor.execute(
                     f"""
@@ -668,9 +667,9 @@ WHERE id = {ph} AND user_id = {ph}""",
                             ELSE -quantity
                         END) as net_quantity
                     FROM pantry_transactions
-                    WHERE ingredient_id = {ph} AND unit = {ph} AND user_id = {ph}
+                    WHERE ingredient_id IN ({placeholders}) AND unit = {ph} AND user_id = {ph}
                 """,
-                    (ingredient_id, stored_unit, self.user_id),
+                    (*ingredient_ids, stored_unit, self.user_id),
                 )
 
                 result = cursor.fetchone()[0]
@@ -688,9 +687,10 @@ WHERE id = {ph} AND user_id = {ph}""",
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
 
-                ingredient_id = self.get_ingredient_id(item_name)
-                if ingredient_id is None:
+                ingredient_ids = matching_ingredient_ids(self, item_name)
+                if not ingredient_ids:
                     return 0.0
+                placeholders = ", ".join([ph] * len(ingredient_ids))
 
                 # First try exact match
                 cursor.execute(
@@ -776,10 +776,10 @@ WHERE id = {ph} AND user_id = {ph}""",
                            SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
                     FROM pantry_transactions t
                     JOIN units u ON t.unit = u.name AND u.user_id = t.user_id
-                    WHERE t.user_id = {ph} AND t.ingredient_id = {ph}
+                    WHERE t.user_id = {ph} AND t.ingredient_id IN ({placeholders})
                     GROUP BY t.unit, u.base_unit, u.size
                     """,
-                    (self.user_id, ingredient_id),
+                    (self.user_id, *ingredient_ids),
                 )
 
                 total_base = 0.0
@@ -859,7 +859,11 @@ WHERE id = {ph} AND user_id = {ph}""",
             }
 
             # Normalize ingredient name for matching
-            normalized_ingredient = item_name.lower().strip()
+            normalized_ingredient = ingredient_key(item_name)
+            ingredient_conversions = {
+                ingredient_key(name): conversions
+                for name, conversions in ingredient_conversions.items()
+            }
 
             # Check if we have conversions for this ingredient
             if normalized_ingredient not in ingredient_conversions:
@@ -867,16 +871,10 @@ WHERE id = {ph} AND user_id = {ph}""",
 
             conversions = ingredient_conversions[normalized_ingredient]
 
-            # Find what units we have in the pantry for this ingredient
-            cursor.execute(
-                f"SELECT id FROM ingredients WHERE user_id = {ph} AND LOWER(name) = LOWER({ph})",
-                (self.user_id, item_name),
-            )
-            ingredient_result = cursor.fetchone()
-            if not ingredient_result:
+            ingredient_ids = matching_ingredient_ids(self, item_name)
+            if not ingredient_ids:
                 return None
-
-            ingredient_id = ingredient_result[0]
+            placeholders = ", ".join([ph] * len(ingredient_ids))
 
             # Get pantry quantities grouped by unit
             cursor.execute(
@@ -884,11 +882,11 @@ WHERE id = {ph} AND user_id = {ph}""",
                 SELECT t.unit,
                        SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
                 FROM pantry_transactions t
-                WHERE t.user_id = {ph} AND t.ingredient_id = {ph}
+                WHERE t.user_id = {ph} AND t.ingredient_id IN ({placeholders})
                 GROUP BY t.unit
                 HAVING SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) > 0
                 """,
-                (self.user_id, ingredient_id),
+                (self.user_id, *ingredient_ids),
             )
 
             total_in_requested_unit = 0.0
@@ -919,73 +917,35 @@ WHERE id = {ph} AND user_id = {ph}""",
     def get_multiple_item_quantities(
         self, items: List[tuple[str, str]]
     ) -> Dict[tuple[str, str], float]:
-        """Get quantities for multiple (item_name, unit) pairs in one optimized query."""
+        """Read household balances once, combining historical spelling variants."""
         if not items:
             return {}
-
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 ph = self._get_placeholder()
-
-                # Get ingredient IDs for all items at once
-                item_names = list(set(item[0] for item in items))
-                if not item_names:
-                    return {}
-
-                placeholders = ", ".join([ph] * len(item_names))
                 cursor.execute(
                     f"""
-                    SELECT name, id FROM ingredients
-                    WHERE user_id = {ph} AND name IN ({placeholders})
-                """,
-                    (self.user_id, *item_names),
+                    SELECT i.name, t.unit,
+                           SUM(CASE WHEN t.transaction_type = 'addition'
+                               THEN t.quantity ELSE -t.quantity END)
+                    FROM pantry_transactions t
+                    JOIN ingredients i ON i.id = t.ingredient_id
+                    WHERE t.user_id = {ph}
+                    GROUP BY i.name, t.unit
+                    """,
+                    (self.user_id,),
                 )
-
-                name_to_id = dict(cursor.fetchall())
-
-                # Build conditions for each (ingredient_id, unit) pair
-                conditions = []
-                params = [self.user_id]
-                valid_items = []
-
-                for item_name, unit in items:
-                    if item_name in name_to_id:
-                        conditions.append(f"(ingredient_id = {ph} AND unit = {ph})")
-                        params.extend([name_to_id[item_name], unit])
-                        valid_items.append((item_name, unit))
-
-                if not conditions:
-                    return {}
-
-                cursor.execute(
-                    f"""
-                    SELECT ingredient_id, unit,
-                           SUM(CASE WHEN transaction_type = 'addition' THEN quantity ELSE -quantity END) as net_quantity
-                    FROM pantry_transactions
-                    WHERE user_id = {ph} AND ({' OR '.join(conditions)})
-                    GROUP BY ingredient_id, unit
-                """,
-                    params,
-                )
-
-                # Map back to (item_name, unit) tuples
-                id_to_name = {v: k for k, v in name_to_id.items()}
-                result = {}
-
-                # Initialize all requested items to 0
-                for item in items:
-                    result[item] = 0.0
-
-                # Fill in actual quantities
-                for ingredient_id, unit, quantity in cursor.fetchall():
-                    item_name = id_to_name.get(ingredient_id)
-                    if item_name:
-                        result[(item_name, unit)] = float(quantity) if quantity else 0.0
-
-                return result
-        except Exception as e:
-            print(f"Error getting multiple item quantities: {e}")
+                balances = {}
+                for name, unit, quantity in cursor.fetchall():
+                    key = (ingredient_key(name), unit)
+                    balances[key] = balances.get(key, 0.0) + float(quantity or 0)
+                return {
+                    (name, unit): balances.get((ingredient_key(name), unit), 0.0)
+                    for name, unit in items
+                }
+        except Exception:
+            logger.exception("Error getting multiple item quantities")
             return {}
 
     def get_pantry_contents(self) -> Dict[str, Dict[str, float]]:
@@ -1008,24 +968,13 @@ WHERE id = {ph} AND user_id = {ph}""",
                     JOIN ingredients i ON t.ingredient_id = i.id
                     WHERE t.user_id = {ph}
                     GROUP BY i.name, t.unit
-                    HAVING SUM(CASE
-                        WHEN t.transaction_type = 'addition' THEN t.quantity
-                        ELSE -t.quantity
-                    END) > 0
+                    ORDER BY i.name, t.unit
                 """,
                     (self.user_id,),
                 )
 
-                results = cursor.fetchall()
-                contents = {}
-                for item_name, unit, quantity in results:
-                    if item_name not in contents:
-                        contents[item_name] = {}
-                    contents[item_name][unit] = (
-                        float(quantity) if quantity is not None else 0.0
-                    )
+                return combine_ingredient_rows(cursor.fetchall())
 
-                return contents
         except Exception as e:
             print(f"Error getting pantry contents: {e}")
             return {}
@@ -1118,7 +1067,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                     recipe_id, short_id = cursor.fetchone()
 
                 # Add ingredients (use validated ingredients)
-                for ingredient in validated_ingredients:
+                for ingredient in combine_recipe_ingredients(validated_ingredients):
                     ingredient_id = self.get_ingredient_id(ingredient["name"])
                     if ingredient_id is None:
                         # Create new ingredient if it doesn't exist
@@ -1601,7 +1550,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                 )
 
                 # Add new ingredients
-                for ingredient in validated_ingredients:
+                for ingredient in combine_recipe_ingredients(validated_ingredients):
                     ingredient_id = self.get_ingredient_id(ingredient["name"])
                     if ingredient_id is None:
                         # Create new ingredient if it doesn't exist
@@ -2006,7 +1955,7 @@ WHERE id = {ph} AND user_id = {ph}""",
                     )
 
                     # Add new ingredients
-                    for ingredient in validated_ingredients:
+                    for ingredient in combine_recipe_ingredients(validated_ingredients):
                         ingredient_id = self.get_ingredient_id(ingredient["name"])
                         if ingredient_id is None:
                             # Create new ingredient if it doesn't exist
@@ -2184,6 +2133,8 @@ WHERE id = {ph} AND user_id = {ph}""",
                 for _, ingredient_name, quantity, unit in cursor.fetchall():
                     key = (ingredient_name, unit)
                     required[key] = required.get(key, 0) + float(quantity)
+
+            required = combine_requirements(required)
 
             if not required:
                 return []

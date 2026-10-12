@@ -9,6 +9,13 @@ from error_utils import safe_execute, validate_required_params
 from constants import get_units_for_locale, is_infinite_ingredient
 from db import get_database
 from db_schema_definitions import SINGLE_USER_SCHEMAS
+from ingredient_names import (
+    ingredient_key,
+    matching_ingredient_ids,
+    combine_ingredient_rows,
+    combine_requirements,
+    combine_recipe_ingredients,
+)
 import i18n
 
 logger = logging.getLogger(__name__)
@@ -113,6 +120,9 @@ class SQLitePantryManager(PantryManager):
         """
         validate_required_params(name=name, default_unit=default_unit)
 
+        if self.get_ingredient_id(name) is not None:
+            return True
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -214,15 +224,8 @@ class SQLitePantryManager(PantryManager):
     def get_ingredient_id(self, name: str) -> Optional[int]:
         """Get the ID of an ingredient by name."""
         validate_required_params(name=name)
-
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id FROM Ingredients WHERE name = ?",
-                (name,),
-            )
-            result = cursor.fetchone()
-            return result[0] if result else None
+        ids = matching_ingredient_ids(self, name)
+        return ids[0] if ids else None
 
     def get_unit_id(self, name: str) -> Optional[int]:
         """Get the ID of a unit by name (case-insensitive)."""
@@ -367,21 +370,22 @@ class SQLitePantryManager(PantryManager):
 
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                ingredient_id = self.get_ingredient_id(item_name)
-                if ingredient_id is None:
+                ingredient_ids = matching_ingredient_ids(self, item_name)
+                if not ingredient_ids:
                     return 0.0
+                placeholders = ", ".join(["?"] * len(ingredient_ids))
 
                 cursor.execute(
-                    """
+                    f"""
                     SELECT
                         SUM(CASE
                             WHEN transaction_type = 'addition' THEN quantity
                             ELSE -quantity
                         END) as net_quantity
                     FROM PantryTransactions
-                    WHERE ingredient_id = ? AND unit = ?
+                    WHERE ingredient_id IN ({placeholders}) AND unit = ?
                     """,
-                    (ingredient_id, normalized_unit),
+                    (*ingredient_ids, normalized_unit),
                 )
                 result = cursor.fetchone()[0]
                 return float(result) if result is not None else 0.0
@@ -395,9 +399,10 @@ class SQLitePantryManager(PantryManager):
             with self._get_connection() as conn:
                 cursor = conn.cursor()
 
-                ingredient_id = self.get_ingredient_id(item_name)
-                if ingredient_id is None:
+                ingredient_ids = matching_ingredient_ids(self, item_name)
+                if not ingredient_ids:
                     return 0.0
+                placeholders = ", ".join(["?"] * len(ingredient_ids))
 
                 # Normalize the unit name to match database entries
                 normalized_unit = self._normalize_unit_name(unit)
@@ -477,16 +482,16 @@ class SQLitePantryManager(PantryManager):
                 target_base, target_size = target
 
                 cursor.execute(
-                    """
+                    f"""
                     SELECT t.unit, u.base_unit, u.size,
                            SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END)
                                AS net_quantity
                     FROM PantryTransactions t
                     JOIN Units u ON t.unit = u.name
-                    WHERE t.ingredient_id = ?
+                    WHERE t.ingredient_id IN ({placeholders})
                     GROUP BY t.unit, u.base_unit, u.size
                     """,
-                    (ingredient_id,),
+                    tuple(ingredient_ids),
                 )
 
                 total_base = 0.0
@@ -564,7 +569,11 @@ class SQLitePantryManager(PantryManager):
             }
 
             # Normalize ingredient name for matching
-            normalized_ingredient = item_name.lower().strip()
+            normalized_ingredient = ingredient_key(item_name)
+            ingredient_conversions = {
+                ingredient_key(name): conversions
+                for name, conversions in ingredient_conversions.items()
+            }
 
             # Check if we have conversions for this ingredient
             if normalized_ingredient not in ingredient_conversions:
@@ -572,27 +581,22 @@ class SQLitePantryManager(PantryManager):
 
             conversions = ingredient_conversions[normalized_ingredient]
 
-            # Find what units we have in the pantry for this ingredient
-            cursor.execute(
-                "SELECT id FROM Ingredients WHERE LOWER(name) = LOWER(?)", (item_name,)
-            )
-            ingredient_result = cursor.fetchone()
-            if not ingredient_result:
+            ingredient_ids = matching_ingredient_ids(self, item_name)
+            if not ingredient_ids:
                 return None
-
-            ingredient_id = ingredient_result[0]
+            placeholders = ", ".join(["?"] * len(ingredient_ids))
 
             # Get pantry quantities grouped by unit
             cursor.execute(
-                """
+                f"""
                 SELECT t.unit,
                        SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) AS net_quantity
                 FROM PantryTransactions t
-                WHERE t.ingredient_id = ?
+                WHERE t.ingredient_id IN ({placeholders})
                 GROUP BY t.unit
                 HAVING SUM(CASE WHEN t.transaction_type = 'addition' THEN t.quantity ELSE -t.quantity END) > 0
                 """,
-                (ingredient_id,),
+                tuple(ingredient_ids),
             )
 
             total_in_requested_unit = 0.0
@@ -708,18 +712,11 @@ class SQLitePantryManager(PantryManager):
                     FROM PantryTransactions t
                     JOIN Ingredients i ON t.ingredient_id = i.id
                     GROUP BY i.name, t.unit
-                    HAVING net_quantity > 0
+                    ORDER BY i.name, t.unit
                     """
                 )
-                results = cursor.fetchall()
+                return combine_ingredient_rows(cursor.fetchall())
 
-                contents = {}
-                for item_name, unit, quantity in results:
-                    if item_name not in contents:
-                        contents[item_name] = {}
-                    contents[item_name][unit] = quantity
-
-                return contents
         except Exception as e:
             print(f"Error getting pantry contents: {e}")
             return {}
@@ -771,7 +768,7 @@ class SQLitePantryManager(PantryManager):
                 recipe_id, short_id = cursor.fetchone()
 
                 # Add ingredients
-                for ingredient in ingredients:
+                for ingredient in combine_recipe_ingredients(ingredients):
                     ingredient_id = self.get_ingredient_id(ingredient["name"])
                     if ingredient_id is None:
                         # Create new ingredient if it doesn't exist
@@ -1317,7 +1314,7 @@ class SQLitePantryManager(PantryManager):
                 )
 
                 # Add new ingredients
-                for ingredient in ingredients:
+                for ingredient in combine_recipe_ingredients(ingredients):
                     ingredient_id = self.get_ingredient_id(ingredient["name"])
                     if ingredient_id is None:
                         # Create new ingredient if it doesn't exist
@@ -1655,7 +1652,7 @@ class SQLitePantryManager(PantryManager):
                     )
 
                     # Add new ingredients
-                    for ingredient in ingredients:
+                    for ingredient in combine_recipe_ingredients(ingredients):
                         ingredient_id = self.get_ingredient_id(ingredient["name"])
                         if ingredient_id is None:
                             # Create new ingredient if it doesn't exist
@@ -1758,6 +1755,7 @@ class SQLitePantryManager(PantryManager):
                 key = (ing["name"], ing["unit"])
                 required[key] = required.get(key, 0) + ing["quantity"]
 
+        required = combine_requirements(required)
         grocery_list = []
         for (name, unit), qty in required.items():
             # Skip ingredients that are considered to have infinite quantities (locale-aware)
