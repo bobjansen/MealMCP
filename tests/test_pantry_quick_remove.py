@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from bs4 import BeautifulSoup
+from werkzeug.routing import Map
 
 import app_flask
 from db_setup import setup_database
@@ -33,7 +34,7 @@ def pantry_client(tmp_path, monkeypatch):
 
 def remove_form(client):
     page = BeautifulSoup(client.get("/pantry").get_data(as_text=True), "html.parser")
-    forms = page.select('form[action="/pantry/remove-all"]')
+    forms = page.select('form[action="/pantry/remove"]')
     return next(
         form
         for form in forms
@@ -49,7 +50,7 @@ def test_button_removes_current_balance_without_entering_quantity(pantry_client)
     fields = {field["name"]: field["value"] for field in form.select("input")}
     # The browser's old balance must not leave newly added stock behind.
     assert pantry.add_item("Milk", 0.5, "Liter")
-    response = client.post("/pantry/remove-all", data=fields)
+    response = client.post("/pantry/remove", data=fields)
     assert response.status_code == 302
     assert "Milk" not in pantry.get_pantry_contents()
     assert pantry.get_item_quantity("Flour", "Gram") == 500
@@ -61,7 +62,7 @@ def test_button_removes_current_balance_without_entering_quantity(pantry_client)
     assert len(removals) == 1
     assert removals[0]["quantity"] == 2
     # Retrying the same submission must not create negative inventory.
-    client.post("/pantry/remove-all", data=fields)
+    client.post("/pantry/remove", data=fields)
     assert pantry.get_item_quantity("Milk", "Liter") == 0
     assert len(pantry.get_transaction_history()) == 4
 
@@ -75,7 +76,7 @@ def test_unknown_item_or_unit_does_not_remove_stock(pantry_client):
         {"item_name": "Unknown", "unit": "Liter"},
     ):
         response = client.post(
-            "/pantry/remove-all", data={"csrf_token": token, **fields}
+            "/pantry/remove", data={"csrf_token": token, "remove_all": "1", **fields}
         )
         assert response.status_code == 302
     assert pantry.get_item_quantity("Milk", "Liter") == 1.5
@@ -86,13 +87,45 @@ def test_remove_button_requires_csrf_and_login(pantry_client, monkeypatch):
     pantry, client = pantry_client
     form = remove_form(client)
     fields = {field["name"]: field["value"] for field in form.select("input")}
-    client.post("/pantry/remove-all", data={"item_name": "Milk", "unit": "Liter"})
+    client.post("/pantry/remove", data={"item_name": "Milk", "unit": "Liter"})
     assert pantry.get_item_quantity("Milk", "Liter") == 1.5
+
     with client.session_transaction() as session:
         session.pop("user_id")
     getter = Mock(return_value=pantry)
     monkeypatch.setattr(app_flask, "get_current_user_pantry", getter)
-    response = client.post("/pantry/remove-all", data=fields)
+    response = client.post("/pantry/remove", data=fields)
     assert response.headers["Location"].endswith("/login")
     getter.assert_not_called()
     assert pantry.get_item_quantity("Milk", "Liter") == 1.5
+
+
+def test_pantry_renders_without_extra_removal_endpoint(pantry_client, monkeypatch):
+    _, client = pantry_client
+    # Reproduce the production route map from the reported BuildError.
+    rules = [
+        rule.empty()
+        for rule in app_flask.app.url_map.iter_rules()
+        if rule.endpoint != "remove_all_pantry_item"
+    ]
+    monkeypatch.setattr(app_flask.app, "url_map", Map(rules))
+    response = client.get("/pantry")
+    assert response.status_code == 200
+    page = BeautifulSoup(response.get_data(as_text=True), "html.parser")
+    assert page.select('form[action="/pantry/remove"] input[name="remove_all"]')
+
+
+def test_existing_partial_removal_still_works(pantry_client):
+    pantry, client = pantry_client
+    token = remove_form(client).select_one('[name="csrf_token"]')["value"]
+    response = client.post(
+        "/pantry/remove",
+        data={
+            "csrf_token": token,
+            "item_name": "Milk",
+            "unit": "Liter",
+            "quantity": "0.5",
+        },
+    )
+    assert response.status_code == 302
+    assert pantry.get_item_quantity("Milk", "Liter") == 1

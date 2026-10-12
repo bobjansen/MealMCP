@@ -807,33 +807,6 @@ def add_pantry_item():
         return redirect(url_for("pantry_view"))
 
 
-@app.route("/pantry/remove-all", methods=["POST"])
-@requires_auth
-def remove_all_pantry_item():
-    """Remove the current balance of a displayed pantry row."""
-    user_pantry = get_current_user_pantry()
-    if not user_pantry:
-        flash(t("Unable to access your data. Please try logging in again."), "error")
-        return redirect(url_for("logout"))
-
-    item_name = request.form.get("item_name", "")
-    unit = request.form.get("unit", "")
-    try:
-        # Read the balance now, so an older page also removes the full quantity.
-        quantity = user_pantry.get_pantry_contents().get(item_name, {}).get(unit, 0)
-        if quantity > 0:
-            if user_pantry.remove_item(item_name, quantity, unit):
-                flash(
-                    t('Removed "{name}" from pantry.').format(name=item_name), "success"
-                )
-            else:
-                flash(t("Error removing item from pantry."), "error")
-    except Exception as error:
-        log_error_with_context(error, "remove_all_pantry_item")
-        flash(t("Error removing item from pantry."), "error")
-    return redirect(url_for("pantry_view"))
-
-
 @app.route("/pantry/remove", methods=["POST"])
 @requires_auth
 def remove_pantry_item():
@@ -876,6 +849,19 @@ def remove_pantry_item():
         if not unit or not unit.strip():
             logger.warning("Empty unit provided")
             flash("Unit is required.", "error")
+            return redirect(url_for("pantry_view"))
+
+        if request.form.get("remove_all") == "1":
+            # Read the current household balance, never a browser-supplied amount.
+            quantity = user_pantry.get_pantry_contents().get(item_name, {}).get(unit, 0)
+            if quantity > 0:
+                if user_pantry.remove_item(item_name, quantity, unit):
+                    flash(
+                        t('Removed "{name}" from pantry.').format(name=item_name),
+                        "success",
+                    )
+                else:
+                    flash(t("Error removing item from pantry."), "error")
             return redirect(url_for("pantry_view"))
 
         # Parse and validate quantity

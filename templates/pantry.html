@@ -120,8 +120,9 @@
                                     <td>{{ quantity|format_quantity }}</td>
                                     <td>{{ unit }}</td>
                                     <td>
-                                        <form method="POST" action="{{ url_for('remove_all_pantry_item') }}">
+                                        <form method="POST" action="{{ url_for('remove_pantry_item') }}">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="remove_all" value="1">
                                             <input type="hidden" name="item_name" value="{{ item_name }}">
                                             <input type="hidden" name="unit" value="{{ unit }}">
                                             <button type="submit" class="btn btn-outline-danger text-nowrap"
