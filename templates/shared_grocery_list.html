@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ t('Grocery List') }} - Meal Manager</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f7; color: #212529; }
+        main { max-width: 36rem; margin: 2rem auto; padding: 1.5rem; background: white; border-radius: 1rem; }
+        h1 { margin-top: 0; }
+        li { border-bottom: 1px solid #ddd; }
+        .shopping-item { display: flex; align-items: center; gap: .75rem; min-height: 3.5rem; padding: .75rem 0; cursor: pointer; }
+        .shopping-item input { flex: 0 0 1.5rem; width: 1.5rem; height: 1.5rem; margin: 0; accent-color: #198754; }
+        .item-name { flex: 1; overflow-wrap: anywhere; }
+        .item-quantity { flex-shrink: 0; }
+        .shopping-item:has(input:checked) .item-name { text-decoration: line-through; color: #666; }
+        .shopping-item:has(input:checked) .item-quantity { color: #666; }
+        .shopping-item:focus-within { outline: 2px solid #198754; outline-offset: 2px; border-radius: .25rem; }
+        ul { list-style: none; padding: 0; }
+        .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+        button, .button { font: inherit; padding: .75rem 1rem; border: 1px solid #198754; border-radius: .5rem; background: white; color: #146c43; text-decoration: none; cursor: pointer; }
+        .whatsapp { background: #198754; color: white; }
+        input { box-sizing: border-box; width: 100%; padding: .75rem; margin-top: .5rem; }
+        .note { color: #555; font-size: .9rem; }
+        @media (max-width: 40rem) { main { margin: 0; border-radius: 0; } }
+        @media print { .sharing { display: none; } body { background: white; } }
+    </style>
+</head>
+<body>
+<main>
+    <h1>{{ t('Grocery List') }}</h1>
+    <p>{{ t('Week of:') }} {{ start_date | localized_date('numeric') }}</p>
+    {% if grocery_list %}
+    <ul>
+        {% for item in grocery_list %}
+        <li>
+            <label class="shopping-item">
+                <input type="checkbox" data-item-index="{{ loop.index0 }}">
+                <span class="item-name">{{ item.name }}</span>
+                <strong class="item-quantity">{{ item.quantity | format_quantity }} {{ item.unit }}</strong>
+            </label>
+        </li>
+        {% endfor %}
+    </ul>
+    <p id="basket-progress" role="status" class="note"></p>
+    <p class="note">{{ t('Tap items as you put them in your basket. Ticks are saved on this device.') }}</p>
+    {% else %}
+    <p>{{ t('You have all ingredients needed for your planned meals.') }}</p>
+    {% endif %}
+    <div class="sharing">
+        <p class="note">{{ t('This is a saved copy of the shopping list. Anyone with the link can view it without logging in.') }}</p>
+        <label for="share-url">{{ t('Share link') }}</label>
+        <input id="share-url" type="url" value="{{ share_url }}" readonly onclick="this.select()">
+        <div class="actions">
+            <a class="button whatsapp" href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer">{{ t('Share on WhatsApp') }}</a>
+            <button id="copy-link" type="button">{{ t('Copy link') }}</button>
+            <button type="button" onclick="window.print()">{{ t('Print List') }}</button>
+        </div>
+        <p id="copy-status" role="status" class="note"></p>
+    </div>
+</main>
+<script>
+const checkboxes = Array.from(document.querySelectorAll('[data-item-index]'));
+const storageKey = 'shopping-list:' + window.location.pathname;
+let checkedItems = [];
+try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if (Array.isArray(saved)) checkedItems = saved;
+} catch (error) {
+    // The checklist also works when storage is unavailable.
+}
+function updateProgress() {
+    const progress = document.getElementById('basket-progress');
+    if (progress) {
+        progress.textContent = {{ t('{count} of {total} items in your basket') | tojson }}
+            .replace('{count}', checkboxes.filter(input => input.checked).length)
+            .replace('{total}', checkboxes.length);
+    }
+}
+checkboxes.forEach(input => {
+    input.checked = checkedItems.includes(input.dataset.itemIndex);
+    input.addEventListener('change', () => {
+        updateProgress();
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(
+                checkboxes.filter(input => input.checked).map(input => input.dataset.itemIndex)
+            ));
+        } catch (error) {
+            // Keep the current shopping session usable without browser storage.
+        }
+    });
+});
+updateProgress();
+
+document.getElementById('copy-link').addEventListener('click', async () => {
+    const input = document.getElementById('share-url');
+    const status = document.getElementById('copy-status');
+    try {
+        await navigator.clipboard.writeText(input.value);
+        status.textContent = {{ t('Link copied') | tojson }};
+    } catch (error) {
+        input.focus();
+        input.select();
+        status.textContent = {{ t('Select and copy the link above.') | tojson }};
+    }
+});
+</script>
+</body>
+</html>

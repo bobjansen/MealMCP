@@ -9,9 +9,11 @@ import i18n
 import markdown
 from flask import (
     Flask,
+    abort,
     flash,
     redirect,
     render_template,
+    make_response,
     request,
     session,
     url_for,
@@ -22,6 +24,8 @@ from flask_wtf.csrf import CSRFProtect, CSRFError
 from web_auth_simple import WebUserManager
 from auth_session import AuthContext, configure_session
 from constants import is_infinite_ingredient
+from grocery_shares import GroceryShares
+from urllib.parse import urlencode
 from flask_openrouter_integration import add_openrouter_routes
 
 
@@ -1173,6 +1177,50 @@ def meal_plan():
         start_date=start,
         end_date=end,
     )
+
+
+def get_grocery_shares():
+    return GroceryShares(
+        backend, pantry.db_path if backend == "sqlite" else connection_string
+    )
+
+
+@app.route("/meal-plan/share", methods=["POST"])
+@requires_auth
+def share_grocery_list():
+    """Save the current household's list and open its shareable page."""
+    user_pantry = get_current_user_pantry()
+    if not user_pantry:
+        abort(403)
+    token = get_grocery_shares().create(
+        user_pantry.get_grocery_list(), date.today(), i18n.LANG
+    )
+    return redirect(url_for("shared_grocery_list", token=token), code=303)
+
+
+@app.route("/shopping-list/<token>")
+def shared_grocery_list(token):
+    """A public snapshot; the token grants access only to this saved list."""
+    snapshot = get_grocery_shares().get(token)
+    if snapshot is None:
+        abort(404)
+    set_lang(snapshot["language"])
+    share_url = url_for("shared_grocery_list", token=token, _external=True)
+    response = make_response(
+        render_template(
+            "shared_grocery_list.html",
+            grocery_list=snapshot["items"],
+            start_date=snapshot["start_date"],
+            share_url=share_url,
+            whatsapp_url="https://wa.me/?"
+            + urlencode({"text": t("Grocery List") + "\n" + share_url}),
+            language=snapshot["language"],
+        )
+    )
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/meal-plan/set", methods=["POST"])
